@@ -1,0 +1,12 @@
+{
+    "configurations": [
+        {
+            "name": "Debug Hyde Build",
+            "type": "PowerShell",
+            "request": "launch",
+            "script": "${workspaceFolder}\\src\\hyde.ps1",
+            "cwd": "${workspaceFolder}",
+            "args": ["Build -Source S:\\test\\ -Destination S:\\test\\_site -Verbose"]
+        }
+    ]
+}
