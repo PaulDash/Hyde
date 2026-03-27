@@ -32,6 +32,7 @@ function Publish-StaticSite {
         $contextParameters['Destination'] = $Destination
     }
 
+    Write-Verbose "Initializing Hyde build context."
     try {
         $context = Initialize-HydeBuildContext @contextParameters
     } catch {
@@ -53,6 +54,7 @@ function Publish-StaticSite {
         throw "Build failed while preparing destination '$($context.DestinationPath)'. $($_.Exception.Message)"
     }
 
+    Write-Verbose "Discovering source items under '$($context.SourcePath)'."
     try {
         # Discover the source tree before any rendering starts.
         Get-HydeSourceItems -Context $context
@@ -62,11 +64,15 @@ function Publish-StaticSite {
 
     Write-Information "Processing $($context.Documents.Count) document(s) and $($context.StaticFiles.Count) static file(s)."
     Write-Verbose "Discovered $($context.Documents.Count) document(s) and $($context.StaticFiles.Count) static file(s)."
+    Write-Verbose "Starting document rendering phase."
 
     # Documents are rendered and written first so any rendering failures stop the build early.
+    $documentIndex = 0
+    $publishedDocumentCount = 0
     foreach ($document in $context.Documents) {
+        $documentIndex++
         try {
-            Write-Verbose "Rendering document '$($document.RelativePath)'."
+            Write-Verbose "Rendering document $documentIndex of $($context.Documents.Count): '$($document.RelativePath)'."
             Convert-HydeDocument -Document $document -Context $context
             if (-not $document.Published) {
                 Write-Verbose "Skipping unpublished document '$($document.RelativePath)'."
@@ -75,21 +81,28 @@ function Publish-StaticSite {
 
             Write-Verbose "Writing document '$($document.RelativePath)' to '$($document.OutputRelativePath)'."
             Write-HydeDocument -Document $document -Context $context
+            $publishedDocumentCount++
+            Write-Verbose "Finished document '$($document.RelativePath)'."
         } catch {
             throw "Build failed while processing document '$($document.SourcePath)'. $($_.Exception.Message)"
         }
     }
 
+    Write-Verbose "Starting static file copy phase."
     # Static assets are copied after document rendering.
+    $staticFileIndex = 0
     foreach ($staticFile in $context.StaticFiles) {
+        $staticFileIndex++
         try {
-            Write-Verbose "Copying static file '$($staticFile.RelativePath)' to '$($staticFile.OutputRelativePath)'."
+            Write-Verbose "Copying static file $staticFileIndex of $($context.StaticFiles.Count): '$($staticFile.RelativePath)' to '$($staticFile.OutputRelativePath)'."
             Copy-HydeStaticFile -StaticFile $staticFile -Context $context
+            Write-Verbose "Finished static file '$($staticFile.RelativePath)'."
         } catch {
             throw "Build failed while copying static file '$($staticFile.SourcePath)'. $($_.Exception.Message)"
         }
     }
 
+    Write-Verbose "Build summary: wrote $publishedDocumentCount published document(s) and copied $($context.StaticFiles.Count) static file(s)."
     Write-Information "Finished in $(((Get-Date) - $context.Site.time).TotalSeconds.ToString('0.00')) seconds."
 
     return $context

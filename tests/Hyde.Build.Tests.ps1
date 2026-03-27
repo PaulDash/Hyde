@@ -133,8 +133,8 @@ title: Home
         $verboseText = $verboseRecords | Where-Object { $_ -is [System.Management.Automation.VerboseRecord] } | ForEach-Object { $_.Message }
 
         $verboseText | Should -Contain "Building site from '$siteRoot' to '$destinationRoot'."
-        $verboseText | Should -Contain "Rendering document 'index.md'."
-        $verboseText | Should -Contain "Copying static file 'assets/site.css' to 'assets/site.css'."
+        $verboseText | Should -Contain "Rendering document 1 of 1: 'index.md'."
+        $verboseText | Should -Contain "Copying static file 1 of 1: 'assets/site.css' to 'assets/site.css'."
     }
 
     It 'renders Liquid in document content by default' {
