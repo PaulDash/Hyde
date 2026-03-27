@@ -114,6 +114,11 @@ function New-HydePageVariables {
         $page[$key] = $Document.FrontMatter[$key]
     }
 
+    if (-not [string]::IsNullOrWhiteSpace($Document.Title)) {
+        # Document.Title gives plugins and future features a semantic title slot beyond raw front matter.
+        $page['title'] = $Document.Title
+    }
+
     $page['content'] = $Document.RenderedContent
     $page['url'] = $Document.Url
     $page['path'] = $Document.RelativePath
@@ -258,11 +263,18 @@ function Read-HydeFrontMatter {
         $Document.Published = ConvertTo-HydeBooleanFrontMatterValue -SettingName 'published' -InputObject $Document.FrontMatter.published -DefaultValue $true
     }
 
+    if ($Document.FrontMatter.ContainsKey('title') -and -not [string]::IsNullOrWhiteSpace([string]$Document.FrontMatter.title)) {
+        # Capture the title semantically so other code does not need to dig through raw front matter.
+        $Document.Title = [string]$Document.FrontMatter.title
+    } else {
+        $Document.Title = ''
+    }
+
     if ($Document.FrontMatter.ContainsKey('render_with_liquid')) {
         $Document.RenderWithLiquid = ConvertTo-HydeBooleanFrontMatterValue -SettingName 'render_with_liquid' -InputObject $Document.FrontMatter.render_with_liquid -DefaultValue $true
     }
 
-    Write-Verbose "Document '$($Document.RelativePath)' resolved with published=$($Document.Published) and render_with_liquid=$($Document.RenderWithLiquid)."
+    Write-Verbose "Document '$($Document.RelativePath)' resolved with title='$($Document.Title)', published=$($Document.Published), and render_with_liquid=$($Document.RenderWithLiquid)."
 }
 
 function Convert-HydeInlineMarkdown {

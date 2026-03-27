@@ -231,6 +231,44 @@ layout: default
         $context.Documents.Count | Should -Be 1
     }
 
+    It 'can populate document titles from the first markdown heading through the titles-from-headings plugin' {
+        $siteRoot = New-TestSiteDirectory -Name 'titles-from-headings-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'titles-from-headings-output'
+        $layoutsDirectory = Join-Path -Path $siteRoot -ChildPath '_layouts'
+
+        [void](New-Item -Path $layoutsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+plugins:
+  - titles-from-headings
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $layoutsDirectory -ChildPath 'default.html') -Encoding UTF8 -Value @'
+<html>
+<head><title>{{ page.title }}</title></head>
+<body>{{ content }}</body>
+</html>
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+layout: default
+---
+# Plugin Title
+
+Body text.
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $document = $context.Documents | Where-Object { $_.RelativePath -eq 'index.md' }
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+
+        $document.Title | Should -Be 'Plugin Title'
+        $document.FrontMatter.title | Should -Be 'Plugin Title'
+        $indexOutput | Should -Match '<title>Plugin Title</title>'
+    }
+
     It 'renders Jekyll includes from the includes directory' {
         $siteRoot = New-TestSiteDirectory -Name 'include-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'include-output'

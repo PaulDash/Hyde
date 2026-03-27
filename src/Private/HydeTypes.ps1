@@ -25,6 +25,7 @@ class HydeDocument : HydeContentItem {
     [hashtable]$FrontMatter
     [string]$RawContent
     [string]$RenderedContent
+    [string]$Title
     [bool]$Published
     [bool]$RenderWithLiquid
 
@@ -33,6 +34,7 @@ class HydeDocument : HydeContentItem {
         $this.FrontMatter = @{}
         $this.RawContent = ''
         $this.RenderedContent = ''
+        $this.Title = ''
         $this.Published = $true
         $this.RenderWithLiquid = $true
     }
