@@ -170,7 +170,6 @@ switch ($Command) {
 
     # consider "Includes" from _includes directory
 
-    # TODO: Add layout inheritance.
     # TODO: Add posts, collections, and permalink handling.
 
     # read "Layout"
