@@ -7,10 +7,12 @@ function Read-HydeFrontMatter {
         [switch]$Strict
     )
 
+    # Read the full source file so we can split the front matter block from the body in one pass.
     $rawFileContent = Get-Content -LiteralPath $Document.SourcePath -Raw
     $Document.FrontMatter = @{}
 
     if ($rawFileContent.StartsWith("---")) {
+        # Match the opening and closing YAML fence at the start of the file.
         $match = [System.Text.RegularExpressions.Regex]::Match(
             $rawFileContent,
             '\A---\s*\r?\n(.*?)\r?\n---\s*(?:\r?\n|$)',
@@ -39,6 +41,7 @@ function Read-HydeFrontMatter {
         $Document.RawContent = $rawFileContent
     }
 
+    # Hyde honors the published flag early so later stages can skip output generation.
     if ($Document.FrontMatter.ContainsKey('published')) {
         $Document.Published = [bool]$Document.FrontMatter.published
     }
@@ -51,6 +54,7 @@ function Convert-HydeInlineMarkdown {
         [string]$Text
     )
 
+    # Escape first, then apply a small markdown subset for inline formatting.
     $encoded = [System.Net.WebUtility]::HtmlEncode($Text)
 
     $encoded = [System.Text.RegularExpressions.Regex]::Replace(
@@ -105,6 +109,7 @@ function Convert-HydeMarkdown {
         [string]$Markdown
     )
 
+    # Normalize line endings first so the simple parser behaves the same on all platforms.
     $normalizedContent = ($Markdown -replace "`r`n", "`n") -replace "`r", "`n"
     $lines = $normalizedContent -split "`n"
     $blocks = New-Object System.Collections.ArrayList
@@ -113,6 +118,7 @@ function Convert-HydeMarkdown {
     $codeLines = New-Object System.Collections.ArrayList
     $inCodeFence = $false
 
+    # Buffer-based helpers let the parser convert markdown one block at a time.
     function Flush-HydeParagraph {
         if ($paragraphLines.Count -eq 0) {
             return
@@ -188,6 +194,7 @@ function Convert-HydeMarkdown {
             continue
         }
 
+        # Raw HTML blocks pass straight through instead of being escaped as markdown paragraphs.
         if ($line.TrimStart().StartsWith('<')) {
             Flush-HydeParagraph
             Flush-HydeList
@@ -218,6 +225,7 @@ function Convert-HydeDocument {
         [HydeBuildContext]$Context
     )
 
+    # Rendering starts by parsing front matter, then selecting the renderer by file extension.
     $strictFrontMatter = $false
     if ($Context.Settings.ContainsKey('strict_front_matter')) {
         $strictFrontMatter = [bool]$Context.Settings.strict_front_matter
@@ -231,11 +239,13 @@ function Convert-HydeDocument {
 
     $markdownExtensions = Get-HydeMarkdownExtensions -Settings $Context.Settings
     if ($Document.Extension -in @('.htm', '.html')) {
+        # HTML pages are currently copied through after front matter is stripped.
         $Document.RenderedContent = $Document.RawContent
         return
     }
 
     if ($Document.Extension -in $markdownExtensions) {
+        # Markdown pages are converted into HTML before being written to disk.
         $Document.RenderedContent = Convert-HydeMarkdown -Markdown $Document.RawContent
         return
     }
@@ -253,6 +263,7 @@ function Resolve-HydeDocumentOutputPath {
         [hashtable]$Settings
     )
 
+    # Markdown sources render to .html while html inputs keep their existing filenames.
     $markdownExtensions = Get-HydeMarkdownExtensions -Settings $Settings
     if ($Document.Extension -in $markdownExtensions) {
         return [System.IO.Path]::ChangeExtension($Document.RelativePath, '.html').Replace('\', '/')
@@ -275,6 +286,7 @@ function Write-HydeDocument {
         return
     }
 
+    # Materialize the destination tree lazily as each document is written.
     $destinationPath = Join-Path -Path $Context.DestinationPath -ChildPath $Document.OutputRelativePath
     $destinationDirectory = Split-Path -Path $destinationPath -Parent
 
@@ -295,6 +307,7 @@ function Copy-HydeStaticFile {
         [HydeBuildContext]$Context
     )
 
+    # Static files reuse the same output tree logic but skip the rendering step entirely.
     $destinationPath = Join-Path -Path $Context.DestinationPath -ChildPath $StaticFile.OutputRelativePath
     $destinationDirectory = Split-Path -Path $destinationPath -Parent
 

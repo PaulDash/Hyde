@@ -112,12 +112,14 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Load the module wrapper so the script can delegate to the public commands.
 Import-Module (Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.psm1') -Force
 
 if ($PSBoundParameters.ContainsKey('Quiet') -and $VerbosePreference -eq 'Continue') {
     throw "It doesn't make sense to ask for verbose output AND to keep quiet!"
 }
 
+# Package the common runtime settings once, then pass them to whichever command runs.
 $commandParameters = @{
     Environment = $Environment
     Quiet       = $Quiet
@@ -132,6 +134,7 @@ if ($PSBoundParameters.ContainsKey('Destination')) {
     $commandParameters['Destination'] = $Destination
 }
 
+# Route the top-level command to the matching public entry point.
 switch ($Command) {
     'New' {
         throw 'TODO: Implement the New command to scaffold a site.'

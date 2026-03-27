@@ -1,5 +1,6 @@
 Describe 'Hyde build pipeline' {
     BeforeAll {
+        # Import the module once so each test can call the public entry points directly.
         $projectRoot = Split-Path -Parent $PSScriptRoot
         $modulePath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.psm1'
         $entryScriptPath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.ps1'
@@ -7,6 +8,7 @@ Describe 'Hyde build pipeline' {
     }
 
     It 'builds markdown and html pages with front matter and copies static files' {
+        # Create a minimal site fixture entirely under TestDrive.
         $siteRoot = Join-Path -Path $TestDrive -ChildPath 'site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'output'
         $assetsDirectory = Join-Path -Path $siteRoot -ChildPath 'assets'
@@ -42,8 +44,10 @@ title: About
         Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'ignored.txt') -Encoding UTF8 -Value 'ignore me'
         Set-Content -LiteralPath (Join-Path -Path $assetsDirectory -ChildPath 'site.css') -Encoding UTF8 -Value 'body { color: black; }'
 
+        # Run the real build command so the test exercises the full public pipeline.
         $context = Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
 
+        # Assert both on-disk output and the in-memory context the build returns.
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') | Should Be $true
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'about.html') | Should Be $true
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'assets\site.css') | Should Be $true

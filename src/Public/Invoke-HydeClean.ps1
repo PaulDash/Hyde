@@ -12,10 +12,12 @@ function Invoke-HydeClean {
     Set-StrictMode -Version Latest
     $ErrorActionPreference = 'Stop'
 
+    # Clean shares the same quiet/information behavior as build.
     if (-not $Quiet) {
         $InformationPreference = 'Continue'
     }
 
+    # Reuse the normal context initialization so clean honors site config and CLI overrides.
     $contextParameters = @{
         Environment = $Environment
         ScriptPath  = $ScriptPath
@@ -35,6 +37,7 @@ function Invoke-HydeClean {
     Write-Information "Running HYDE version $($context.Version)."
     Write-Verbose "Cleaning generated content for '$($context.SourcePath)'."
 
+    # Clean each generated target independently so missing paths do not block the rest.
     foreach ($target in $targets) {
         Remove-HydeGeneratedPath -Path $target.Path -SourcePath $context.SourcePath -Kind $target.Kind
     }

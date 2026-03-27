@@ -5,6 +5,7 @@ function Get-HydeExcludedState {
         [HydeBuildContext]$Context
     )
 
+    # Start with Jekyll-style implicit exclusions, then extend them from config.
     $defaultNamePatterns = @('.*', '_*', '#*', '~*')
     $defaultDirectoryNames = New-Object System.Collections.Generic.HashSet[string]([System.StringComparer]::OrdinalIgnoreCase)
 
@@ -21,6 +22,7 @@ function Get-HydeExcludedState {
         [void]$defaultDirectoryNames.Add((Split-Path -Path $Context.Settings.sass.sass_dir -Leaf))
     }
 
+    # Prevent recursive builds by excluding the output folder when it lives under the source tree.
     if ($Context.DestinationPath.StartsWith($Context.SourcePath, [System.StringComparison]::OrdinalIgnoreCase)) {
         $relativeDestination = [System.IO.Path]::GetRelativePath($Context.SourcePath, $Context.DestinationPath)
         if ($relativeDestination -and $relativeDestination -ne '.') {
@@ -79,6 +81,7 @@ function Test-HydeItemExclusion {
 
     $normalizedRelativePath = $RelativePath.Replace('\', '/')
 
+    # Explicit includes win over the normal exclusion rules.
     if ($ExcludedState.ConfiguredIncludes -contains $normalizedRelativePath) {
         return $false
     }
@@ -119,6 +122,7 @@ function Get-HydeSourceItems {
         [HydeBuildContext]$Context
     )
 
+    # Walk the source tree once and classify each file as a renderable document or a static asset.
     $excludedState = Get-HydeExcludedState -Context $Context
     $markdownExtensions = Get-HydeMarkdownExtensions -Settings $Context.Settings
     $contentExtensions = @('.htm', '.html') + $markdownExtensions
@@ -144,11 +148,13 @@ function Get-HydeSourceItems {
             }
 
             if ($contentExtensions -contains $file.Extension.ToLowerInvariant()) {
+                # Documents move into the rendering pipeline and can later gain front matter and output paths.
                 $document = [HydeDocument]::new('Page', $file.FullName, $relativeFilePath)
                 $document.OutputRelativePath = Resolve-HydeDocumentOutputPath -Document $document -Settings $Context.Settings
                 $document.Url = '/' + $document.OutputRelativePath.Replace('\', '/')
                 $Context.AddDocument($document)
             } else {
+                # Everything else is preserved as a static file.
                 $staticFile = [HydeStaticFile]::new($file.FullName, $relativeFilePath)
                 $staticFile.OutputRelativePath = $relativeFilePath
                 $staticFile.Url = '/' + $relativeFilePath.Replace('\', '/')
@@ -165,6 +171,7 @@ function Import-HydeDataFiles {
         [HydeBuildContext]$Context
     )
 
+    # Hyde exposes _data files through site.data before any documents are rendered.
     if (-not $Context.Site.ContainsKey('data')) {
         $Context.Site['data'] = @{}
     }

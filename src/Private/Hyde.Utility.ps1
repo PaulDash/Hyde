@@ -10,6 +10,7 @@ function ConvertTo-HydeHashtable {
             return $null
         }
 
+        # Normalize YAML and PSCustomObject output into plain hashtables/arrays for predictable downstream use.
         if ($InputObject -is [System.Collections.IDictionary]) {
             $result = @{}
             foreach ($key in $InputObject.Keys) {
@@ -51,6 +52,7 @@ function Copy-HydeValue {
         return $null
     }
 
+    # Build context copies should be detached from the original settings tree before runtime values are added.
     if ($InputObject -is [System.Collections.IDictionary]) {
         $copy = @{}
         foreach ($key in $InputObject.Keys) {
@@ -81,6 +83,7 @@ function Get-HydeMarkdownExtensions {
 
     $extensions = @('.md', '.markdown')
 
+    # Jekyll-style markdown_ext values are stored as a comma-separated string in configuration.
     if ($Settings.ContainsKey('markdown_ext') -and $Settings.markdown_ext) {
         $extensions = @(
             $Settings.markdown_ext -split ',' |

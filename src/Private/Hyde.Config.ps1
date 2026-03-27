@@ -8,6 +8,7 @@ function Merge-HydeConfig {
         [hashtable]$Difference
     )
 
+    # Merge nested configuration sections recursively so site config can override Hyde defaults.
     foreach ($key in $Difference.Keys) {
         if ($Existing.ContainsKey($key)) {
             if ($Existing[$key] -is [hashtable] -and $Difference[$key] -is [hashtable]) {
@@ -33,6 +34,7 @@ function Read-HydeConfigFile {
     }
 
     try {
+        # Read the whole file at once so YAML parsing sees the original structure.
         $content = Get-Content -LiteralPath $Path -Raw
         if ([string]::IsNullOrWhiteSpace($content)) {
             return @{}
@@ -56,6 +58,7 @@ function Resolve-HydePath {
         [switch]$MayNotExist
     )
 
+    # Resolve relative paths against the current site root while still allowing absolute overrides.
     $candidate = if ([System.IO.Path]::IsPathRooted($Location)) {
         $Location
     } else {
@@ -101,6 +104,7 @@ function Initialize-HydeBuildContext {
     $defaultConfigPath = Join-Path -Path $moduleRoot -ChildPath 'globalConfig.yaml'
     $siteConfigName = '_config.yml'
 
+    # Start with Hyde defaults, then layer site config and command-line overrides on top.
     $settings = Read-HydeConfigFile -Path $defaultConfigPath
 
     $sourceSetting = if ($PSBoundParameters.ContainsKey('Source')) { $Source } else { $settings.source }
@@ -122,6 +126,7 @@ function Initialize-HydeBuildContext {
 
     $destinationPath = Resolve-HydePath -Location $settings.destination -BasePath $sourcePath -MayNotExist
 
+    # Build up the runtime context that the rest of the pipeline will mutate.
     $context = [HydeBuildContext]::new()
     $context.Version = (Get-PSScriptFileInfo -Path $ScriptPath).ScriptMetadataComment.Version.Version.ToString()
     $context.Environment = $Environment
@@ -130,6 +135,7 @@ function Initialize-HydeBuildContext {
     $context.SourcePath = $sourcePath
     $context.DestinationPath = $destinationPath
 
+    # These values are generated per invocation and do not come from configuration files.
     $context.Site['time'] = Get-Date
     $context.Site['pages'] = New-Object System.Collections.ArrayList
     $context.Site['posts'] = New-Object System.Collections.ArrayList
@@ -147,6 +153,7 @@ function Get-HydeCleanTargets {
         [HydeBuildContext]$Context
     )
 
+    # Hyde clean intentionally targets the same generated artifacts that Jekyll clean removes.
     $targets = New-Object System.Collections.ArrayList
     $candidatePaths = @(
         @{ Kind = 'destination folder'; Path = $Context.DestinationPath }
@@ -182,14 +189,17 @@ function Remove-HydeGeneratedPath {
         [string]$Kind
     )
 
+    # Resolve paths first so the safety checks operate on normalized absolute paths.
     $resolvedSourcePath = [System.IO.Path]::GetFullPath($SourcePath)
     $resolvedTargetPath = [System.IO.Path]::GetFullPath($Path)
 
+    # Refuse paths that look too short to be a real generated child path.
     if ($resolvedTargetPath.Length -lt ($resolvedSourcePath.Length + 2) -and
         $resolvedTargetPath -ne $resolvedSourcePath) {
         throw "Refusing to remove suspicious $Kind path '$resolvedTargetPath'."
     }
 
+    # Clean is currently conservative and only removes paths inside the source tree.
     if (($resolvedTargetPath -ne $resolvedSourcePath) -and
         (-not $resolvedTargetPath.StartsWith($resolvedSourcePath + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase))) {
         throw "Refusing to remove $Kind path '$resolvedTargetPath' because it is outside the site source '$resolvedSourcePath'."
@@ -200,6 +210,7 @@ function Remove-HydeGeneratedPath {
         return
     }
 
+    # Remove files and directories with the appropriate PowerShell cmdlet shape.
     $item = Get-Item -LiteralPath $resolvedTargetPath -Force
     if ($item.PSIsContainer) {
         Remove-Item -LiteralPath $resolvedTargetPath -Recurse -Force

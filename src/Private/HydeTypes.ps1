@@ -9,6 +9,7 @@ class HydeContentItem {
     [string]$Extension
 
     HydeContentItem([string]$kind, [string]$sourcePath, [string]$relativePath) {
+        # Every discovered site item starts with the same normalized file metadata.
         $this.Kind = $kind
         $this.SourcePath = $sourcePath
         $this.RelativePath = $relativePath.Replace('\', '/')
@@ -27,6 +28,7 @@ class HydeDocument : HydeContentItem {
     [bool]$Published
 
     HydeDocument([string]$kind, [string]$sourcePath, [string]$relativePath) : base($kind, $sourcePath, $relativePath) {
+        # Documents accumulate front matter, body content, and rendered output as the pipeline runs.
         $this.FrontMatter = @{}
         $this.RawContent = ''
         $this.RenderedContent = ''
@@ -50,6 +52,7 @@ class HydeBuildContext {
     [System.Collections.ArrayList]$StaticFiles
 
     HydeBuildContext() {
+        # The build context is the shared state bag for one Hyde invocation.
         $this.Settings = @{}
         $this.Site = @{}
         $this.Documents = New-Object System.Collections.ArrayList
@@ -57,11 +60,13 @@ class HydeBuildContext {
     }
 
     [void] AddDocument([HydeDocument]$document) {
+        # Keep the strongly-typed list and the site variable surface in sync.
         [void]$this.Documents.Add($document)
         [void]$this.Site.pages.Add($document)
     }
 
     [void] AddStaticFile([HydeStaticFile]$staticFile) {
+        # Keep the strongly-typed list and the site variable surface in sync.
         [void]$this.StaticFiles.Add($staticFile)
         [void]$this.Site.static_files.Add($staticFile)
     }
