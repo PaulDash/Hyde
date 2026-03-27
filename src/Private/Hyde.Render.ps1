@@ -183,6 +183,8 @@ function Read-HydeFrontMatter {
         [Parameter(Mandatory = $true)]
         [HydeDocument]$Document,
 
+        [HydeBuildContext]$Context,
+
         [switch]$Strict
     )
 
@@ -191,11 +193,11 @@ function Read-HydeFrontMatter {
     $Document.FrontMatter = @{}
 
     if ($rawFileContent.StartsWith("---")) {
-        # Match the opening and closing YAML fence at the start of the file.
+        # Match the opening and closing YAML fence at the start of the file, including an empty front matter block.
         $match = [System.Text.RegularExpressions.Regex]::Match(
             $rawFileContent,
-            '\A---\s*\r?\n(.*?)\r?\n---\s*(?:\r?\n|$)',
-            [System.Text.RegularExpressions.RegexOptions]::Singleline
+            '\A---\s*\r?\n(.*?)^---\s*(?:\r?\n|$)',
+            [System.Text.RegularExpressions.RegexOptions]::Singleline -bor [System.Text.RegularExpressions.RegexOptions]::Multiline
         )
 
         if (-not $match.Success) {
@@ -218,6 +220,13 @@ function Read-HydeFrontMatter {
         }
 
         $Document.RawContent = $rawFileContent
+    }
+
+    # Apply matching defaults before interpreting final front matter flags.
+    if ($PSBoundParameters.ContainsKey('Context') -and $null -ne $Context) {
+        foreach ($default in Get-HydeMatchingDefaults -Context $Context -Item $Document) {
+            Merge-HydeFrontMatterDefaults -Target $Document.FrontMatter -Defaults $default.Values
+        }
     }
 
     # Hyde honors front matter flags early so later stages can skip or alter rendering behavior.
@@ -414,7 +423,7 @@ function Convert-HydeDocument {
         $strictFrontMatter = [bool]$Context.Settings.strict_front_matter
     }
 
-    Read-HydeFrontMatter -Document $Document -Strict:$strictFrontMatter
+    Read-HydeFrontMatter -Document $Document -Context $Context -Strict:$strictFrontMatter
 
     if (-not $Document.Published) {
         return

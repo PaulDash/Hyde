@@ -163,6 +163,9 @@ function Get-HydeSourceItems {
                     $staticFile = [HydeStaticFile]::new($file.FullName, $relativeFilePath)
                     $staticFile.OutputRelativePath = $relativeFilePath
                     $staticFile.Url = '/' + $relativeFilePath.Replace('\', '/')
+                    foreach ($default in Get-HydeMatchingDefaults -Context $Context -Item $staticFile) {
+                        Merge-HydeFrontMatterDefaults -Target $staticFile.Metadata -Defaults $default.Values
+                    }
                     $Context.AddStaticFile($staticFile)
                 }
             }

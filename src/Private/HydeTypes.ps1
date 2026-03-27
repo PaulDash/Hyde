@@ -39,7 +39,11 @@ class HydeDocument : HydeContentItem {
 }
 
 class HydeStaticFile : HydeContentItem {
+    [hashtable]$Metadata
+
     HydeStaticFile([string]$sourcePath, [string]$relativePath) : base('StaticFile', $sourcePath, $relativePath) {
+        # Static files can carry metadata supplied by front matter defaults.
+        $this.Metadata = @{}
     }
 }
 

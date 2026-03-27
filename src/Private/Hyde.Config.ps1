@@ -146,6 +146,157 @@ function Initialize-HydeBuildContext {
     return $context
 }
 
+function Get-HydeFrontMatterDefaults {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    # Normalize configured defaults into a consistent internal shape.
+    if (-not $Context.Settings.ContainsKey('defaults') -or -not $Context.Settings.defaults) {
+        return @()
+    }
+
+    $defaults = New-Object System.Collections.ArrayList
+    $index = 0
+    foreach ($entry in $Context.Settings.defaults) {
+        if ($null -eq $entry) {
+            $index++
+            continue
+        }
+
+        $scope = if ($entry.scope -is [hashtable]) { $entry.scope } else { @{} }
+        $values = if ($entry.values -is [hashtable]) { Copy-HydeValue -InputObject $entry.values } else { @{} }
+
+        [void]$defaults.Add([pscustomobject]@{
+            Index = $index
+            Scope = @{
+                path = if ($scope.ContainsKey('path') -and $null -ne $scope.path) { ([string]$scope.path).Replace('\', '/').TrimStart('/') } else { '' }
+                type = if ($scope.ContainsKey('type') -and $null -ne $scope.type) { [string]$scope.type } else { '' }
+            }
+            Values = $values
+        })
+
+        $index++
+    }
+
+    return @($defaults.ToArray())
+}
+
+function Get-HydeDefaultScopePathSpecificity {
+    [CmdletBinding()]
+    param(
+        [string]$ScopePath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ScopePath)) {
+        return 0
+    }
+
+    return ($ScopePath -replace '\*', '').Length
+}
+
+function Test-HydeDefaultScopePath {
+    [CmdletBinding()]
+    param(
+        [string]$ScopePath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$RelativePath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ScopePath)) {
+        return $true
+    }
+
+    $normalizedScopePath = $ScopePath.Replace('\', '/').Trim('/').Trim()
+    $normalizedRelativePath = $RelativePath.Replace('\', '/').TrimStart('/')
+
+    if ($normalizedScopePath.Contains('*')) {
+        return ($normalizedRelativePath -like $normalizedScopePath)
+    }
+
+    return (
+        $normalizedRelativePath -eq $normalizedScopePath -or
+        $normalizedRelativePath.StartsWith($normalizedScopePath.TrimEnd('/') + '/', [System.StringComparison]::OrdinalIgnoreCase)
+    )
+}
+
+function Test-HydeDefaultScopeType {
+    [CmdletBinding()]
+    param(
+        [string]$ScopeType,
+        [string]$ItemType
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ScopeType)) {
+        return $true
+    }
+
+    return ($ScopeType -ieq $ItemType)
+}
+
+function Get-HydeItemDefaultType {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $Item
+    )
+
+    switch ($Item.Kind) {
+        'Page' { return 'pages' }
+        default { return '' }
+    }
+}
+
+function Get-HydeMatchingDefaults {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context,
+
+        [Parameter(Mandatory = $true)]
+        $Item
+    )
+
+    $defaults = Get-HydeFrontMatterDefaults -Context $Context
+    if (-not $defaults) {
+        return @()
+    }
+
+    $itemType = Get-HydeItemDefaultType -Item $Item
+    $matchingDefaults = @(
+        $defaults | Where-Object {
+            (Test-HydeDefaultScopePath -ScopePath $_.Scope.path -RelativePath $Item.RelativePath) -and
+            (Test-HydeDefaultScopeType -ScopeType $_.Scope.type -ItemType $itemType)
+        } | Sort-Object `
+            @{ Expression = { Get-HydeDefaultScopePathSpecificity -ScopePath $_.Scope.path } ; Descending = $true },
+            @{ Expression = { if ([string]::IsNullOrWhiteSpace($_.Scope.type)) { 0 } else { 1 } } ; Descending = $true },
+            @{ Expression = { $_.Index } ; Descending = $true }
+    )
+
+    return @($matchingDefaults)
+}
+
+function Merge-HydeFrontMatterDefaults {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Target,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Defaults
+    )
+
+    # Defaults only fill missing values; explicit front matter still wins.
+    foreach ($key in $Defaults.Keys) {
+        if (-not $Target.ContainsKey($key)) {
+            $Target[$key] = Copy-HydeValue -InputObject $Defaults[$key]
+        }
+    }
+}
+
 function Get-HydeCleanTargets {
     [CmdletBinding()]
     param(

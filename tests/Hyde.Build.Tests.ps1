@@ -202,6 +202,94 @@ layout: default
         $context.Documents.Count | Should -Be 1
     }
 
+    It 'applies front matter defaults by path and page type while allowing explicit front matter to win' {
+        $siteRoot = New-TestSiteDirectory -Name 'defaults-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'defaults-output'
+        $layoutsDirectory = Join-Path -Path $siteRoot -ChildPath '_layouts'
+        $docsDirectory = Join-Path -Path $siteRoot -ChildPath 'docs'
+
+        [void](New-Item -Path $layoutsDirectory -ItemType Directory -Force)
+        [void](New-Item -Path $docsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: default
+      render_with_liquid: false
+      title: Generic Title
+  - scope:
+      path: "docs"
+      type: "pages"
+    values:
+      title: Docs Default
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $layoutsDirectory -ChildPath 'default.html') -Encoding UTF8 -Value @'
+<html><head><title>{{ page.title }}</title></head><body>{{ content }}</body></html>
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $docsDirectory -ChildPath 'guide.md') -Encoding UTF8 -Value @'
+---
+---
+# {{ page.title }}
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $docsDirectory -ChildPath 'override.md') -Encoding UTF8 -Value @'
+---
+title: Custom Title
+render_with_liquid: true
+---
+# {{ page.title }}
+'@
+
+        $context = Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $guideOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'docs\guide.html') -Raw
+        $overrideOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'docs\override.html') -Raw
+        $guideDocument = $context.Documents | Where-Object { $_.BaseName -eq 'guide' }
+        $overrideDocument = $context.Documents | Where-Object { $_.BaseName -eq 'override' }
+
+        $guideOutput | Should -Match '<title>Docs Default</title>'
+        $guideOutput | Should -Match '<h1>\{\{ page.title \}\}</h1>'
+        $guideDocument.RenderWithLiquid | Should -BeFalse
+        $guideDocument.FrontMatter.layout | Should -Be 'default'
+        $guideDocument.FrontMatter.title | Should -Be 'Docs Default'
+
+        $overrideOutput | Should -Match '<title>Custom Title</title>'
+        $overrideOutput | Should -Match '<h1>Custom Title</h1>'
+        $overrideDocument.RenderWithLiquid | Should -BeTrue
+        $overrideDocument.FrontMatter.layout | Should -Be 'default'
+        $overrideDocument.FrontMatter.title | Should -Be 'Custom Title'
+    }
+
+    It 'applies front matter defaults to static file metadata' {
+        $siteRoot = New-TestSiteDirectory -Name 'static-defaults-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'static-defaults-output'
+        $imageDirectory = Join-Path -Path $siteRoot -ChildPath 'assets\img'
+
+        [void](New-Item -Path $imageDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+defaults:
+  - scope:
+      path: "assets/img"
+    values:
+      image: true
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $imageDirectory -ChildPath 'logo.txt') -Encoding UTF8 -Value 'logo'
+
+        $context = Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $staticFile = $context.StaticFiles | Where-Object { $_.BaseName -eq 'logo' }
+
+        $staticFile.Metadata.image | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'assets\img\logo.txt') | Should -BeTrue
+    }
+
     It 'reports invalid site configuration with context' {
         $siteRoot = New-TestSiteDirectory -Name 'bad-config-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'bad-config-output'
