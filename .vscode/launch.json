@@ -1,4 +1,12 @@
 {
+    "inputs": [
+        {
+            "id": "hydeArgs",
+            "type": "promptString",
+            "description": "Arguments to pass to Hyde.ps1",
+            "default": "Build -Verbose"
+        }
+    ],
     "configurations": [
         {
             "name": "Debug Hyde Build",
@@ -6,7 +14,7 @@
             "request": "launch",
             "script": "${workspaceFolder}\\src\\hyde.ps1",
             "cwd": "${workspaceFolder}",
-            "args": ["Build -Source S:\\test\\ -Destination S:\\test\\_site -Verbose"]
+            "args": ["${input:hydeArgs}"]
         }
     ]
 }

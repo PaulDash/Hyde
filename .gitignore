@@ -1,0 +1,18 @@
+# Hyde / Jekyll generated output
+_site/
+.jekyll-metadata
+.jekyll-cache/
+.sass-cache/
+
+# Local VS Code state
+.vscode/
+
+# Local workspace files
+*.code-workspace
+
+# Raw design assets
+res/*.psd
+
+# OS-generated files
+Thumbs.db
+.DS_Store
