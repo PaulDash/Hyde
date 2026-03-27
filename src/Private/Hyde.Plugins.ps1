@@ -24,7 +24,7 @@ function Resolve-HydePluginDirectory {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context
+        [HydeBuildContext]$Context
     )
 
     $pluginsDirectoryName = if ($Context.Settings.ContainsKey('plugins_dir') -and $Context.Settings.plugins_dir) {
@@ -40,7 +40,7 @@ function Get-HydePluginConfigurationNames {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context
+        [HydeBuildContext]$Context
     )
 
     $configuredNames = New-Object System.Collections.ArrayList
@@ -87,7 +87,7 @@ function Get-HydeWhitelistedPluginNames {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context
+        [HydeBuildContext]$Context
     )
 
     if (-not $Context.Settings.ContainsKey('whitelist') -or -not $Context.Settings.whitelist) {
@@ -101,7 +101,7 @@ function Resolve-HydePluginFiles {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context
+        [HydeBuildContext]$Context
     )
 
     # Hyde plugins are PowerShell scripts under the configured plugin directory.
@@ -163,7 +163,7 @@ function Test-HydePluginAllowed {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context,
+        [HydeBuildContext]$Context,
 
         [Parameter(Mandatory = $true)]
         [string]$PluginName
@@ -186,7 +186,7 @@ function Register-HydePluginDescriptor {
         [hashtable]$Descriptor,
 
         [Parameter(Mandatory = $true)]
-        $Context,
+        [HydeBuildContext]$Context,
 
         [Parameter(Mandatory = $true)]
         [string]$PluginPath
@@ -262,7 +262,7 @@ function Import-HydePlugins {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context
+        [HydeBuildContext]$Context
     )
 
     $pluginFiles = @(Resolve-HydePluginFiles -Context $Context)
@@ -301,7 +301,7 @@ function Invoke-HydePluginHook {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context,
+        [HydeBuildContext]$Context,
 
         [Parameter(Mandatory = $true)]
         [string]$HookName,
@@ -326,7 +326,7 @@ function Resolve-HydePluginValue {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context,
+        [HydeBuildContext]$Context,
 
         [Parameter(Mandatory = $true)]
         [string]$HookName,

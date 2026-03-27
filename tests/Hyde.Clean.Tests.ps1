@@ -4,7 +4,7 @@ Describe 'Hyde clean pipeline' {
         $projectRoot = Split-Path -Parent $PSScriptRoot
         $modulePath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.psm1'
         $entryScriptPath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.ps1'
-        Import-Module $modulePath -Force
+        Import-Module $modulePath
 
         function New-TestSiteDirectory {
             param(

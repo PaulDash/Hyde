@@ -2,7 +2,7 @@ Describe 'Hyde Liquid module' {
     BeforeAll {
         $projectRoot = Split-Path -Parent $PSScriptRoot
         $liquidModulePath = Join-Path -Path $projectRoot -ChildPath 'src\Liquid\Hyde.Liquid.psm1'
-        Import-Module $liquidModulePath -Force
+        Import-Module $liquidModulePath
     }
 
     It 'renders basic objects and filters' {

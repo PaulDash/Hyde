@@ -166,18 +166,18 @@ $ErrorActionPreference = 'Stop'
 $modulePath = Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.psm1'
 $liquidModulePath = Join-Path -Path $PSScriptRoot -ChildPath 'Liquid\Hyde.Liquid.psm1'
 
-# In long-lived editor sessions, unload any existing Hyde modules first so the script uses the current code on disk.
-Get-Module |
+# Reuse an existing Hyde module instance in the current session.
+# PowerShell classes are not unload-safe, so removing and re-importing Hyde can create
+# duplicate in-memory types such as HydeDocument that no longer bind to each other.
+$loadedHydeModule = Get-Module |
     Where-Object {
-        $_.Path -and (
-            $_.Path.Equals($modulePath, [System.StringComparison]::OrdinalIgnoreCase) -or
-            $_.Path.Equals($liquidModulePath, [System.StringComparison]::OrdinalIgnoreCase)
-        )
+        $_.Path -and $_.Path.Equals($modulePath, [System.StringComparison]::OrdinalIgnoreCase)
     } |
-    Sort-Object Name -Descending |
-    ForEach-Object { Remove-Module -ModuleInfo $_ -Force -ErrorAction SilentlyContinue }
+    Select-Object -First 1
 
-Import-Module $modulePath
+if (-not $loadedHydeModule) {
+    Import-Module $modulePath
+}
 
 if ($PSBoundParameters.ContainsKey('Quiet') -and $VerbosePreference -eq 'Continue') {
     throw "It doesn't make sense to ask for verbose output AND to keep quiet!"

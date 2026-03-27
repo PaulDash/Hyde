@@ -164,7 +164,7 @@ function Get-HydeCollectionDefinitions {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context
+        [HydeBuildContext]$Context
     )
 
     # Collections are configured under the Jekyll-style collections map in _config.yml.
@@ -195,7 +195,7 @@ function Initialize-HydeCollections {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context
+        [HydeBuildContext]$Context
     )
 
     foreach ($definition in Get-HydeCollectionDefinitions -Context $Context) {
@@ -215,7 +215,7 @@ function Get-HydeFrontMatterDefaults {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context
+        [HydeBuildContext]$Context
     )
 
     # Normalize configured defaults into a consistent internal shape.
@@ -306,7 +306,7 @@ function Get-HydeItemDefaultType {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Item
+        [HydeContentItem]$Item
     )
 
     switch ($Item.Kind) {
@@ -320,10 +320,10 @@ function Get-HydeMatchingDefaults {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context,
+        [HydeBuildContext]$Context,
 
         [Parameter(Mandatory = $true)]
-        $Item
+        [HydeContentItem]$Item
     )
 
     $defaults = Get-HydeFrontMatterDefaults -Context $Context
@@ -367,7 +367,7 @@ function Get-HydeCleanTargets {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context
+        [HydeBuildContext]$Context
     )
 
     # Hyde clean intentionally targets the same generated artifacts that Jekyll clean removes.

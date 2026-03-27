@@ -2,7 +2,7 @@ function Get-HydeExcludedState {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context
+        [HydeBuildContext]$Context
     )
 
     # Start with Jekyll-style implicit exclusions, then extend them from config.
@@ -132,7 +132,7 @@ function Get-HydeSourceItems {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context
+        [HydeBuildContext]$Context
     )
 
     # Walk the source tree once and classify each file as a renderable document or a static asset.
@@ -208,7 +208,7 @@ function Import-HydeDataFiles {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context
+        [HydeBuildContext]$Context
     )
 
     # Hyde exposes _data files through site.data before any documents are rendered.
@@ -245,7 +245,7 @@ function Get-HydeCollectionItems {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        $Context
+        [HydeBuildContext]$Context
     )
 
     $collectionDefinitions = @(Get-HydeCollectionDefinitions -Context $Context)
