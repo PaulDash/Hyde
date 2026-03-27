@@ -32,23 +32,36 @@ function Get-HydeExcludedState {
 
     $configuredFileExclusions = @()
     $configuredDirectoryExclusions = @()
+    $sourceLeafName = Split-Path -Path $Context.SourcePath -Leaf
     if ($Context.Site.ContainsKey('exclude') -and $Context.Site.exclude) {
         foreach ($entry in $Context.Site.exclude) {
             if ([string]::IsNullOrWhiteSpace($entry)) {
                 continue
             }
 
+            # Jekyll exclude entries are relative to the site source, but some sites still write
+            # them with the source directory name prefixed (for example "src/file.md").
+            $normalizedEntry = $entry.Replace('\', '/').Trim()
+            if ($sourceLeafName) {
+                $sourcePrefixedEntry = '{0}/' -f $sourceLeafName.Replace('\', '/').Trim('/')
+                if ($normalizedEntry.StartsWith($sourcePrefixedEntry, [System.StringComparison]::OrdinalIgnoreCase)) {
+                    $normalizedEntry = $normalizedEntry.Substring($sourcePrefixedEntry.Length)
+                }
+            }
+
+            $normalizedEntry = $normalizedEntry.TrimStart('/')
+
             if ($entry.StartsWith('/')) {
-                $configuredDirectoryExclusions += $entry.Trim('/').Replace('\', '/')
+                $configuredDirectoryExclusions += $normalizedEntry.Trim('/')
                 continue
             }
 
             if ($entry.EndsWith('/')) {
-                $configuredDirectoryExclusions += $entry.Trim('/').Replace('\', '/')
+                $configuredDirectoryExclusions += $normalizedEntry.Trim('/')
                 continue
             }
 
-            $configuredFileExclusions += $entry.Replace('\', '/')
+            $configuredFileExclusions += $normalizedEntry
         }
     }
 
@@ -240,6 +253,8 @@ function Get-HydeCollectionItems {
         return
     }
 
+    # Collections should honor the same exclusion rules as pages and static files.
+    $excludedState = Get-HydeExcludedState -Context $Context
     $collectionsDirectoryName = if ($Context.Settings.ContainsKey('collections_dir') -and $Context.Settings.collections_dir) {
         $Context.Settings.collections_dir
     } else {
@@ -263,6 +278,11 @@ function Get-HydeCollectionItems {
             }
 
             $relativeFilePath = [System.IO.Path]::GetRelativePath($Context.SourcePath, $file.FullName).Replace('\', '/')
+            if (Test-HydeItemExclusion -Item $file -RelativePath $relativeFilePath -ExcludedState $excludedState) {
+                Write-Verbose "Excluding collection document '$relativeFilePath'."
+                continue
+            }
+
             $document = [HydeDocument]::new('CollectionDocument', $file.FullName, $relativeFilePath)
             $document.CollectionName = $definition.Label
             $document.WriteOutput = $definition.Output

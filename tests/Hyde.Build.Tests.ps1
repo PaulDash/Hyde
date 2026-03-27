@@ -336,6 +336,38 @@ title: Toast
         $context.Site.recipes.Count | Should -Be 1
     }
 
+    It 'applies exclude rules to collection documents including source-prefixed paths' {
+        $siteContainer = New-TestSiteDirectory -Name 'collections-exclude-site'
+        $siteRoot = Join-Path -Path $siteContainer -ChildPath 'src'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'collections-exclude-output'
+        $collectionDirectory = Join-Path -Path $siteRoot -ChildPath '_notes'
+
+        [void](New-Item -Path $siteRoot -ItemType Directory -Force)
+        [void](New-Item -Path $collectionDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+exclude:
+  - src/_notes/README.md
+collections:
+  notes:
+    output: true
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $collectionDirectory -ChildPath 'README.md') -Encoding UTF8 -Value @'
+---
+---
+# Internal Notes
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'notes\\README.html') | Should -BeFalse
+        ($context.Documents | Where-Object { $_.RelativePath -eq '_notes/README.md' }).Count | Should -Be 0
+        $context.Site.collections.notes.docs.Count | Should -Be 0
+        $context.Site.notes.Count | Should -Be 0
+    }
+
     It 'renders Jekyll includes from the includes directory' {
         $siteRoot = New-TestSiteDirectory -Name 'include-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'include-output'
