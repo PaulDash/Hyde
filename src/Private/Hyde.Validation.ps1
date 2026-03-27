@@ -109,7 +109,7 @@ function Test-HydeDocumentForIssues {
     }
 
     try {
-        Read-HydeFrontMatter -Document $Document -Context $Context -Strict:$strictFrontMatter
+        Initialize-HydeDocument -Document $Document -Context $Context
     } catch {
         Add-HydeValidationIssue -Report $Report -Code 'InvalidFrontMatter' -Path $Document.RelativePath -Message $_.Exception.Message
         return

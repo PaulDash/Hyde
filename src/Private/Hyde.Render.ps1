@@ -53,6 +53,135 @@ function ConvertTo-HydeBooleanFrontMatterValue {
     return [bool]$InputObject
 }
 
+function ConvertTo-HydeSlug {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Text
+    )
+
+    $normalizedText = $Text.ToLowerInvariant()
+    $normalizedText = [System.Text.RegularExpressions.Regex]::Replace($normalizedText, '[^a-z0-9]+', '-')
+    $normalizedText = $normalizedText.Trim('-')
+
+    return $normalizedText
+}
+
+function Get-HydeDocumentCategories {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document
+    )
+
+    $categories = @()
+    if ($Document.FrontMatter.ContainsKey('categories')) {
+        $categoriesValue = $Document.FrontMatter.categories
+    } elseif ($Document.FrontMatter.ContainsKey('category')) {
+        $categoriesValue = $Document.FrontMatter.category
+    } else {
+        $categoriesValue = $null
+    }
+
+    if ($categoriesValue -is [System.Collections.IEnumerable] -and $categoriesValue -isnot [string]) {
+        $categories = @($categoriesValue | ForEach-Object { [string]$_ })
+    } elseif ($categoriesValue -is [string]) {
+        $categories = @($categoriesValue -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
+
+    return @($categories | ForEach-Object { ConvertTo-HydeSlug -Text $_ })
+}
+
+function Get-HydeDocumentPermalinkPattern {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document,
+
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    if ($Document.FrontMatter.ContainsKey('permalink') -and -not [string]::IsNullOrWhiteSpace([string]$Document.FrontMatter.permalink)) {
+        return [string]$Document.FrontMatter.permalink
+    }
+
+    if ($Document.Kind -eq 'CollectionDocument' -and -not [string]::IsNullOrWhiteSpace($Document.CollectionName)) {
+        $collectionDefinition = Get-HydeCollectionDefinition -Context $Context -CollectionName $Document.CollectionName
+        if ($null -ne $collectionDefinition -and
+            $collectionDefinition.Settings.ContainsKey('permalink') -and
+            -not [string]::IsNullOrWhiteSpace([string]$collectionDefinition.Settings.permalink)) {
+            return [string]$collectionDefinition.Settings.permalink
+        }
+    }
+
+    return ''
+}
+
+function Resolve-HydePermalink {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document,
+
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DefaultOutputPath
+    )
+
+    $permalinkPattern = Get-HydeDocumentPermalinkPattern -Document $Document -Context $Context
+    if ([string]::IsNullOrWhiteSpace($permalinkPattern)) {
+        return @{
+            OutputRelativePath = $DefaultOutputPath.Replace('\', '/')
+            Url                = '/' + $DefaultOutputPath.Replace('\', '/')
+        }
+    }
+
+    $titleValue = if (-not [string]::IsNullOrWhiteSpace($Document.Title)) {
+        $Document.Title
+    } elseif ($Document.FrontMatter.ContainsKey('title') -and -not [string]::IsNullOrWhiteSpace([string]$Document.FrontMatter.title)) {
+        [string]$Document.FrontMatter.title
+    } else {
+        $Document.BaseName
+    }
+
+    $tokenValues = @{
+        collection = $Document.CollectionName
+        title      = ConvertTo-HydeSlug -Text $titleValue
+        slug       = ConvertTo-HydeSlug -Text $titleValue
+        name       = $Document.BaseName
+        categories = ((Get-HydeDocumentCategories -Document $Document) -join '/')
+    }
+
+    $resolvedPermalink = $permalinkPattern.Replace('\', '/').Trim()
+    foreach ($tokenName in $tokenValues.Keys) {
+        $resolvedPermalink = $resolvedPermalink.Replace(":$tokenName", [string]$tokenValues[$tokenName])
+    }
+
+    $resolvedPermalink = [System.Text.RegularExpressions.Regex]::Replace($resolvedPermalink, '/+', '/')
+    if (-not $resolvedPermalink.StartsWith('/')) {
+        $resolvedPermalink = '/' + $resolvedPermalink
+    }
+
+    $outputRelativePath = $resolvedPermalink.TrimStart('/')
+    if ([string]::IsNullOrWhiteSpace($outputRelativePath)) {
+        $outputRelativePath = 'index.html'
+        $resolvedPermalink = '/'
+    } elseif ($outputRelativePath.EndsWith('/')) {
+        $outputRelativePath += 'index.html'
+    } elseif (-not [System.IO.Path]::GetExtension($outputRelativePath)) {
+        $outputRelativePath += '/index.html'
+        $resolvedPermalink += '/'
+    }
+
+    return @{
+        OutputRelativePath = $outputRelativePath.Replace('\', '/')
+        Url                = $resolvedPermalink
+    }
+}
+
 function Resolve-HydeLayoutPath {
     [CmdletBinding()]
     param(
@@ -306,6 +435,11 @@ function Initialize-HydeDocument {
             Document = $Document
         }
     }
+
+    # Resolve permalink-based output after front matter and plugin-derived metadata are available.
+    $resolvedPermalink = Resolve-HydePermalink -Document $Document -Context $Context -DefaultOutputPath $Document.OutputRelativePath
+    $document.OutputRelativePath = [string]$resolvedPermalink.OutputRelativePath
+    $document.Url = [string]$resolvedPermalink.Url
 
     $Document.IsPrepared = $true
 }

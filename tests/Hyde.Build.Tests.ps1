@@ -231,6 +231,31 @@ layout: default
         $context.Documents.Count | Should -Be 1
     }
 
+    It 'writes pages to a front matter permalink and exposes the permalink URL' {
+        $siteRoot = New-TestSiteDirectory -Name 'page-permalink-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'page-permalink-output'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+permalink: /welcome/
+---
+{{ page.url }}
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $document = $context.Documents | Where-Object { $_.RelativePath -eq 'index.md' }
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'welcome\index.html') -Raw
+
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'welcome\index.html') | Should -BeTrue
+        $document.Url | Should -Be '/welcome/'
+        $indexOutput | Should -Match '<p>/welcome/</p>'
+    }
+
     It 'can populate document titles from the first markdown heading through the titles-from-headings plugin' {
         $siteRoot = New-TestSiteDirectory -Name 'titles-from-headings-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'titles-from-headings-output'
@@ -405,6 +430,37 @@ title: Notes Index
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'notes-index.html') -Raw
 
         $indexOutput | Should -Match '<li><a href="/notes/welcome\.html">Welcome Note</a></li>'
+    }
+
+    It 'writes collection documents to a collection permalink that uses the semantic title slug' {
+        $siteRoot = New-TestSiteDirectory -Name 'collection-permalink-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'collection-permalink-output'
+        $collectionDirectory = Join-Path -Path $siteRoot -ChildPath '_notes'
+
+        [void](New-Item -Path $collectionDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+plugins:
+  - titles-from-headings
+collections:
+  notes:
+    output: true
+    permalink: /notes/:title/
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $collectionDirectory -ChildPath 'dns-client.md') -Encoding UTF8 -Value @'
+---
+---
+# DNS Client
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $document = $context.Documents | Where-Object { $_.RelativePath -eq '_notes/dns-client.md' }
+
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'notes\dns-client\index.html') | Should -BeTrue
+        $document.Url | Should -Be '/notes/dns-client/'
+        $document.OutputRelativePath | Should -Be 'notes/dns-client/index.html'
     }
 
     It 'renders Jekyll includes from the includes directory' {

@@ -191,6 +191,25 @@ function Get-HydeCollectionDefinitions {
     return @($definitions.ToArray())
 }
 
+function Get-HydeCollectionDefinition {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context,
+
+        [Parameter(Mandatory = $true)]
+        [string]$CollectionName
+    )
+
+    foreach ($definition in Get-HydeCollectionDefinitions -Context $Context) {
+        if ($definition.Label -ieq $CollectionName) {
+            return $definition
+        }
+    }
+
+    return $null
+}
+
 function Initialize-HydeCollections {
     [CmdletBinding()]
     param(
