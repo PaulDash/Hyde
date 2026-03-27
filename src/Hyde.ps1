@@ -22,11 +22,11 @@ Hyde is a PowerShell static site generator inspired by Jekyll.  Created as a fun
 The current implementation supports:
 - loading Hyde defaults from `globalConfig.yaml`
 - loading site settings from `_config.yml`
-- loading YAML files from `_data`
 - discovering documents and static files
+- copying HTML and static files to the destination site
+- loading YAML files from `_data`
 - parsing YAML front matter
 - rendering Markdown documents to HTML
-- copying HTML and static files to the destination site
 - cleaning generated output and cache directories
 
 The current implementation does not yet support:
@@ -35,8 +35,14 @@ The current implementation does not yet support:
 - posts
 - collections
 - permalinks
+
+We may never support:
 - plugins
-- serving or watch mode
+- new-theme command
+
+Due to the nature of PowerShell, there is no intention to support:
+- serve command
+- file watch mode
 
 .PARAMETER Command
 Chooses which top-level Hyde action to run.
