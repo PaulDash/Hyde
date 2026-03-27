@@ -179,6 +179,10 @@ switch ($Command) {
             ScriptPath  = $PSCommandPath
         }
 
+        if ($VerbosePreference -eq 'Continue') {
+            $commandParameters['Verbose'] = $true
+        }
+
         if ($PSBoundParameters.ContainsKey('Source')) {
             $commandParameters['Source'] = [string]$PSBoundParameters['Source']
         }
@@ -195,6 +199,10 @@ switch ($Command) {
             ScriptPath = $PSCommandPath
         }
 
+        if ($VerbosePreference -eq 'Continue') {
+            $commandParameters['Verbose'] = $true
+        }
+
         if ($PSBoundParameters.ContainsKey('Destination')) {
             $commandParameters['Destination'] = [string]$PSBoundParameters['Destination']
         }
@@ -205,6 +213,10 @@ switch ($Command) {
         $commandParameters = @{
             Quiet      = [bool]($PSBoundParameters.ContainsKey('Quiet') -and $PSBoundParameters['Quiet'])
             ScriptPath = $PSCommandPath
+        }
+
+        if ($VerbosePreference -eq 'Continue') {
+            $commandParameters['Verbose'] = $true
         }
 
         if ($PSBoundParameters.ContainsKey('Source')) {

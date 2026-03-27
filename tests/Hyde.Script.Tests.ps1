@@ -35,6 +35,27 @@ title: Home
         } | Should -Not -Throw
     }
 
+    It 'passes Verbose through to the called command' {
+        $siteRoot = New-TestSiteDirectory -Name 'verbose-build-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'verbose-build-output'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+# Hello
+'@
+
+        $verboseRecords = @(& $entryScriptPath Build -Source $siteRoot -Destination $destinationRoot -Verbose 4>&1)
+        $verboseText = $verboseRecords | Where-Object { $_ -is [System.Management.Automation.VerboseRecord] } | ForEach-Object { $_.Message }
+
+        $verboseText | Should -Contain "Initializing Hyde build context."
+        $verboseText | Should -Contain "Starting document rendering phase."
+    }
+
     It 'rejects Source for Clean' {
         {
             & $entryScriptPath Clean -Source '.'
