@@ -34,7 +34,12 @@ title: Test Site
         Set-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Encoding UTF8 -Value '<h1>Hello</h1>'
 
         # Run the real clean command and verify that all generated artifacts disappear.
-        Clear-StaticSite -Source $siteRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        Push-Location -LiteralPath $siteRoot
+        try {
+            Clear-StaticSite -ScriptPath $entryScriptPath | Out-Null
+        } finally {
+            Pop-Location
+        }
 
         Test-Path -LiteralPath $destinationRoot | Should -BeFalse
         Test-Path -LiteralPath (Join-Path -Path $siteRoot -ChildPath '.jekyll-metadata') | Should -BeFalse
@@ -49,8 +54,16 @@ title: Test Site
 
         [void](New-Item -Path $destinationRoot -ItemType Directory -Force)
         Set-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Encoding UTF8 -Value '<h1>Hello</h1>'
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
 
-        Clear-StaticSite -Source $siteRoot -Destination '.\public' -Environment development -ScriptPath $entryScriptPath | Out-Null
+        Push-Location -LiteralPath $siteRoot
+        try {
+            Clear-StaticSite -Destination '.\public' -ScriptPath $entryScriptPath | Out-Null
+        } finally {
+            Pop-Location
+        }
 
         Test-Path -LiteralPath $destinationRoot | Should -BeFalse
     }
@@ -65,7 +78,12 @@ title: Test Site
 title: Test Site
 '@
 
-        $verboseRecords = @(Clear-StaticSite -Source $siteRoot -Environment development -ScriptPath $entryScriptPath -Verbose 4>&1)
+        Push-Location -LiteralPath $siteRoot
+        try {
+            $verboseRecords = @(Clear-StaticSite -ScriptPath $entryScriptPath -Verbose 4>&1)
+        } finally {
+            Pop-Location
+        }
         $verboseText = $verboseRecords | Where-Object { $_ -is [System.Management.Automation.VerboseRecord] } | ForEach-Object { $_.Message }
 
         $verboseText | Should -Contain "Cleaning generated content for '$siteRoot'."
@@ -76,10 +94,40 @@ title: Test Site
         $siteRoot = New-TestSiteDirectory -Name 'site'
         $outsideRoot = New-TestSiteDirectory -Name 'outside'
 
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
         Set-Content -LiteralPath (Join-Path -Path $outsideRoot -ChildPath 'index.html') -Encoding UTF8 -Value '<h1>Hello</h1>'
 
-        {
-            Clear-StaticSite -Source $siteRoot -Destination '..\outside' -Environment development -ScriptPath $entryScriptPath | Out-Null
-        } | Should -Throw -ExpectedMessage '*Clean failed while removing destination folder*outside the site source*'
+        Push-Location -LiteralPath $siteRoot
+        try {
+            {
+                Clear-StaticSite -Destination '..\outside' -ScriptPath $entryScriptPath | Out-Null
+            } | Should -Throw -ExpectedMessage '*Clean failed while removing destination folder*outside the site source*'
+        } finally {
+            Pop-Location
+        }
+    }
+
+    It 'refuses to remove a destination that is itself a site source directory' {
+        $siteRoot = New-TestSiteDirectory -Name 'site'
+        $generatedDirectory = Join-Path -Path $siteRoot -ChildPath '_site'
+
+        [void](New-Item -Path $generatedDirectory -ItemType Directory -Force)
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Push-Location -LiteralPath $siteRoot
+        try {
+            {
+                Clear-StaticSite -Destination '.' -ScriptPath $entryScriptPath | Out-Null
+            } | Should -Throw -ExpectedMessage '*Clean failed while removing destination folder*source of a site*'
+        } finally {
+            Pop-Location
+        }
+
+        Test-Path -LiteralPath $siteRoot | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') | Should -BeTrue
     }
 }

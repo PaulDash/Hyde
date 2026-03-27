@@ -1,9 +1,7 @@
 function Clear-StaticSite {
     [CmdletBinding()]
     param(
-        [string]$Source,
         [string]$Destination,
-        [string]$Environment = 'development',
         [switch]$Quiet,
         [Parameter(Mandatory = $true)]
         [string]$ScriptPath
@@ -17,14 +15,10 @@ function Clear-StaticSite {
         $InformationPreference = 'Continue'
     }
 
-    # Reuse the normal context initialization so clean honors site config and CLI overrides.
+    # Reuse the normal context initialization so clean honors the current site's config and any destination override.
     $contextParameters = @{
-        Environment = $Environment
+        Environment = 'development'
         ScriptPath  = $ScriptPath
-    }
-
-    if ($PSBoundParameters.ContainsKey('Source')) {
-        $contextParameters['Source'] = $Source
     }
 
     if ($PSBoundParameters.ContainsKey('Destination')) {
@@ -40,7 +34,6 @@ function Clear-StaticSite {
 
     Write-Information "Running HYDE version $($context.Version)."
     Write-Verbose "Cleaning generated content for '$($context.SourcePath)'."
-    Write-Verbose "Using environment '$($context.Environment)'."
     Write-Verbose "Prepared $($targets.Count) clean target(s)."
 
     # Clean each generated target independently so missing paths do not block the rest.

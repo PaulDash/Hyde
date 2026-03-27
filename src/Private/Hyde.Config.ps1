@@ -334,6 +334,17 @@ function Get-HydeCleanTargets {
     return $targets
 }
 
+function Test-HydeSiteRootPath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    # A Hyde site root is identified by the presence of the normal site configuration file.
+    return (Test-Path -LiteralPath (Join-Path -Path $Path -ChildPath '_config.yml') -PathType Leaf)
+}
+
 function Remove-HydeGeneratedPath {
     [CmdletBinding()]
     param(
@@ -361,6 +372,11 @@ function Remove-HydeGeneratedPath {
     if (($resolvedTargetPath -ne $resolvedSourcePath) -and
         (-not $resolvedTargetPath.StartsWith($resolvedSourcePath + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase))) {
         throw "Refusing to remove $Kind path '$resolvedTargetPath' because it is outside the site source '$resolvedSourcePath'."
+    }
+
+    # Clean must never remove an actual site source directory, even if the destination points at it.
+    if (($Kind -eq 'destination folder') -and (Test-HydeSiteRootPath -Path $resolvedTargetPath)) {
+        throw "Refusing to remove destination folder path '$resolvedTargetPath' because it is the source of a site."
     }
 
     if (-not (Test-Path -LiteralPath $resolvedTargetPath)) {

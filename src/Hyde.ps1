@@ -61,15 +61,19 @@ At this stage, `Build`, `Clean`, `Doctor`, and `Help` are implemented.
 
 .PARAMETER Source
 Overrides the configured source directory for the site.
+Supported by: `Build`, `Doctor`
 
 .PARAMETER Destination
 Overrides the configured destination directory for generated output.
+Supported by: `Build`, `Clean`
 
 .PARAMETER Environment
 Sets the build environment value exposed internally during the build.
+Supported by: `Build`
 
 .PARAMETER Quiet
 Suppresses Hyde information messages during execution.
+Supported by: `Build`, `Clean`, `Doctor`
 
 .EXAMPLE
 .\Hyde.ps1 Build
@@ -103,21 +107,56 @@ param(
     # Chooses main action to run during this invocation.
     [Parameter(Position = 0)]
     [ValidateSet('New', 'Build', 'Clean', 'Doctor', 'Help')]
-    [string]$Command,
-
-    # Root location for files to be read.
-    [string]$Source,
-
-    # Location where generated site will be written.
-    [string]$Destination,
-
-    [Parameter(ParameterSetName = 'Build')]
-    [Alias('JEKYLL_ENV', 'HYDE_ENV')]
-    [string]$Environment = 'development',
-
-    [switch]$Quiet
+    [string]$Command
 )
 
+dynamicparam {
+    $dynamicParameters = [System.Management.Automation.RuntimeDefinedParameterDictionary]::new()
+
+    function New-HydeDynamicParameter {
+        param(
+            [Parameter(Mandatory = $true)]
+            [string]$Name,
+
+            [Parameter(Mandatory = $true)]
+            [Type]$Type,
+
+            [string[]]$Aliases = @()
+        )
+
+        $attributeCollection = [System.Collections.ObjectModel.Collection[System.Attribute]]::new()
+        $parameterAttribute = [System.Management.Automation.ParameterAttribute]::new()
+        [void]$attributeCollection.Add($parameterAttribute)
+
+        if ($Aliases.Count -gt 0) {
+            $aliasAttribute = [System.Management.Automation.AliasAttribute]::new($Aliases)
+            [void]$attributeCollection.Add($aliasAttribute)
+        }
+
+        return [System.Management.Automation.RuntimeDefinedParameter]::new($Name, $Type, $attributeCollection)
+    }
+
+    switch ($Command) {
+        'Build' {
+            $dynamicParameters.Add('Source', (New-HydeDynamicParameter -Name 'Source' -Type ([string])))
+            $dynamicParameters.Add('Destination', (New-HydeDynamicParameter -Name 'Destination' -Type ([string])))
+            $dynamicParameters.Add('Environment', (New-HydeDynamicParameter -Name 'Environment' -Type ([string]) -Aliases @('JEKYLL_ENV', 'HYDE_ENV')))
+            $dynamicParameters.Add('Quiet', (New-HydeDynamicParameter -Name 'Quiet' -Type ([switch])))
+        }
+        'Clean' {
+            $dynamicParameters.Add('Destination', (New-HydeDynamicParameter -Name 'Destination' -Type ([string])))
+            $dynamicParameters.Add('Quiet', (New-HydeDynamicParameter -Name 'Quiet' -Type ([switch])))
+        }
+        'Doctor' {
+            $dynamicParameters.Add('Source', (New-HydeDynamicParameter -Name 'Source' -Type ([string])))
+            $dynamicParameters.Add('Quiet', (New-HydeDynamicParameter -Name 'Quiet' -Type ([switch])))
+        }
+    }
+
+    return $dynamicParameters
+}
+
+begin {
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -128,33 +167,50 @@ if ($PSBoundParameters.ContainsKey('Quiet') -and $VerbosePreference -eq 'Continu
     throw "It doesn't make sense to ask for verbose output AND to keep quiet!"
 }
 
-# Package the common runtime settings once, then pass them to whichever command runs.
-$commandParameters = @{
-    Environment = $Environment
-    Quiet       = $Quiet
-    ScriptPath  = $PSCommandPath
-}
-
-if ($PSBoundParameters.ContainsKey('Source')) {
-    $commandParameters['Source'] = $Source
-}
-
-if ($PSBoundParameters.ContainsKey('Destination')) {
-    $commandParameters['Destination'] = $Destination
-}
-
 # Route the top-level command to the matching public entry point.
 switch ($Command) {
     'New' {
         throw 'TODO: Implement the New command to scaffold a site.'
     }
     'Build' {
+        $commandParameters = @{
+            Environment = if ($PSBoundParameters.ContainsKey('Environment')) { [string]$PSBoundParameters['Environment'] } else { 'development' }
+            Quiet       = [bool]($PSBoundParameters.ContainsKey('Quiet') -and $PSBoundParameters['Quiet'])
+            ScriptPath  = $PSCommandPath
+        }
+
+        if ($PSBoundParameters.ContainsKey('Source')) {
+            $commandParameters['Source'] = [string]$PSBoundParameters['Source']
+        }
+
+        if ($PSBoundParameters.ContainsKey('Destination')) {
+            $commandParameters['Destination'] = [string]$PSBoundParameters['Destination']
+        }
+
         Publish-StaticSite @commandParameters
     }
     'Clean' {
+        $commandParameters = @{
+            Quiet      = [bool]($PSBoundParameters.ContainsKey('Quiet') -and $PSBoundParameters['Quiet'])
+            ScriptPath = $PSCommandPath
+        }
+
+        if ($PSBoundParameters.ContainsKey('Destination')) {
+            $commandParameters['Destination'] = [string]$PSBoundParameters['Destination']
+        }
+
         Clear-StaticSite @commandParameters
     }
     'Doctor' {
+        $commandParameters = @{
+            Quiet      = [bool]($PSBoundParameters.ContainsKey('Quiet') -and $PSBoundParameters['Quiet'])
+            ScriptPath = $PSCommandPath
+        }
+
+        if ($PSBoundParameters.ContainsKey('Source')) {
+            $commandParameters['Source'] = [string]$PSBoundParameters['Source']
+        }
+
         Test-StaticSite @commandParameters
     }
     'Help' {
@@ -163,6 +219,7 @@ switch ($Command) {
     default {
         throw "Choose one of: Build, New, Clean, Doctor, Help. Use 'Help' to see script documentation."
     }
+}
 }
 
 # read in theme info into ThemeVariables
