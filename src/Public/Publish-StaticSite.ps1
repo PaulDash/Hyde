@@ -1,4 +1,4 @@
-function Invoke-HydeBuild {
+function Publish-StaticSite {
     [CmdletBinding()]
     param(
         [string]$Source,

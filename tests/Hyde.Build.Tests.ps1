@@ -56,7 +56,7 @@ title: About
         Set-Content -LiteralPath (Join-Path -Path $assetsDirectory -ChildPath 'site.css') -Encoding UTF8 -Value 'body { color: black; }'
 
         # Run the real build command so the test exercises the full public pipeline.
-        $context = Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
 
         # Assert both on-disk output and the in-memory context the build returns.
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') | Should -BeTrue
@@ -100,7 +100,7 @@ published: false
 # Hidden
 '@
 
-        $context = Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
         $draftDocument = $context.Documents | Where-Object { $_.BaseName -eq 'draft' }
 
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') | Should -BeTrue
@@ -129,7 +129,7 @@ title: Home
         Set-Content -LiteralPath (Join-Path -Path $assetsDirectory -ChildPath 'site.css') -Encoding UTF8 -Value 'body { color: black; }'
 
         # Capture the verbose stream to verify that Hyde reports the main build phases.
-        $verboseRecords = @(Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath -Verbose 4>&1)
+        $verboseRecords = @(Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath -Verbose 4>&1)
         $verboseText = $verboseRecords | Where-Object { $_ -is [System.Management.Automation.VerboseRecord] } | ForEach-Object { $_.Message }
 
         $verboseText | Should -Contain "Building site from '$siteRoot' to '$destinationRoot'."
@@ -152,7 +152,7 @@ title: Home
 # {{ page.title | upcase }}
 '@
 
-        Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
         $indexOutput | Should -Match '<h1>HOME</h1>'
@@ -182,7 +182,7 @@ render_with_liquid: false
 # {{ page.title | upcase }}
 '@
 
-        Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
         $indexOutput | Should -Match '<main><h1>\{\{ page.title \| upcase \}\}</h1></main>'
@@ -221,7 +221,7 @@ layout: default
 # Hello
 '@
 
-        $context = Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
         $indexOutput | Should -Match '<title>HOME</title>'
@@ -275,7 +275,7 @@ render_with_liquid: true
 # {{ page.title }}
 '@
 
-        $context = Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
         $guideOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'docs\guide.html') -Raw
         $overrideOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'docs\override.html') -Raw
         $guideDocument = $context.Documents | Where-Object { $_.BaseName -eq 'guide' }
@@ -312,7 +312,7 @@ defaults:
 
         Set-Content -LiteralPath (Join-Path -Path $imageDirectory -ChildPath 'logo.txt') -Encoding UTF8 -Value 'logo'
 
-        $context = Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
         $staticFile = $context.StaticFiles | Where-Object { $_.BaseName -eq 'logo' }
 
         $staticFile.Metadata.image | Should -BeTrue
@@ -328,7 +328,7 @@ broken: [unterminated
 '@
 
         {
-            Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
         } | Should -Throw -ExpectedMessage '*Build failed while initializing site context*Could not parse configuration file*'
     }
 
@@ -346,7 +346,7 @@ title: [unterminated
 '@
 
         {
-            Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
         } | Should -Throw -ExpectedMessage '*Build failed while processing document*broken.md*Could not parse front matter*'
     }
 
@@ -365,7 +365,7 @@ published: maybe
 '@
 
         {
-            Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
         } | Should -Throw -ExpectedMessage "*Build failed while processing document*broken.md*Unsupported value for front matter setting 'published'*"
     }
 }

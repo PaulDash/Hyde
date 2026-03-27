@@ -1,4 +1,4 @@
-function Invoke-HydeClean {
+function Clear-StaticSite {
     [CmdletBinding()]
     param(
         [string]$Source,

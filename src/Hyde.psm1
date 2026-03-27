@@ -20,4 +20,4 @@ Get-ChildItem -Path (Join-Path -Path $moduleRoot -ChildPath 'Public') -Filter '*
     Sort-Object FullName |
     ForEach-Object { . $_.FullName }
 
-Export-ModuleMember -Function Invoke-HydeBuild, Invoke-HydeClean
+Export-ModuleMember -Function Publish-StaticSite, Clear-StaticSite

@@ -142,10 +142,10 @@ switch ($Command) {
         throw 'TODO: Implement the New command to scaffold a site.'
     }
     'Build' {
-        Invoke-HydeBuild @commandParameters
+        Publish-StaticSite @commandParameters
     }
     'Clean' {
-        Invoke-HydeClean @commandParameters
+        Clear-StaticSite @commandParameters
     }
     'Help' {
         Get-Help -Name $PSCommandPath

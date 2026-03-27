@@ -34,7 +34,7 @@ title: Test Site
         Set-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Encoding UTF8 -Value '<h1>Hello</h1>'
 
         # Run the real clean command and verify that all generated artifacts disappear.
-        Invoke-HydeClean -Source $siteRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        Clear-StaticSite -Source $siteRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
 
         Test-Path -LiteralPath $destinationRoot | Should -BeFalse
         Test-Path -LiteralPath (Join-Path -Path $siteRoot -ChildPath '.jekyll-metadata') | Should -BeFalse
@@ -50,7 +50,7 @@ title: Test Site
         [void](New-Item -Path $destinationRoot -ItemType Directory -Force)
         Set-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Encoding UTF8 -Value '<h1>Hello</h1>'
 
-        Invoke-HydeClean -Source $siteRoot -Destination '.\public' -Environment development -ScriptPath $entryScriptPath | Out-Null
+        Clear-StaticSite -Source $siteRoot -Destination '.\public' -Environment development -ScriptPath $entryScriptPath | Out-Null
 
         Test-Path -LiteralPath $destinationRoot | Should -BeFalse
     }
@@ -65,7 +65,7 @@ title: Test Site
 title: Test Site
 '@
 
-        $verboseRecords = @(Invoke-HydeClean -Source $siteRoot -Environment development -ScriptPath $entryScriptPath -Verbose 4>&1)
+        $verboseRecords = @(Clear-StaticSite -Source $siteRoot -Environment development -ScriptPath $entryScriptPath -Verbose 4>&1)
         $verboseText = $verboseRecords | Where-Object { $_ -is [System.Management.Automation.VerboseRecord] } | ForEach-Object { $_.Message }
 
         $verboseText | Should -Contain "Cleaning generated content for '$siteRoot'."
@@ -79,7 +79,7 @@ title: Test Site
         Set-Content -LiteralPath (Join-Path -Path $outsideRoot -ChildPath 'index.html') -Encoding UTF8 -Value '<h1>Hello</h1>'
 
         {
-            Invoke-HydeClean -Source $siteRoot -Destination '..\outside' -Environment development -ScriptPath $entryScriptPath | Out-Null
+            Clear-StaticSite -Source $siteRoot -Destination '..\outside' -Environment development -ScriptPath $entryScriptPath | Out-Null
         } | Should -Throw -ExpectedMessage '*Clean failed while removing destination folder*outside the site source*'
     }
 }
