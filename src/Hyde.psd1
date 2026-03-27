@@ -1,6 +1,6 @@
 @{
     RootModule        = 'Hyde.psm1'
-    ModuleVersion     = '0.2.3'
+    ModuleVersion     = '0.3.0'
     GUID              = '42b2840d-8661-47ad-b051-9c3d868fc3d5'
     Author            = 'Paul Wojcicki-Jarocki'
     CompanyName       = 'Paul Dash'
@@ -10,6 +10,7 @@
 
     FunctionsToExport = @(
         'Hyde',
+        'New-StaticSite',
         'Publish-StaticSite',
         'Clear-StaticSite',
         'Test-StaticSite'

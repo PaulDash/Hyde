@@ -59,6 +59,24 @@ title: Home
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') | Should -BeTrue
     }
 
+    It 'allows Hyde New to scaffold a site from the imported module' {
+        $siteRoot = Join-Path -Path $TestDrive -ChildPath 'new-module-site'
+
+        Import-Module $moduleManifestPath
+
+        {
+            Hyde New $siteRoot -Quiet
+        } | Should -Not -Throw
+
+        Test-Path -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_layouts\default.html') | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') | Should -BeTrue
+
+        {
+            Hyde Build -Source $siteRoot -Destination (Join-Path -Path $TestDrive -ChildPath 'new-module-output') -Quiet
+        } | Should -Not -Throw
+    }
+
     It 'passes Verbose through to the called command' {
         $siteRoot = New-TestSiteDirectory -Name 'verbose-build-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'verbose-build-output'
@@ -99,6 +117,18 @@ title: Home
             & $entryScriptPath Build -Source $siteRoot -Destination $firstDestinationRoot -Quiet
             & $entryScriptPath Build -Source $siteRoot -Destination $secondDestinationRoot -Quiet
         } | Should -Not -Throw
+    }
+
+    It 'allows the wrapper script to create a blank site scaffold' {
+        $siteRoot = Join-Path -Path $TestDrive -ChildPath 'new-wrapper-site'
+
+        {
+            & $entryScriptPath New $siteRoot -Blank -Quiet
+        } | Should -Not -Throw
+
+        Test-Path -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_layouts') | Should -BeFalse
     }
 
     It 'rejects Source for Clean' {

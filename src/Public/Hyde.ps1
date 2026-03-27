@@ -5,6 +5,7 @@ PowerShell static site generator. The ugly Mr. Hyde to the popular Jekyll.
 Hyde is a PowerShell static site generator inspired by Jekyll. Created as a fun project to only generate a private webpage, but useful as an example when teaching about PowerShell.
 
 The current implementation supports:
+- `New`
 - loading Hyde defaults from `globalConfig.yaml`
 - loading site settings from `_config.yml`
 - loading site and built-in plugins
@@ -21,7 +22,6 @@ The current implementation supports:
 - basic doctor-style site validation
 
 The current implementation does not yet support:
-- `New`
 - layout inheritance
 - posts
 
@@ -47,7 +47,10 @@ Overrides the configured source directory for the site.
 Supported by: `Build`, `Doctor`
 .PARAMETER Destination
 Overrides the configured destination directory for generated output.
-Supported by: `Build`, `Clean`
+Supported by: `Build`, `Clean`, `New`
+.PARAMETER Blank
+Creates a minimal new-site scaffold.
+Supported by: `New`
 .PARAMETER Environment
 Sets the build environment value exposed internally during the build.
 Supported by: `Build`
@@ -66,6 +69,14 @@ Builds the site from the current directory into `.\_site`.
 Hyde Clean
 
 Removes the generated destination folder, metadata file, and cache directories for the site.
+.EXAMPLE
+Hyde New mysite
+
+Creates a new Hyde site scaffold at `.\mysite`.
+.EXAMPLE
+Hyde New mysite -Blank
+
+Creates a minimal new Hyde site scaffold at `.\mysite`.
 .EXAMPLE
 Hyde Doctor
 
@@ -113,6 +124,12 @@ function Hyde {
         # Dynamic parameters remain the best fit for a "Hyde build" command shape because
         # parameter sets cannot branch on the value of a positional string argument.
         switch ($Command) {
+            'New' {
+                $dynamicParameters.Add('Destination', (newHydeDynamicParameter -Name 'Destination' -Type ([string]) -Aliases @('Path')))
+                $dynamicParameters['Destination'].Attributes[0].Position = 1
+                $dynamicParameters.Add('Blank', (newHydeDynamicParameter -Name 'Blank' -Type ([switch])))
+                $dynamicParameters.Add('Quiet', (newHydeDynamicParameter -Name 'Quiet' -Type ([switch])))
+            }
             'Build' {
                 $dynamicParameters.Add('Source', (newHydeDynamicParameter -Name 'Source' -Type ([string])))
                 $dynamicParameters.Add('Destination', (newHydeDynamicParameter -Name 'Destination' -Type ([string])))
@@ -142,7 +159,24 @@ function Hyde {
 
         switch ($Command) {
             'New' {
-                throw 'TODO: Implement the New command to scaffold a site.'
+                if (-not $PSBoundParameters.ContainsKey('Destination') -or [string]::IsNullOrWhiteSpace([string]$PSBoundParameters['Destination'])) {
+                    throw "The New command requires a destination path."
+                }
+
+                $commandParameters = @{
+                    Destination = [string]$PSBoundParameters['Destination']
+                    Quiet       = [bool]($PSBoundParameters.ContainsKey('Quiet') -and $PSBoundParameters['Quiet'])
+                }
+
+                if ($PSBoundParameters.ContainsKey('Blank')) {
+                    $commandParameters['Blank'] = [bool]$PSBoundParameters['Blank']
+                }
+
+                if ($VerbosePreference -eq 'Continue') {
+                    $commandParameters['Verbose'] = $true
+                }
+
+                New-StaticSite @commandParameters
             }
             'Build' {
                 $commandParameters = @{

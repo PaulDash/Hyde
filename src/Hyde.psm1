@@ -32,4 +32,4 @@ Get-ChildItem -Path (Join-Path -Path $moduleRoot -ChildPath 'Public') -Filter '*
     Sort-Object FullName |
     ForEach-Object { . $_.FullName }
 
-Export-ModuleMember -Function Hyde, Publish-StaticSite, Clear-StaticSite, Test-StaticSite
+Export-ModuleMember -Function Hyde, New-StaticSite, Publish-StaticSite, Clear-StaticSite, Test-StaticSite

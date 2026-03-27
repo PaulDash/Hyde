@@ -2,7 +2,7 @@
 #Requires -Modules powershell-yaml
 
 <#PSScriptInfo
-.VERSION 0.2.3
+.VERSION 0.3.0
 .GUID abebebd5-6f8f-4d36-b3c1-e6313b9eac6f
 .AUTHOR Paul Wojcicki-Jarocki
 .COPYRIGHT © 2026 Paul Dash
@@ -10,7 +10,7 @@
 .PROJECTURI https://github.com/PaulDash/Hyde
 .ICONURI https://github.com/PaulDash/Hyde/raw/main/res/Icon_32x32.png
 .TAGS PowerShell static-site-generator jekyll markdown yaml
-.RELEASENOTES Added manifest-based module entry, exported Hyde command, collection permalinks, module-first command routing, lower-camel-case private helper names, moved command help onto the module surface, and simplified the wrapper script.
+.RELEASENOTES Added the Hyde New scaffolding command, exported New-StaticSite, moved command help onto the module surface, and continued the module-first command workflow.
 #>
 
 [CmdletBinding()]
@@ -21,7 +21,10 @@ param(
     [string]$Source,
     [string]$Destination,
     [string]$Environment,
-    [switch]$Quiet
+    [switch]$Quiet,
+    [switch]$Blank,
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [object[]]$ArgumentList
 )
 
 begin {
@@ -54,6 +57,8 @@ if ($PSBoundParameters.ContainsKey('Source')) {
 
 if ($PSBoundParameters.ContainsKey('Destination')) {
     $commandParameters['Destination'] = $Destination
+} elseif ($Command -eq 'New' -and $ArgumentList.Count -gt 0) {
+    $commandParameters['Destination'] = [string]$ArgumentList[0]
 }
 
 if ($PSBoundParameters.ContainsKey('Environment')) {
@@ -64,6 +69,10 @@ if ($PSBoundParameters.ContainsKey('Quiet')) {
     $commandParameters['Quiet'] = $Quiet
 }
 
+if ($PSBoundParameters.ContainsKey('Blank')) {
+    $commandParameters['Blank'] = $Blank
+}
+
 if ($VerbosePreference -eq 'Continue') {
     Hyde @commandParameters -Verbose
 } else {
@@ -71,6 +80,5 @@ if ($VerbosePreference -eq 'Continue') {
 }
 }
 
-# TODO: Implement `New` site scaffolding
 # TODO: Add posts
 # TODO: implement Layout inheritance by pre-parsing files in _layouts
