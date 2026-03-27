@@ -81,12 +81,6 @@ Removes the generated destination folder, metadata file, and cache directories f
 
 Shows command help for the script.
 
-.NOTES
-TODO:
-- Implement `New` site scaffolding.
-- Add layouts and layout inheritance.
-- Add posts, collections, and permalink handling.
-- Add serve/watch workflows.
 #>
 
 [CmdletBinding()]
@@ -152,12 +146,12 @@ switch ($Command) {
 
 # read in theme info into ThemeVariables
 
+# TODO: Implement `New` site scaffolding
 # TODO: add support for "Collections"
 
 # loop through files
     # check if file is to be "published"
     # if not, don't process
-    # TODO: add support for "unpublished" pages
 
     # read "Front Matter" YAML and
     # save to PageVariables hash table
@@ -165,6 +159,10 @@ switch ($Command) {
 
     # consider "Includes" from _includes directory
 
+    # TODO: add support for "unpublished" pages
+
+    # TODO: Add layouts and layout inheritance.
+    # TODO: Add posts, collections, and permalink handling.
 
     # read "Layout"
     # TODO: implement Layout inheritance by pre-parsing files in _layouts
