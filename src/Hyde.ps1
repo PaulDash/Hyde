@@ -250,27 +250,6 @@ switch ($Command) {
 }
 }
 
-# read in theme info into ThemeVariables
-
 # TODO: Implement `New` site scaffolding
-
-# loop through files
-    # check if file is to be "published"
-    # if not, don't process
-
-    # read "Front Matter" YAML and
-    # save to PageVariables hash table
-    # if not defined, this is a "Static File"
-
-    # consider "Includes" from _includes directory
-
-    # TODO: Add posts and permalink handling.
-
-    # read "Layout"
-    # TODO: implement Layout inheritance by pre-parsing files in _layouts
-
-    # for processing, superimpose PageVariables on GlobalVariables
-
-    # create output file at same location or
-    # one defined in "permalink"
-    # which has "Placeholders" to modify the location through variables
+# TODO: Add posts
+# TODO: implement Layout inheritance by pre-parsing files in _layouts
