@@ -20,4 +20,4 @@ Get-ChildItem -Path (Join-Path -Path $moduleRoot -ChildPath 'Public') -Filter '*
     Sort-Object FullName |
     ForEach-Object { . $_.FullName }
 
-Export-ModuleMember -Function Publish-StaticSite, Clear-StaticSite
+Export-ModuleMember -Function Publish-StaticSite, Clear-StaticSite, Test-StaticSite

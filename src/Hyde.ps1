@@ -2,7 +2,7 @@
 #Requires -Modules powershell-yaml
 
 <#PSScriptInfo
-.VERSION 0.0.2.0
+.VERSION 0.0.2.1
 .GUID abebebd5-6f8f-4d36-b3c1-e6313b9eac6f
 .AUTHOR Paul Wojcicki-Jarocki
 .COPYRIGHT © 2026 Paul Dash
@@ -10,7 +10,7 @@
 .PROJECTURI https://github.com/PaulDash/Hyde
 .ICONURI https://github.com/PaulDash/Hyde/raw/main/res/Icon_32x32.png
 .TAGS PowerShell static-site-generator jekyll markdown yaml
-.RELEASENOTES Build and clean commands now use module-based internals, typed content items, YAML front matter parsing, markdown page rendering, static file copying, and generated-file cleanup.
+.RELEASENOTES Build, clean, and doctor commands now use module-based internals, typed content items, YAML front matter parsing, markdown page rendering, static file copying, generated-file cleanup, and site validation.
 #>
 
 <#
@@ -29,6 +29,7 @@ The current implementation supports:
 - rendering Markdown documents to HTML
 - rendering single-level layouts through the Liquid module
 - cleaning generated output and cache directories
+- basic doctor-style site validation
 
 The current implementation does not yet support:
 - `New`
@@ -53,9 +54,10 @@ Available options are:
 - `Build`
 - `New`
 - `Clean`
+- `Doctor`
 - `Help`
 
-At this stage, `Build`, `Clean`, and `Help` are implemented.
+At this stage, `Build`, `Clean`, `Doctor`, and `Help` are implemented.
 
 .PARAMETER Source
 Overrides the configured source directory for the site.
@@ -85,6 +87,11 @@ Builds the site from the current directory into `.\_site`.
 Removes the generated destination folder, metadata file, and cache directories for the site.
 
 .EXAMPLE
+.\Hyde.ps1 Doctor
+
+Checks the site for common problems such as invalid front matter, missing layouts, and output-path conflicts.
+
+.EXAMPLE
 .\Hyde.ps1 Help
 
 Shows command help for the script.
@@ -95,7 +102,7 @@ Shows command help for the script.
 param(
     # Chooses main action to run during this invocation.
     [Parameter(Position = 0)]
-    [ValidateSet('New', 'Build', 'Clean', 'Help')]
+    [ValidateSet('New', 'Build', 'Clean', 'Doctor', 'Help')]
     [string]$Command,
 
     # Root location for files to be read.
@@ -147,11 +154,14 @@ switch ($Command) {
     'Clean' {
         Clear-StaticSite @commandParameters
     }
+    'Doctor' {
+        Test-StaticSite @commandParameters
+    }
     'Help' {
         Get-Help -Name $PSCommandPath
     }
     default {
-        throw "Choose one of: Build, New, Clean, Help. Use 'Help' to see script documentation."
+        throw "Choose one of: Build, New, Clean, Doctor, Help. Use 'Help' to see script documentation."
     }
 }
 
