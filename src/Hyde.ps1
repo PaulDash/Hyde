@@ -2,7 +2,7 @@
 #Requires -Modules powershell-yaml
 
 <#PSScriptInfo
-.VERSION 0.2.0
+.VERSION 0.2.1
 .GUID abebebd5-6f8f-4d36-b3c1-e6313b9eac6f
 .AUTHOR Paul Wojcicki-Jarocki
 .COPYRIGHT © 2026 Paul Dash
@@ -10,7 +10,7 @@
 .PROJECTURI https://github.com/PaulDash/Hyde
 .ICONURI https://github.com/PaulDash/Hyde/raw/main/res/Icon_32x32.png
 .TAGS PowerShell static-site-generator jekyll markdown yaml
-.RELEASENOTES Added manifest-based module entry, exported Hyde command, collection permalinks, and module-first command routing while keeping Hyde.ps1 as a thin wrapper.
+.RELEASENOTES Added manifest-based module entry, exported Hyde command, collection permalinks, module-first command routing, and lower-camel-case private helper names.
 #>
 
 <#

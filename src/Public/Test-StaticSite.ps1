@@ -38,7 +38,7 @@ function Test-StaticSite {
     }
 
     try {
-        $context = Initialize-HydeBuildContext @contextParameters
+        $context = initializeHydeBuildContext @contextParameters
     } catch {
         throw "Doctor failed while initializing site context. $($_.Exception.Message)"
     }
@@ -49,14 +49,14 @@ function Test-StaticSite {
 
     try {
         # Doctor uses normal source discovery so it validates the same item set that build would process.
-        Get-HydeSourceItems -Context $context
+        getHydeSourceItems -Context $context
     } catch {
         throw "Doctor failed while discovering source items in '$($context.SourcePath)'. $($_.Exception.Message)"
     }
 
     Write-Information "Checking $($context.Documents.Count) document(s) and $($context.StaticFiles.Count) static file(s)."
 
-    $report = Test-HydeSiteContent -Context $context
+    $report = testHydeSiteContent -Context $context
     foreach ($issue in $report.Issues) {
         $issueLocation = if ([string]::IsNullOrWhiteSpace($issue.Path)) { '' } else { " [$($issue.Path)]" }
         Write-Warning "$($issue.Code)$issueLocation $($issue.Message)"

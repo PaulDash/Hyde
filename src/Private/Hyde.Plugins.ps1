@@ -1,4 +1,4 @@
-function New-HydePluginRegistry {
+function newHydePluginRegistry {
     [CmdletBinding()]
     param()
 
@@ -20,7 +20,7 @@ function New-HydePluginRegistry {
     }
 }
 
-function Resolve-HydePluginDirectory {
+function resolveHydePluginDirectory {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -36,7 +36,7 @@ function Resolve-HydePluginDirectory {
     return (Join-Path -Path $Context.SourcePath -ChildPath $pluginsDirectoryName)
 }
 
-function Get-HydePluginConfigurationNames {
+function getHydePluginConfigurationNames {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -61,7 +61,7 @@ function Get-HydePluginConfigurationNames {
     return @($configuredNames.ToArray())
 }
 
-function Get-HydePluginCandidateNames {
+function getHydePluginCandidateNames {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -83,7 +83,7 @@ function Get-HydePluginCandidateNames {
     return @($candidates | Select-Object -Unique)
 }
 
-function Get-HydeWhitelistedPluginNames {
+function getHydeWhitelistedPluginNames {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -97,7 +97,7 @@ function Get-HydeWhitelistedPluginNames {
     return @($Context.Settings.whitelist | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { [string]$_ })
 }
 
-function Resolve-HydePluginFiles {
+function resolveHydePluginFiles {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -105,7 +105,7 @@ function Resolve-HydePluginFiles {
     )
 
     # Hyde plugins are PowerShell scripts under the configured plugin directory.
-    $pluginsDirectory = Resolve-HydePluginDirectory -Context $Context
+    $pluginsDirectory = resolveHydePluginDirectory -Context $Context
     $builtInPluginsDirectory = Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'Plugins'
     if (-not (Test-Path -LiteralPath $pluginsDirectory -PathType Container)) {
         Write-Verbose "No plugin directory found at '$pluginsDirectory'."
@@ -114,7 +114,7 @@ function Resolve-HydePluginFiles {
         $pluginFiles = @(Get-ChildItem -LiteralPath $pluginsDirectory -Filter '*.ps1' -File | Sort-Object BaseName)
     }
 
-    $configuredNames = @(Get-HydePluginConfigurationNames -Context $Context)
+    $configuredNames = @(getHydePluginConfigurationNames -Context $Context)
     if ($configuredNames.Count -eq 0) {
         return $pluginFiles
     }
@@ -135,7 +135,7 @@ function Resolve-HydePluginFiles {
     $seenPluginPaths = New-Object System.Collections.Generic.HashSet[string]([System.StringComparer]::OrdinalIgnoreCase)
     foreach ($pluginName in $configuredNames) {
         $resolvedPluginFile = $null
-        foreach ($candidateName in Get-HydePluginCandidateNames -PluginName $pluginName) {
+        foreach ($candidateName in getHydePluginCandidateNames -PluginName $pluginName) {
             if ($pluginMap.ContainsKey($candidateName)) {
                 $resolvedPluginFile = $pluginMap[$candidateName]
                 break
@@ -159,7 +159,7 @@ function Resolve-HydePluginFiles {
     return @($resolvedFiles.ToArray())
 }
 
-function Test-HydePluginAllowed {
+function testHydePluginAllowed {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -175,11 +175,11 @@ function Test-HydePluginAllowed {
         return $true
     }
 
-    $whitelist = @(Get-HydeWhitelistedPluginNames -Context $Context)
+    $whitelist = @(getHydeWhitelistedPluginNames -Context $Context)
     return ($whitelist -contains $PluginName)
 }
 
-function Register-HydePluginDescriptor {
+function registerHydePluginDescriptor {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -258,21 +258,21 @@ function Register-HydePluginDescriptor {
     })
 }
 
-function Import-HydePlugins {
+function importHydePlugins {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
         [HydeBuildContext]$Context
     )
 
-    $pluginFiles = @(Resolve-HydePluginFiles -Context $Context)
+    $pluginFiles = @(resolveHydePluginFiles -Context $Context)
     if ($pluginFiles.Count -eq 0) {
         Write-Verbose 'No Hyde plugins selected for loading.'
         return
     }
 
     foreach ($pluginFile in $pluginFiles) {
-        if (-not (Test-HydePluginAllowed -Context $Context -PluginName $pluginFile.BaseName)) {
+        if (-not (testHydePluginAllowed -Context $Context -PluginName $pluginFile.BaseName)) {
             Write-Verbose "Skipping plugin '$($pluginFile.BaseName)' because safe mode requires a whitelist entry."
             continue
         }
@@ -293,11 +293,11 @@ function Import-HydePlugins {
             throw "Plugin '$($pluginFile.BaseName)' must return a hashtable descriptor."
         }
 
-        Register-HydePluginDescriptor -Descriptor $descriptor -Context $Context -PluginPath $pluginFile.FullName
+        registerHydePluginDescriptor -Descriptor $descriptor -Context $Context -PluginPath $pluginFile.FullName
     }
 }
 
-function Invoke-HydePluginHook {
+function invokeHydePluginHook {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -322,7 +322,7 @@ function Invoke-HydePluginHook {
     }
 }
 
-function Resolve-HydePluginValue {
+function resolveHydePluginValue {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]

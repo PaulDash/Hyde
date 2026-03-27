@@ -1,4 +1,4 @@
-function Get-HydeExcludedState {
+function getHydeExcludedState {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -79,7 +79,7 @@ function Get-HydeExcludedState {
     }
 }
 
-function Test-HydeItemExclusion {
+function testHydeItemExclusion {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -128,7 +128,7 @@ function Test-HydeItemExclusion {
     return $false
 }
 
-function Get-HydeSourceItems {
+function getHydeSourceItems {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -136,8 +136,8 @@ function Get-HydeSourceItems {
     )
 
     # Walk the source tree once and classify each file as a renderable document or a static asset.
-    $excludedState = Get-HydeExcludedState -Context $Context
-    $markdownExtensions = Get-HydeMarkdownExtensions -Settings $Context.Settings
+    $excludedState = getHydeExcludedState -Context $Context
+    $markdownExtensions = getHydeMarkdownExtensions -Settings $Context.Settings
     $contentExtensions = @('.htm', '.html') + $markdownExtensions
     $pendingDirectories = New-Object System.Collections.Queue
     $pendingDirectories.Enqueue($Context.SourcePath)
@@ -149,7 +149,7 @@ function Get-HydeSourceItems {
         try {
             foreach ($directory in Get-ChildItem -LiteralPath $directoryPath -Directory) {
                 $relativeDirectoryPath = [System.IO.Path]::GetRelativePath($Context.SourcePath, $directory.FullName).Replace('\', '/')
-                if (Test-HydeItemExclusion -Item $directory -RelativePath $relativeDirectoryPath -ExcludedState $excludedState) {
+                if (testHydeItemExclusion -Item $directory -RelativePath $relativeDirectoryPath -ExcludedState $excludedState) {
                     Write-Verbose "Excluding directory '$relativeDirectoryPath'."
                     continue
                 }
@@ -164,7 +164,7 @@ function Get-HydeSourceItems {
         try {
             foreach ($file in Get-ChildItem -LiteralPath $directoryPath -File) {
                 $relativeFilePath = [System.IO.Path]::GetRelativePath($Context.SourcePath, $file.FullName).Replace('\', '/')
-                if (Test-HydeItemExclusion -Item $file -RelativePath $relativeFilePath -ExcludedState $excludedState) {
+                if (testHydeItemExclusion -Item $file -RelativePath $relativeFilePath -ExcludedState $excludedState) {
                     Write-Verbose "Excluding file '$relativeFilePath'."
                     continue
                 }
@@ -172,10 +172,10 @@ function Get-HydeSourceItems {
                 if ($contentExtensions -contains $file.Extension.ToLowerInvariant()) {
                     # Documents move into the rendering pipeline and can later gain front matter and output paths.
                     $document = [HydeDocument]::new('Page', $file.FullName, $relativeFilePath)
-                    $document.OutputRelativePath = Resolve-HydeDocumentOutputPath -Document $document -Context $Context
+                    $document.OutputRelativePath = resolveHydeDocumentOutputPath -Document $document -Context $Context
                     $document.Url = '/' + $document.OutputRelativePath.Replace('\', '/')
                     $Context.AddDocument($document)
-                    Invoke-HydePluginHook -Context $Context -HookName 'AfterDiscoverDocument' -Arguments @{
+                    invokeHydePluginHook -Context $Context -HookName 'AfterDiscoverDocument' -Arguments @{
                         Context  = $Context
                         Document = $document
                     }
@@ -183,13 +183,13 @@ function Get-HydeSourceItems {
                 } else {
                     # Everything else is preserved as a static file.
                     $staticFile = [HydeStaticFile]::new($file.FullName, $relativeFilePath)
-                    $staticFile.OutputRelativePath = Resolve-HydeStaticFileOutputPath -StaticFile $staticFile -Context $Context
+                    $staticFile.OutputRelativePath = resolveHydeStaticFileOutputPath -StaticFile $staticFile -Context $Context
                     $staticFile.Url = '/' + $relativeFilePath.Replace('\', '/')
-                    foreach ($default in Get-HydeMatchingDefaults -Context $Context -Item $staticFile) {
-                        Merge-HydeFrontMatterDefaults -Target $staticFile.Metadata -Defaults $default.Values
+                    foreach ($default in getHydeMatchingDefaults -Context $Context -Item $staticFile) {
+                        mergeHydeFrontMatterDefaults -Target $staticFile.Metadata -Defaults $default.Values
                     }
                     $Context.AddStaticFile($staticFile)
-                    Invoke-HydePluginHook -Context $Context -HookName 'AfterDiscoverStaticFile' -Arguments @{
+                    invokeHydePluginHook -Context $Context -HookName 'AfterDiscoverStaticFile' -Arguments @{
                         Context    = $Context
                         StaticFile = $staticFile
                     }
@@ -201,10 +201,10 @@ function Get-HydeSourceItems {
         }
     }
 
-    Get-HydeCollectionItems -Context $Context
+    getHydeCollectionItems -Context $Context
 }
 
-function Import-HydeDataFiles {
+function importHydeDataFiles {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -235,34 +235,34 @@ function Import-HydeDataFiles {
             default { continue }
         }
 
-        $dataContent = Read-HydeConfigFile -Path $dataFile.FullName
+        $dataContent = readHydeConfigFile -Path $dataFile.FullName
         $Context.Site.data[$dataFile.BaseName] = $dataContent
         Write-Verbose "Imported data file '$($dataFile.Name)'."
     }
 }
 
-function Get-HydeCollectionItems {
+function getHydeCollectionItems {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
         [HydeBuildContext]$Context
     )
 
-    $collectionDefinitions = @(Get-HydeCollectionDefinitions -Context $Context)
+    $collectionDefinitions = @(getHydeCollectionDefinitions -Context $Context)
     if ($collectionDefinitions.Count -eq 0) {
         return
     }
 
     # Collections should honor the same exclusion rules as pages and static files.
-    $excludedState = Get-HydeExcludedState -Context $Context
+    $excludedState = getHydeExcludedState -Context $Context
     $collectionsDirectoryName = if ($Context.Settings.ContainsKey('collections_dir') -and $Context.Settings.collections_dir) {
         $Context.Settings.collections_dir
     } else {
         '.'
     }
 
-    $collectionsRootPath = Resolve-HydePath -Location $collectionsDirectoryName -BasePath $Context.SourcePath
-    $markdownExtensions = Get-HydeMarkdownExtensions -Settings $Context.Settings
+    $collectionsRootPath = resolveHydePath -Location $collectionsDirectoryName -BasePath $Context.SourcePath
+    $markdownExtensions = getHydeMarkdownExtensions -Settings $Context.Settings
     $contentExtensions = @('.htm', '.html') + $markdownExtensions
 
     foreach ($definition in $collectionDefinitions) {
@@ -278,7 +278,7 @@ function Get-HydeCollectionItems {
             }
 
             $relativeFilePath = [System.IO.Path]::GetRelativePath($Context.SourcePath, $file.FullName).Replace('\', '/')
-            if (Test-HydeItemExclusion -Item $file -RelativePath $relativeFilePath -ExcludedState $excludedState) {
+            if (testHydeItemExclusion -Item $file -RelativePath $relativeFilePath -ExcludedState $excludedState) {
                 Write-Verbose "Excluding collection document '$relativeFilePath'."
                 continue
             }
@@ -286,10 +286,10 @@ function Get-HydeCollectionItems {
             $document = [HydeDocument]::new('CollectionDocument', $file.FullName, $relativeFilePath)
             $document.CollectionName = $definition.Label
             $document.WriteOutput = $definition.Output
-            $document.OutputRelativePath = Resolve-HydeDocumentOutputPath -Document $document -Context $Context
+            $document.OutputRelativePath = resolveHydeDocumentOutputPath -Document $document -Context $Context
             $document.Url = '/' + $document.OutputRelativePath.Replace('\', '/')
             $Context.AddDocument($document)
-            Invoke-HydePluginHook -Context $Context -HookName 'AfterDiscoverDocument' -Arguments @{
+            invokeHydePluginHook -Context $Context -HookName 'AfterDiscoverDocument' -Arguments @{
                 Context  = $Context
                 Document = $document
             }

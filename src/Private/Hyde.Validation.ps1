@@ -1,4 +1,4 @@
-function New-HydeValidationReport {
+function newHydeValidationReport {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -13,7 +13,7 @@ function New-HydeValidationReport {
     }
 }
 
-function Add-HydeValidationIssue {
+function addHydeValidationIssue {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -42,7 +42,7 @@ function Add-HydeValidationIssue {
     $Report.Healthy = $false
 }
 
-function Test-HydeLayoutForIssues {
+function testHydeLayoutForIssues {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -65,18 +65,18 @@ function Test-HydeLayoutForIssues {
     }
 
     try {
-        $layoutPath = Resolve-HydeLayoutPath -LayoutName $layoutName -Context $Context
+        $layoutPath = resolveHydeLayoutPath -LayoutName $layoutName -Context $Context
     } catch {
-        Add-HydeValidationIssue -Report $Report -Code 'MissingLayout' -Path $Document.RelativePath -Message $_.Exception.Message
+        addHydeValidationIssue -Report $Report -Code 'MissingLayout' -Path $Document.RelativePath -Message $_.Exception.Message
         return
     }
 
     $layoutDocument = [HydeDocument]::new('Layout', $layoutPath, [System.IO.Path]::GetRelativePath($Context.SourcePath, $layoutPath))
 
     try {
-        Read-HydeFrontMatter -Document $layoutDocument
+        readHydeFrontMatter -Document $layoutDocument
     } catch {
-        Add-HydeValidationIssue -Report $Report -Code 'InvalidLayoutFrontMatter' -Path $layoutDocument.RelativePath -Message $_.Exception.Message
+        addHydeValidationIssue -Report $Report -Code 'InvalidLayoutFrontMatter' -Path $layoutDocument.RelativePath -Message $_.Exception.Message
         return
     }
 
@@ -84,12 +84,12 @@ function Test-HydeLayoutForIssues {
     if ($layoutDocument.FrontMatter.ContainsKey('layout')) {
         $parentLayout = [string]$layoutDocument.FrontMatter.layout
         if (-not [string]::IsNullOrWhiteSpace($parentLayout) -and $parentLayout -notin @('none', 'null')) {
-            Add-HydeValidationIssue -Report $Report -Code 'UnsupportedLayoutInheritance' -Path $layoutDocument.RelativePath -Message "Layout inheritance is not supported yet for '$layoutPath'."
+            addHydeValidationIssue -Report $Report -Code 'UnsupportedLayoutInheritance' -Path $layoutDocument.RelativePath -Message "Layout inheritance is not supported yet for '$layoutPath'."
         }
     }
 }
 
-function Test-HydeDocumentForIssues {
+function testHydeDocumentForIssues {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -109,16 +109,16 @@ function Test-HydeDocumentForIssues {
     }
 
     try {
-        Initialize-HydeDocument -Document $Document -Context $Context
+        initializeHydeDocument -Document $Document -Context $Context
     } catch {
-        Add-HydeValidationIssue -Report $Report -Code 'InvalidFrontMatter' -Path $Document.RelativePath -Message $_.Exception.Message
+        addHydeValidationIssue -Report $Report -Code 'InvalidFrontMatter' -Path $Document.RelativePath -Message $_.Exception.Message
         return
     }
 
-    Test-HydeLayoutForIssues -Document $Document -Context $Context -Report $Report
+    testHydeLayoutForIssues -Document $Document -Context $Context -Report $Report
 }
 
-function Test-HydeOutputConflicts {
+function testHydeOutputConflicts {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -138,7 +138,7 @@ function Test-HydeOutputConflicts {
 
         $outputPath = $document.OutputRelativePath.Replace('\', '/')
         if ($seenOutputs.ContainsKey($outputPath)) {
-            Add-HydeValidationIssue -Report $Report -Code 'DuplicateOutputPath' -Path $document.RelativePath -Message "Output path '$outputPath' conflicts with '$($seenOutputs[$outputPath])'."
+            addHydeValidationIssue -Report $Report -Code 'DuplicateOutputPath' -Path $document.RelativePath -Message "Output path '$outputPath' conflicts with '$($seenOutputs[$outputPath])'."
             continue
         }
 
@@ -148,7 +148,7 @@ function Test-HydeOutputConflicts {
     foreach ($staticFile in $Context.StaticFiles) {
         $outputPath = $staticFile.OutputRelativePath.Replace('\', '/')
         if ($seenOutputs.ContainsKey($outputPath)) {
-            Add-HydeValidationIssue -Report $Report -Code 'DuplicateOutputPath' -Path $staticFile.RelativePath -Message "Output path '$outputPath' conflicts with '$($seenOutputs[$outputPath])'."
+            addHydeValidationIssue -Report $Report -Code 'DuplicateOutputPath' -Path $staticFile.RelativePath -Message "Output path '$outputPath' conflicts with '$($seenOutputs[$outputPath])'."
             continue
         }
 
@@ -156,20 +156,20 @@ function Test-HydeOutputConflicts {
     }
 }
 
-function Test-HydeSiteContent {
+function testHydeSiteContent {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
         [HydeBuildContext]$Context
     )
 
-    $report = New-HydeValidationReport -Context $Context
+    $report = newHydeValidationReport -Context $Context
 
     foreach ($document in $Context.Documents) {
         Write-Verbose "Validating document '$($document.RelativePath)'."
-        Test-HydeDocumentForIssues -Document $document -Context $Context -Report $report
+        testHydeDocumentForIssues -Document $document -Context $Context -Report $report
     }
 
-    Test-HydeOutputConflicts -Context $Context -Report $report
+    testHydeOutputConflicts -Context $Context -Report $report
     return $report
 }

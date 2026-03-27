@@ -1,4 +1,4 @@
-function Merge-HydeConfig {
+function mergeHydeConfig {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -12,7 +12,7 @@ function Merge-HydeConfig {
     foreach ($key in $Difference.Keys) {
         if ($Existing.ContainsKey($key)) {
             if ($Existing[$key] -is [hashtable] -and $Difference[$key] -is [hashtable]) {
-                Merge-HydeConfig -Existing $Existing[$key] -Difference $Difference[$key]
+                mergeHydeConfig -Existing $Existing[$key] -Difference $Difference[$key]
             } else {
                 $Existing[$key] = $Difference[$key]
             }
@@ -22,7 +22,7 @@ function Merge-HydeConfig {
     }
 }
 
-function Read-HydeConfigFile {
+function readHydeConfigFile {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -41,13 +41,13 @@ function Read-HydeConfigFile {
         }
 
         $parsed = ConvertFrom-Yaml -Yaml $content
-        return (ConvertTo-HydeHashtable -InputObject $parsed)
+        return (convertToHydeHashtable -InputObject $parsed)
     } catch {
         throw "Could not parse configuration file '$Path'. $($_.Exception.Message)"
     }
 }
 
-function Resolve-HydePath {
+function resolveHydePath {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -89,7 +89,7 @@ function Resolve-HydePath {
     throw "Could not resolve target path of '$Location'."
 }
 
-function Initialize-HydeBuildContext {
+function initializeHydeBuildContext {
     [CmdletBinding()]
     param(
         [string]$Source,
@@ -107,17 +107,17 @@ function Initialize-HydeBuildContext {
 
     # Start with Hyde defaults, then layer site config and command-line overrides on top.
     Write-Verbose "Loading Hyde defaults from '$defaultConfigPath'."
-    $settings = Read-HydeConfigFile -Path $defaultConfigPath
+    $settings = readHydeConfigFile -Path $defaultConfigPath
 
     $sourceSetting = if ($PSBoundParameters.ContainsKey('Source')) { $Source } else { $settings.source }
-    $sourcePath = Resolve-HydePath -Location $sourceSetting
+    $sourcePath = resolveHydePath -Location $sourceSetting
     Write-Verbose "Resolved source path to '$sourcePath'."
 
     $siteConfigPath = Join-Path -Path $sourcePath -ChildPath $siteConfigName
     if (Test-Path -LiteralPath $siteConfigPath -PathType Leaf) {
         Write-Verbose "Loading site configuration from '$siteConfigPath'."
-        $siteConfig = Read-HydeConfigFile -Path $siteConfigPath
-        Merge-HydeConfig -Existing $settings -Difference $siteConfig
+        $siteConfig = readHydeConfigFile -Path $siteConfigPath
+        mergeHydeConfig -Existing $settings -Difference $siteConfig
     } else {
         Write-Verbose "No site configuration file found at '$siteConfigPath'."
     }
@@ -130,7 +130,7 @@ function Initialize-HydeBuildContext {
         $settings.destination = $Destination
     }
 
-    $destinationPath = Resolve-HydePath -Location $settings.destination -BasePath $sourcePath -MayNotExist
+    $destinationPath = resolveHydePath -Location $settings.destination -BasePath $sourcePath -MayNotExist
     Write-Verbose "Resolved destination path to '$destinationPath'."
 
     # Build up the runtime context that the rest of the pipeline will mutate.
@@ -138,10 +138,10 @@ function Initialize-HydeBuildContext {
     $context.Version = $Version
     $context.Environment = $Environment
     $context.Settings = $settings
-    $context.Site = Copy-HydeValue -InputObject $settings
+    $context.Site = copyHydeValue -InputObject $settings
     $context.SourcePath = $sourcePath
     $context.DestinationPath = $destinationPath
-    $context.PluginRegistry = New-HydePluginRegistry
+    $context.PluginRegistry = newHydePluginRegistry
     $context.LiquidRegistry = New-LiquidExtensionRegistry
 
     # These values are generated per invocation and do not come from configuration files.
@@ -151,17 +151,17 @@ function Initialize-HydeBuildContext {
     $context.Site['static_files'] = New-Object System.Collections.ArrayList
     $context.Site['collections'] = @{}
 
-    Initialize-HydeCollections -Context $context
+    initializeHydeCollections -Context $context
 
-    Import-HydePlugins -Context $context
-    Import-HydeDataFiles -Context $context
-    Invoke-HydePluginHook -Context $context -HookName 'AfterInitialize' -Arguments @{ Context = $context }
+    importHydePlugins -Context $context
+    importHydeDataFiles -Context $context
+    invokeHydePluginHook -Context $context -HookName 'AfterInitialize' -Arguments @{ Context = $context }
     Write-Verbose "Initialized Hyde build context."
 
     return $context
 }
 
-function Get-HydeCollectionDefinitions {
+function getHydeCollectionDefinitions {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -192,7 +192,7 @@ function Get-HydeCollectionDefinitions {
     return @($definitions.ToArray())
 }
 
-function Get-HydeCollectionDefinition {
+function getHydeCollectionDefinition {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -202,7 +202,7 @@ function Get-HydeCollectionDefinition {
         [string]$CollectionName
     )
 
-    foreach ($definition in Get-HydeCollectionDefinitions -Context $Context) {
+    foreach ($definition in getHydeCollectionDefinitions -Context $Context) {
         if ($definition.Label -ieq $CollectionName) {
             return $definition
         }
@@ -211,14 +211,14 @@ function Get-HydeCollectionDefinition {
     return $null
 }
 
-function Initialize-HydeCollections {
+function initializeHydeCollections {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
         [HydeBuildContext]$Context
     )
 
-    foreach ($definition in Get-HydeCollectionDefinitions -Context $Context) {
+    foreach ($definition in getHydeCollectionDefinitions -Context $Context) {
         # Expose collections through both site.collections.<label> and site.<label>.
         $Context.Site.collections[$definition.Label] = @{
             label     = $definition.Label
@@ -231,7 +231,7 @@ function Initialize-HydeCollections {
     }
 }
 
-function Get-HydeFrontMatterDefaults {
+function getHydeFrontMatterDefaults {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -252,7 +252,7 @@ function Get-HydeFrontMatterDefaults {
         }
 
         $scope = if ($entry.scope -is [hashtable]) { $entry.scope } else { @{} }
-        $values = if ($entry.values -is [hashtable]) { Copy-HydeValue -InputObject $entry.values } else { @{} }
+        $values = if ($entry.values -is [hashtable]) { copyHydeValue -InputObject $entry.values } else { @{} }
 
         [void]$defaults.Add([pscustomobject]@{
             Index = $index
@@ -269,7 +269,7 @@ function Get-HydeFrontMatterDefaults {
     return @($defaults.ToArray())
 }
 
-function Get-HydeDefaultScopePathSpecificity {
+function getHydeDefaultScopePathSpecificity {
     [CmdletBinding()]
     param(
         [string]$ScopePath
@@ -282,7 +282,7 @@ function Get-HydeDefaultScopePathSpecificity {
     return ($ScopePath -replace '\*', '').Length
 }
 
-function Test-HydeDefaultScopePath {
+function testHydeDefaultScopePath {
     [CmdletBinding()]
     param(
         [string]$ScopePath,
@@ -308,7 +308,7 @@ function Test-HydeDefaultScopePath {
     )
 }
 
-function Test-HydeDefaultScopeType {
+function testHydeDefaultScopeType {
     [CmdletBinding()]
     param(
         [string]$ScopeType,
@@ -322,7 +322,7 @@ function Test-HydeDefaultScopeType {
     return ($ScopeType -ieq $ItemType)
 }
 
-function Get-HydeItemDefaultType {
+function getHydeItemDefaultType {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -336,7 +336,7 @@ function Get-HydeItemDefaultType {
     }
 }
 
-function Get-HydeMatchingDefaults {
+function getHydeMatchingDefaults {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -346,18 +346,18 @@ function Get-HydeMatchingDefaults {
         [HydeContentItem]$Item
     )
 
-    $defaults = Get-HydeFrontMatterDefaults -Context $Context
+    $defaults = getHydeFrontMatterDefaults -Context $Context
     if (-not $defaults) {
         return @()
     }
 
-    $itemType = Get-HydeItemDefaultType -Item $Item
+    $itemType = getHydeItemDefaultType -Item $Item
     $matchingDefaults = @(
         $defaults | Where-Object {
-            (Test-HydeDefaultScopePath -ScopePath $_.Scope.path -RelativePath $Item.RelativePath) -and
-            (Test-HydeDefaultScopeType -ScopeType $_.Scope.type -ItemType $itemType)
+            (testHydeDefaultScopePath -ScopePath $_.Scope.path -RelativePath $Item.RelativePath) -and
+            (testHydeDefaultScopeType -ScopeType $_.Scope.type -ItemType $itemType)
         } | Sort-Object `
-            @{ Expression = { Get-HydeDefaultScopePathSpecificity -ScopePath $_.Scope.path } ; Descending = $true },
+            @{ Expression = { getHydeDefaultScopePathSpecificity -ScopePath $_.Scope.path } ; Descending = $true },
             @{ Expression = { if ([string]::IsNullOrWhiteSpace($_.Scope.type)) { 0 } else { 1 } } ; Descending = $true },
             @{ Expression = { $_.Index } ; Descending = $true }
     )
@@ -365,7 +365,7 @@ function Get-HydeMatchingDefaults {
     return @($matchingDefaults)
 }
 
-function Merge-HydeFrontMatterDefaults {
+function mergeHydeFrontMatterDefaults {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -378,12 +378,12 @@ function Merge-HydeFrontMatterDefaults {
     # Defaults only fill missing values; explicit front matter still wins.
     foreach ($key in $Defaults.Keys) {
         if (-not $Target.ContainsKey($key)) {
-            $Target[$key] = Copy-HydeValue -InputObject $Defaults[$key]
+            $Target[$key] = copyHydeValue -InputObject $Defaults[$key]
         }
     }
 }
 
-function Get-HydeCleanTargets {
+function getHydeCleanTargets {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -413,7 +413,7 @@ function Get-HydeCleanTargets {
     return $targets
 }
 
-function Test-HydeSiteRootPath {
+function testHydeSiteRootPath {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -424,7 +424,7 @@ function Test-HydeSiteRootPath {
     return (Test-Path -LiteralPath (Join-Path -Path $Path -ChildPath '_config.yml') -PathType Leaf)
 }
 
-function Remove-HydeGeneratedPath {
+function removeHydeGeneratedPath {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -442,7 +442,7 @@ function Remove-HydeGeneratedPath {
     $resolvedTargetPath = [System.IO.Path]::GetFullPath($Path)
 
     # Clean must never remove an actual site source directory, even if the destination points at it.
-    if (($Kind -eq 'destination folder') -and (Test-HydeSiteRootPath -Path $resolvedTargetPath)) {
+    if (($Kind -eq 'destination folder') -and (testHydeSiteRootPath -Path $resolvedTargetPath)) {
         throw "Refusing to remove destination folder path '$resolvedTargetPath' because it is the source of a site."
     }
 

@@ -1,4 +1,4 @@
-function ConvertTo-HydeHashtable {
+function convertToHydeHashtable {
     [CmdletBinding()]
     param(
         [Parameter(ValueFromPipeline = $true)]
@@ -14,7 +14,7 @@ function ConvertTo-HydeHashtable {
         if ($InputObject -is [System.Collections.IDictionary]) {
             $result = @{}
             foreach ($key in $InputObject.Keys) {
-                $result[$key] = ConvertTo-HydeHashtable -InputObject $InputObject[$key]
+                $result[$key] = convertToHydeHashtable -InputObject $InputObject[$key]
             }
 
             return $result
@@ -23,7 +23,7 @@ function ConvertTo-HydeHashtable {
         if ($InputObject -is [pscustomobject]) {
             $result = @{}
             foreach ($property in $InputObject.PSObject.Properties) {
-                $result[$property.Name] = ConvertTo-HydeHashtable -InputObject $property.Value
+                $result[$property.Name] = convertToHydeHashtable -InputObject $property.Value
             }
 
             return $result
@@ -32,7 +32,7 @@ function ConvertTo-HydeHashtable {
         if ($InputObject -is [System.Collections.IEnumerable] -and $InputObject -isnot [string]) {
             $result = New-Object System.Collections.ArrayList
             foreach ($item in $InputObject) {
-                [void]$result.Add((ConvertTo-HydeHashtable -InputObject $item))
+                [void]$result.Add((convertToHydeHashtable -InputObject $item))
             }
 
             return ,$result.ToArray()
@@ -42,7 +42,7 @@ function ConvertTo-HydeHashtable {
     }
 }
 
-function Copy-HydeValue {
+function copyHydeValue {
     [CmdletBinding()]
     param(
         $InputObject
@@ -56,7 +56,7 @@ function Copy-HydeValue {
     if ($InputObject -is [System.Collections.IDictionary]) {
         $copy = @{}
         foreach ($key in $InputObject.Keys) {
-            $copy[$key] = Copy-HydeValue -InputObject $InputObject[$key]
+            $copy[$key] = copyHydeValue -InputObject $InputObject[$key]
         }
 
         return $copy
@@ -65,7 +65,7 @@ function Copy-HydeValue {
     if ($InputObject -is [System.Collections.IEnumerable] -and $InputObject -isnot [string]) {
         $copy = New-Object System.Collections.ArrayList
         foreach ($item in $InputObject) {
-            [void]$copy.Add((Copy-HydeValue -InputObject $item))
+            [void]$copy.Add((copyHydeValue -InputObject $item))
         }
 
         return ,$copy.ToArray()
@@ -74,7 +74,7 @@ function Copy-HydeValue {
     return $InputObject
 }
 
-function Get-HydeMarkdownExtensions {
+function getHydeMarkdownExtensions {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]

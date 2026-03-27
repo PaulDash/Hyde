@@ -41,7 +41,7 @@ function Publish-StaticSite {
 
     Write-Verbose "Initializing Hyde build context."
     try {
-        $context = Initialize-HydeBuildContext @contextParameters
+        $context = initializeHydeBuildContext @contextParameters
     } catch {
         throw "Build failed while initializing site context. $($_.Exception.Message)"
     }
@@ -65,7 +65,7 @@ function Publish-StaticSite {
     Write-Verbose "Discovering source items under '$($context.SourcePath)'."
     try {
         # Discover the source tree before any rendering starts.
-        Get-HydeSourceItems -Context $context
+        getHydeSourceItems -Context $context
     } catch {
         throw "Build failed while discovering source items in '$($context.SourcePath)'. $($_.Exception.Message)"
     }
@@ -78,7 +78,7 @@ function Publish-StaticSite {
     foreach ($document in $context.Documents) {
         try {
             Write-Verbose "Preparing document metadata for '$($document.RelativePath)'."
-            Initialize-HydeDocument -Document $document -Context $context
+            initializeHydeDocument -Document $document -Context $context
         } catch {
             throw "Build failed while preparing document '$($document.SourcePath)'. $($_.Exception.Message)"
         }
@@ -93,7 +93,7 @@ function Publish-StaticSite {
         $documentIndex++
         try {
             Write-Verbose "Rendering document $documentIndex of $($context.Documents.Count): '$($document.RelativePath)'."
-            Convert-HydeDocument -Document $document -Context $context
+            convertHydeDocument -Document $document -Context $context
             if (-not $document.Published) {
                 Write-Verbose "Skipping unpublished document '$($document.RelativePath)'."
                 continue
@@ -105,7 +105,7 @@ function Publish-StaticSite {
             }
 
             Write-Verbose "Writing document '$($document.RelativePath)' to '$($document.OutputRelativePath)'."
-            Write-HydeDocument -Document $document -Context $context
+            writeHydeDocument -Document $document -Context $context
             $publishedDocumentCount++
             Write-Verbose "Finished document '$($document.RelativePath)'."
         } catch {
@@ -120,7 +120,7 @@ function Publish-StaticSite {
         $staticFileIndex++
         try {
             Write-Verbose "Copying static file $staticFileIndex of $($context.StaticFiles.Count): '$($staticFile.RelativePath)' to '$($staticFile.OutputRelativePath)'."
-            Copy-HydeStaticFile -StaticFile $staticFile -Context $context
+            copyHydeStaticFile -StaticFile $staticFile -Context $context
             Write-Verbose "Finished static file '$($staticFile.RelativePath)'."
         } catch {
             throw "Build failed while copying static file '$($staticFile.SourcePath)'. $($_.Exception.Message)"

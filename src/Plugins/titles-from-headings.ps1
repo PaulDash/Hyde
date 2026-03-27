@@ -16,7 +16,7 @@ param($Context)
                 return
             }
 
-            $markdownExtensions = Get-HydeMarkdownExtensions -Settings $Invocation.Context.Settings
+            $markdownExtensions = getHydeMarkdownExtensions -Settings $Invocation.Context.Settings
             if ($document.Extension -notin $markdownExtensions) {
                 return
             }

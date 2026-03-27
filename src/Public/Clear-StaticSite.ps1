@@ -33,8 +33,8 @@ function Clear-StaticSite {
     }
 
     try {
-        $context = Initialize-HydeBuildContext @contextParameters
-        $targets = Get-HydeCleanTargets -Context $context
+        $context = initializeHydeBuildContext @contextParameters
+        $targets = getHydeCleanTargets -Context $context
     } catch {
         throw "Clean failed while initializing site context. $($_.Exception.Message)"
     }
@@ -47,7 +47,7 @@ function Clear-StaticSite {
     foreach ($target in $targets) {
         try {
             Write-Verbose "Removing $($target.Kind) at '$($target.Path)'."
-            Remove-HydeGeneratedPath -Path $target.Path -SourcePath $context.SourcePath -Kind $target.Kind
+            removeHydeGeneratedPath -Path $target.Path -SourcePath $context.SourcePath -Kind $target.Kind
         } catch {
             throw "Clean failed while removing $($target.Kind) '$($target.Path)'. $($_.Exception.Message)"
         }

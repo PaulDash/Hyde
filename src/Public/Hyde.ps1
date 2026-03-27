@@ -10,7 +10,7 @@ function Hyde {
     dynamicparam {
         $dynamicParameters = [System.Management.Automation.RuntimeDefinedParameterDictionary]::new()
 
-        function New-HydeDynamicParameter {
+        function newHydeDynamicParameter {
             param(
                 [Parameter(Mandatory = $true)]
                 [string]$Name,
@@ -37,18 +37,18 @@ function Hyde {
         # parameter sets cannot branch on the value of a positional string argument.
         switch ($Command) {
             'Build' {
-                $dynamicParameters.Add('Source', (New-HydeDynamicParameter -Name 'Source' -Type ([string])))
-                $dynamicParameters.Add('Destination', (New-HydeDynamicParameter -Name 'Destination' -Type ([string])))
-                $dynamicParameters.Add('Environment', (New-HydeDynamicParameter -Name 'Environment' -Type ([string]) -Aliases @('JEKYLL_ENV', 'HYDE_ENV')))
-                $dynamicParameters.Add('Quiet', (New-HydeDynamicParameter -Name 'Quiet' -Type ([switch])))
+                $dynamicParameters.Add('Source', (newHydeDynamicParameter -Name 'Source' -Type ([string])))
+                $dynamicParameters.Add('Destination', (newHydeDynamicParameter -Name 'Destination' -Type ([string])))
+                $dynamicParameters.Add('Environment', (newHydeDynamicParameter -Name 'Environment' -Type ([string]) -Aliases @('JEKYLL_ENV', 'HYDE_ENV')))
+                $dynamicParameters.Add('Quiet', (newHydeDynamicParameter -Name 'Quiet' -Type ([switch])))
             }
             'Clean' {
-                $dynamicParameters.Add('Destination', (New-HydeDynamicParameter -Name 'Destination' -Type ([string])))
-                $dynamicParameters.Add('Quiet', (New-HydeDynamicParameter -Name 'Quiet' -Type ([switch])))
+                $dynamicParameters.Add('Destination', (newHydeDynamicParameter -Name 'Destination' -Type ([string])))
+                $dynamicParameters.Add('Quiet', (newHydeDynamicParameter -Name 'Quiet' -Type ([switch])))
             }
             'Doctor' {
-                $dynamicParameters.Add('Source', (New-HydeDynamicParameter -Name 'Source' -Type ([string])))
-                $dynamicParameters.Add('Quiet', (New-HydeDynamicParameter -Name 'Quiet' -Type ([switch])))
+                $dynamicParameters.Add('Source', (newHydeDynamicParameter -Name 'Source' -Type ([string])))
+                $dynamicParameters.Add('Quiet', (newHydeDynamicParameter -Name 'Quiet' -Type ([switch])))
             }
         }
 

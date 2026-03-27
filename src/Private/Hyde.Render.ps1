@@ -1,4 +1,4 @@
-function ConvertTo-HydePublishedState {
+function convertToHydePublishedState {
     [CmdletBinding()]
     param(
         $InputObject
@@ -23,7 +23,7 @@ function ConvertTo-HydePublishedState {
     return [bool]$InputObject
 }
 
-function ConvertTo-HydeBooleanFrontMatterValue {
+function convertToHydeBooleanFrontMatterValue {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -53,7 +53,7 @@ function ConvertTo-HydeBooleanFrontMatterValue {
     return [bool]$InputObject
 }
 
-function ConvertTo-HydeSlug {
+function convertToHydeSlug {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -67,7 +67,7 @@ function ConvertTo-HydeSlug {
     return $normalizedText
 }
 
-function Get-HydeDocumentCategories {
+function getHydeDocumentCategories {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -89,10 +89,10 @@ function Get-HydeDocumentCategories {
         $categories = @($categoriesValue -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     }
 
-    return @($categories | ForEach-Object { ConvertTo-HydeSlug -Text $_ })
+    return @($categories | ForEach-Object { convertToHydeSlug -Text $_ })
 }
 
-function Get-HydeDocumentPermalinkPattern {
+function getHydeDocumentPermalinkPattern {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -107,7 +107,7 @@ function Get-HydeDocumentPermalinkPattern {
     }
 
     if ($Document.Kind -eq 'CollectionDocument' -and -not [string]::IsNullOrWhiteSpace($Document.CollectionName)) {
-        $collectionDefinition = Get-HydeCollectionDefinition -Context $Context -CollectionName $Document.CollectionName
+        $collectionDefinition = getHydeCollectionDefinition -Context $Context -CollectionName $Document.CollectionName
         if ($null -ne $collectionDefinition -and
             $collectionDefinition.Settings.ContainsKey('permalink') -and
             -not [string]::IsNullOrWhiteSpace([string]$collectionDefinition.Settings.permalink)) {
@@ -118,7 +118,7 @@ function Get-HydeDocumentPermalinkPattern {
     return ''
 }
 
-function Resolve-HydePermalink {
+function resolveHydePermalink {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -131,7 +131,7 @@ function Resolve-HydePermalink {
         [string]$DefaultOutputPath
     )
 
-    $permalinkPattern = Get-HydeDocumentPermalinkPattern -Document $Document -Context $Context
+    $permalinkPattern = getHydeDocumentPermalinkPattern -Document $Document -Context $Context
     if ([string]::IsNullOrWhiteSpace($permalinkPattern)) {
         return @{
             OutputRelativePath = $DefaultOutputPath.Replace('\', '/')
@@ -149,10 +149,10 @@ function Resolve-HydePermalink {
 
     $tokenValues = @{
         collection = $Document.CollectionName
-        title      = ConvertTo-HydeSlug -Text $titleValue
-        slug       = ConvertTo-HydeSlug -Text $titleValue
+        title      = convertToHydeSlug -Text $titleValue
+        slug       = convertToHydeSlug -Text $titleValue
         name       = $Document.BaseName
-        categories = ((Get-HydeDocumentCategories -Document $Document) -join '/')
+        categories = ((getHydeDocumentCategories -Document $Document) -join '/')
     }
 
     $resolvedPermalink = $permalinkPattern.Replace('\', '/').Trim()
@@ -182,7 +182,7 @@ function Resolve-HydePermalink {
     }
 }
 
-function Resolve-HydeLayoutPath {
+function resolveHydeLayoutPath {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -214,7 +214,7 @@ function Resolve-HydeLayoutPath {
     throw "Could not find layout '$LayoutName' in '$layoutsDirectoryPath'."
 }
 
-function Resolve-HydeIncludesPath {
+function resolveHydeIncludesPath {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -231,7 +231,7 @@ function Resolve-HydeIncludesPath {
     return (Join-Path -Path $Context.SourcePath -ChildPath $includesDirectoryName)
 }
 
-function New-HydePageVariables {
+function newHydePageVariables {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -259,7 +259,7 @@ function New-HydePageVariables {
     return $page
 }
 
-function Invoke-HydeDocumentLiquid {
+function invokeHydeDocumentLiquid {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -275,7 +275,7 @@ function Invoke-HydeDocumentLiquid {
     }
 
     $liquidContext = @{
-        page  = New-HydePageVariables -Document $Document
+        page  = newHydePageVariables -Document $Document
         site  = $Context.Site
         hyde  = @{
             version     = $Context.Version
@@ -283,11 +283,11 @@ function Invoke-HydeDocumentLiquid {
         }
     }
 
-    $Document.RawContent = Invoke-LiquidTemplate -Template $Document.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (Resolve-HydeIncludesPath -Context $Context) -Registry $Context.LiquidRegistry
+    $Document.RawContent = Invoke-LiquidTemplate -Template $Document.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (resolveHydeIncludesPath -Context $Context) -Registry $Context.LiquidRegistry
     Write-Verbose "Rendered Liquid content for '$($Document.RelativePath)'."
 }
 
-function Invoke-HydeLayout {
+function invokeHydeLayout {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -307,10 +307,10 @@ function Invoke-HydeLayout {
         return
     }
 
-    $layoutPath = Resolve-HydeLayoutPath -LayoutName $layoutName -Context $Context
+    $layoutPath = resolveHydeLayoutPath -LayoutName $layoutName -Context $Context
     Write-Verbose "Applying layout '$layoutName' from '$layoutPath' to '$($Document.RelativePath)'."
     $layoutDocument = [HydeDocument]::new('Layout', $layoutPath, [System.IO.Path]::GetRelativePath($Context.SourcePath, $layoutPath))
-    Read-HydeFrontMatter -Document $layoutDocument
+    readHydeFrontMatter -Document $layoutDocument
 
     if ($layoutDocument.FrontMatter.ContainsKey('layout')) {
         $parentLayout = [string]$layoutDocument.FrontMatter.layout
@@ -321,7 +321,7 @@ function Invoke-HydeLayout {
 
     $liquidContext = @{
         content = $Document.RenderedContent
-        page    = New-HydePageVariables -Document $Document
+        page    = newHydePageVariables -Document $Document
         site    = $Context.Site
         layout  = $layoutDocument.FrontMatter
         hyde    = @{
@@ -330,11 +330,11 @@ function Invoke-HydeLayout {
         }
     }
 
-    $Document.RenderedContent = Invoke-LiquidTemplate -Template $layoutDocument.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (Resolve-HydeIncludesPath -Context $Context) -Registry $Context.LiquidRegistry
+    $Document.RenderedContent = Invoke-LiquidTemplate -Template $layoutDocument.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (resolveHydeIncludesPath -Context $Context) -Registry $Context.LiquidRegistry
     Write-Verbose "Rendered layout '$layoutName' for '$($Document.RelativePath)'."
 }
 
-function Read-HydeFrontMatter {
+function readHydeFrontMatter {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -364,7 +364,7 @@ function Read-HydeFrontMatter {
         $yamlText = $match.Groups[1].Value
         if (-not [string]::IsNullOrWhiteSpace($yamlText)) {
             try {
-                $Document.FrontMatter = ConvertTo-HydeHashtable -InputObject (ConvertFrom-Yaml -Yaml $yamlText)
+                $Document.FrontMatter = convertToHydeHashtable -InputObject (ConvertFrom-Yaml -Yaml $yamlText)
             } catch {
                 throw "Could not parse front matter in '$($Document.SourcePath)'. $($_.Exception.Message)"
             }
@@ -383,14 +383,14 @@ function Read-HydeFrontMatter {
 
     # Apply matching defaults before interpreting final front matter flags.
     if ($PSBoundParameters.ContainsKey('Context') -and $null -ne $Context) {
-        foreach ($default in Get-HydeMatchingDefaults -Context $Context -Item $Document) {
-            Merge-HydeFrontMatterDefaults -Target $Document.FrontMatter -Defaults $default.Values
+        foreach ($default in getHydeMatchingDefaults -Context $Context -Item $Document) {
+            mergeHydeFrontMatterDefaults -Target $Document.FrontMatter -Defaults $default.Values
         }
     }
 
     # Hyde honors front matter flags early so later stages can skip or alter rendering behavior.
     if ($Document.FrontMatter.ContainsKey('published')) {
-        $Document.Published = ConvertTo-HydeBooleanFrontMatterValue -SettingName 'published' -InputObject $Document.FrontMatter.published -DefaultValue $true
+        $Document.Published = convertToHydeBooleanFrontMatterValue -SettingName 'published' -InputObject $Document.FrontMatter.published -DefaultValue $true
     }
 
     if ($Document.FrontMatter.ContainsKey('title') -and -not [string]::IsNullOrWhiteSpace([string]$Document.FrontMatter.title)) {
@@ -401,13 +401,13 @@ function Read-HydeFrontMatter {
     }
 
     if ($Document.FrontMatter.ContainsKey('render_with_liquid')) {
-        $Document.RenderWithLiquid = ConvertTo-HydeBooleanFrontMatterValue -SettingName 'render_with_liquid' -InputObject $Document.FrontMatter.render_with_liquid -DefaultValue $true
+        $Document.RenderWithLiquid = convertToHydeBooleanFrontMatterValue -SettingName 'render_with_liquid' -InputObject $Document.FrontMatter.render_with_liquid -DefaultValue $true
     }
 
     Write-Verbose "Document '$($Document.RelativePath)' resolved with title='$($Document.Title)', published=$($Document.Published), and render_with_liquid=$($Document.RenderWithLiquid)."
 }
 
-function Initialize-HydeDocument {
+function initializeHydeDocument {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -427,24 +427,24 @@ function Initialize-HydeDocument {
         $strictFrontMatter = [bool]$Context.Settings.strict_front_matter
     }
 
-    Read-HydeFrontMatter -Document $Document -Context $Context -Strict:$strictFrontMatter
+    readHydeFrontMatter -Document $Document -Context $Context -Strict:$strictFrontMatter
 
     if ($Document.Published) {
-        Invoke-HydePluginHook -Context $Context -HookName 'BeforeRenderDocument' -Arguments @{
+        invokeHydePluginHook -Context $Context -HookName 'BeforeRenderDocument' -Arguments @{
             Context  = $Context
             Document = $Document
         }
     }
 
     # Resolve permalink-based output after front matter and plugin-derived metadata are available.
-    $resolvedPermalink = Resolve-HydePermalink -Document $Document -Context $Context -DefaultOutputPath $Document.OutputRelativePath
+    $resolvedPermalink = resolveHydePermalink -Document $Document -Context $Context -DefaultOutputPath $Document.OutputRelativePath
     $document.OutputRelativePath = [string]$resolvedPermalink.OutputRelativePath
     $document.Url = [string]$resolvedPermalink.Url
 
     $Document.IsPrepared = $true
 }
 
-function Convert-HydeInlineMarkdown {
+function convertHydeInlineMarkdown {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -499,7 +499,7 @@ function Convert-HydeInlineMarkdown {
     return $encoded
 }
 
-function Convert-HydeMarkdown {
+function convertHydeMarkdown {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -522,7 +522,7 @@ function Convert-HydeMarkdown {
         }
 
         $text = ($paragraphLines.ToArray() -join ' ').Trim()
-        [void]$blocks.Add("<p>$(Convert-HydeInlineMarkdown -Text $text)</p>")
+        [void]$blocks.Add("<p>$(convertHydeInlineMarkdown -Text $text)</p>")
         $paragraphLines.Clear()
     }
 
@@ -532,7 +532,7 @@ function Convert-HydeMarkdown {
         }
 
         $items = $listItems.ToArray() | ForEach-Object {
-            "<li>$(Convert-HydeInlineMarkdown -Text $_)</li>"
+            "<li>$(convertHydeInlineMarkdown -Text $_)</li>"
         }
 
         [void]$blocks.Add("<ul>$($items -join '')</ul>")
@@ -580,7 +580,7 @@ function Convert-HydeMarkdown {
             Flush-HydeParagraph
             Flush-HydeList
             $level = $Matches[1].Length
-            $headingText = Convert-HydeInlineMarkdown -Text $Matches[2].Trim()
+            $headingText = convertHydeInlineMarkdown -Text $Matches[2].Trim()
             [void]$blocks.Add("<h$level>$headingText</h$level>")
             continue
         }
@@ -612,7 +612,7 @@ function Convert-HydeMarkdown {
     return ($blocks.ToArray() -join [Environment]::NewLine)
 }
 
-function Convert-HydeDocument {
+function convertHydeDocument {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -623,7 +623,7 @@ function Convert-HydeDocument {
     )
 
     # Rendering starts by preparing front matter and plugin-derived metadata.
-    Initialize-HydeDocument -Document $Document -Context $Context
+    initializeHydeDocument -Document $Document -Context $Context
 
     if (-not $Document.Published) {
         Write-Verbose "Stopping render pipeline for unpublished document '$($Document.RelativePath)'."
@@ -631,30 +631,30 @@ function Convert-HydeDocument {
     }
 
     # Liquid rendering happens against the document body before any markup conversion.
-    Invoke-HydeDocumentLiquid -Document $Document -Context $Context
+    invokeHydeDocumentLiquid -Document $Document -Context $Context
 
-    $markdownExtensions = Get-HydeMarkdownExtensions -Settings $Context.Settings
+    $markdownExtensions = getHydeMarkdownExtensions -Settings $Context.Settings
     if ($Document.Extension -in @('.htm', '.html')) {
         # HTML pages are currently copied through after front matter is stripped.
         $Document.RenderedContent = $Document.RawContent
         Write-Verbose "Using HTML passthrough renderer for '$($Document.RelativePath)'."
     } elseif ($Document.Extension -in $markdownExtensions) {
         # Markdown pages are converted into HTML before being written to disk.
-        $Document.RenderedContent = Convert-HydeMarkdown -Markdown $Document.RawContent
+        $Document.RenderedContent = convertHydeMarkdown -Markdown $Document.RawContent
         Write-Verbose "Converted markdown document '$($Document.RelativePath)' to HTML."
     } else {
         throw "No renderer exists for '$($Document.SourcePath)'."
     }
 
     # Layout rendering happens after the page body itself has been converted.
-    Invoke-HydeLayout -Document $Document -Context $Context
-    Invoke-HydePluginHook -Context $Context -HookName 'AfterRenderDocument' -Arguments @{
+    invokeHydeLayout -Document $Document -Context $Context
+    invokeHydePluginHook -Context $Context -HookName 'AfterRenderDocument' -Arguments @{
         Context  = $Context
         Document = $Document
     }
 }
 
-function Resolve-HydeDocumentOutputPath {
+function resolveHydeDocumentOutputPath {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -665,7 +665,7 @@ function Resolve-HydeDocumentOutputPath {
     )
 
     # Markdown sources render to .html while html inputs keep their existing filenames.
-    $markdownExtensions = Get-HydeMarkdownExtensions -Settings $Context.Settings
+    $markdownExtensions = getHydeMarkdownExtensions -Settings $Context.Settings
     $sourceRelativePath = $Document.RelativePath
     if ($Document.Kind -eq 'CollectionDocument' -and -not [string]::IsNullOrWhiteSpace($Document.CollectionName)) {
         $collectionMarker = '/_{0}/' -f $Document.CollectionName
@@ -685,13 +685,13 @@ function Resolve-HydeDocumentOutputPath {
         $outputPath = $sourceRelativePath.Replace('\', '/')
     }
 
-    return (Resolve-HydePluginValue -Context $Context -HookName 'ResolveDocumentOutputPath' -CurrentValue $outputPath -Arguments @{
+    return (resolveHydePluginValue -Context $Context -HookName 'ResolveDocumentOutputPath' -CurrentValue $outputPath -Arguments @{
             Context  = $Context
             Document = $Document
         })
 }
 
-function Resolve-HydeStaticFileOutputPath {
+function resolveHydeStaticFileOutputPath {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -701,13 +701,13 @@ function Resolve-HydeStaticFileOutputPath {
         [HydeBuildContext]$Context
     )
 
-    return (Resolve-HydePluginValue -Context $Context -HookName 'ResolveStaticFileOutputPath' -CurrentValue $StaticFile.RelativePath.Replace('\', '/') -Arguments @{
+    return (resolveHydePluginValue -Context $Context -HookName 'ResolveStaticFileOutputPath' -CurrentValue $StaticFile.RelativePath.Replace('\', '/') -Arguments @{
             Context    = $Context
             StaticFile = $StaticFile
         })
 }
 
-function Write-HydeDocument {
+function writeHydeDocument {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -721,7 +721,7 @@ function Write-HydeDocument {
         return
     }
 
-    Invoke-HydePluginHook -Context $Context -HookName 'BeforeWriteDocument' -Arguments @{
+    invokeHydePluginHook -Context $Context -HookName 'BeforeWriteDocument' -Arguments @{
         Context  = $Context
         Document = $Document
     }
@@ -741,13 +741,13 @@ function Write-HydeDocument {
         throw "Could not write rendered document to '$destinationPath'. $($_.Exception.Message)"
     }
 
-    Invoke-HydePluginHook -Context $Context -HookName 'AfterWriteDocument' -Arguments @{
+    invokeHydePluginHook -Context $Context -HookName 'AfterWriteDocument' -Arguments @{
         Context  = $Context
         Document = $Document
     }
 }
 
-function Copy-HydeStaticFile {
+function copyHydeStaticFile {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -758,7 +758,7 @@ function Copy-HydeStaticFile {
     )
 
     # Static files reuse the same output tree logic but skip the rendering step entirely.
-    Invoke-HydePluginHook -Context $Context -HookName 'BeforeCopyStaticFile' -Arguments @{
+    invokeHydePluginHook -Context $Context -HookName 'BeforeCopyStaticFile' -Arguments @{
         Context    = $Context
         StaticFile = $StaticFile
     }
@@ -777,7 +777,7 @@ function Copy-HydeStaticFile {
         throw "Could not copy static file to '$destinationPath'. $($_.Exception.Message)"
     }
 
-    Invoke-HydePluginHook -Context $Context -HookName 'AfterCopyStaticFile' -Arguments @{
+    invokeHydePluginHook -Context $Context -HookName 'AfterCopyStaticFile' -Arguments @{
         Context    = $Context
         StaticFile = $StaticFile
     }
