@@ -23,6 +23,160 @@ function ConvertTo-HydePublishedState {
     return [bool]$InputObject
 }
 
+function ConvertTo-HydeBooleanFrontMatterValue {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SettingName,
+
+        $InputObject,
+
+        [bool]$DefaultValue = $true
+    )
+
+    if ($null -eq $InputObject) {
+        return $DefaultValue
+    }
+
+    if ($InputObject -is [bool]) {
+        return $InputObject
+    }
+
+    if ($InputObject -is [string]) {
+        switch ($InputObject.Trim().ToLowerInvariant()) {
+            'true' { return $true }
+            'false' { return $false }
+            default { throw "Unsupported value for front matter setting '$SettingName': '$InputObject'." }
+        }
+    }
+
+    return [bool]$InputObject
+}
+
+function Resolve-HydeLayoutPath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$LayoutName,
+
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    $layoutsDirectoryName = if ($Context.Settings.ContainsKey('layouts_dir') -and $Context.Settings.layouts_dir) {
+        $Context.Settings.layouts_dir
+    } else {
+        '_layouts'
+    }
+
+    $layoutsDirectoryPath = Join-Path -Path $Context.SourcePath -ChildPath $layoutsDirectoryName
+    $layoutCandidates = @($LayoutName)
+    if (-not [System.IO.Path]::GetExtension($LayoutName)) {
+        $layoutCandidates += "$LayoutName.html"
+    }
+
+    foreach ($candidate in $layoutCandidates) {
+        $layoutPath = Join-Path -Path $layoutsDirectoryPath -ChildPath $candidate
+        if (Test-Path -LiteralPath $layoutPath -PathType Leaf) {
+            return $layoutPath
+        }
+    }
+
+    throw "Could not find layout '$LayoutName' in '$layoutsDirectoryPath'."
+}
+
+function New-HydePageVariables {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document
+    )
+
+    $page = @{}
+    foreach ($key in $Document.FrontMatter.Keys) {
+        $page[$key] = $Document.FrontMatter[$key]
+    }
+
+    $page['content'] = $Document.RenderedContent
+    $page['url'] = $Document.Url
+    $page['path'] = $Document.RelativePath
+    $page['name'] = $Document.Name
+    $page['basename'] = $Document.BaseName
+    $page['extname'] = $Document.Extension
+
+    return $page
+}
+
+function Invoke-HydeDocumentLiquid {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document,
+
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    if (-not $Document.RenderWithLiquid) {
+        return
+    }
+
+    $liquidContext = @{
+        page  = New-HydePageVariables -Document $Document
+        site  = $Context.Site
+        hyde  = @{
+            version     = $Context.Version
+            environment = $Context.Environment
+        }
+    }
+
+    $Document.RawContent = Invoke-LiquidTemplate -Template $Document.RawContent -Context $liquidContext -Dialect 'JekyllLiquid'
+}
+
+function Invoke-HydeLayout {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document,
+
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    if (-not $Document.FrontMatter.ContainsKey('layout')) {
+        return
+    }
+
+    $layoutName = [string]$Document.FrontMatter.layout
+    if ([string]::IsNullOrWhiteSpace($layoutName) -or $layoutName -in @('none', 'null')) {
+        return
+    }
+
+    $layoutPath = Resolve-HydeLayoutPath -LayoutName $layoutName -Context $Context
+    $layoutDocument = [HydeDocument]::new('Layout', $layoutPath, [System.IO.Path]::GetRelativePath($Context.SourcePath, $layoutPath))
+    Read-HydeFrontMatter -Document $layoutDocument
+
+    if ($layoutDocument.FrontMatter.ContainsKey('layout')) {
+        $parentLayout = [string]$layoutDocument.FrontMatter.layout
+        if (-not [string]::IsNullOrWhiteSpace($parentLayout) -and $parentLayout -notin @('none', 'null')) {
+            throw "Layout inheritance is not supported yet for '$layoutPath'."
+        }
+    }
+
+    $liquidContext = @{
+        content = $Document.RenderedContent
+        page    = New-HydePageVariables -Document $Document
+        site    = $Context.Site
+        layout  = $layoutDocument.FrontMatter
+        hyde    = @{
+            version     = $Context.Version
+            environment = $Context.Environment
+        }
+    }
+
+    $Document.RenderedContent = Invoke-LiquidTemplate -Template $layoutDocument.RawContent -Context $liquidContext -Dialect 'JekyllLiquid'
+}
+
 function Read-HydeFrontMatter {
     [CmdletBinding()]
     param(
@@ -66,9 +220,13 @@ function Read-HydeFrontMatter {
         $Document.RawContent = $rawFileContent
     }
 
-    # Hyde honors the published flag early so later stages can skip output generation.
+    # Hyde honors front matter flags early so later stages can skip or alter rendering behavior.
     if ($Document.FrontMatter.ContainsKey('published')) {
-        $Document.Published = ConvertTo-HydePublishedState -InputObject $Document.FrontMatter.published
+        $Document.Published = ConvertTo-HydeBooleanFrontMatterValue -SettingName 'published' -InputObject $Document.FrontMatter.published -DefaultValue $true
+    }
+
+    if ($Document.FrontMatter.ContainsKey('render_with_liquid')) {
+        $Document.RenderWithLiquid = ConvertTo-HydeBooleanFrontMatterValue -SettingName 'render_with_liquid' -InputObject $Document.FrontMatter.render_with_liquid -DefaultValue $true
     }
 }
 
@@ -262,20 +420,22 @@ function Convert-HydeDocument {
         return
     }
 
+    # Liquid rendering happens against the document body before any markup conversion.
+    Invoke-HydeDocumentLiquid -Document $Document -Context $Context
+
     $markdownExtensions = Get-HydeMarkdownExtensions -Settings $Context.Settings
     if ($Document.Extension -in @('.htm', '.html')) {
         # HTML pages are currently copied through after front matter is stripped.
         $Document.RenderedContent = $Document.RawContent
-        return
-    }
-
-    if ($Document.Extension -in $markdownExtensions) {
+    } elseif ($Document.Extension -in $markdownExtensions) {
         # Markdown pages are converted into HTML before being written to disk.
         $Document.RenderedContent = Convert-HydeMarkdown -Markdown $Document.RawContent
-        return
+    } else {
+        throw "No renderer exists for '$($Document.SourcePath)'."
     }
 
-    throw "No renderer exists for '$($Document.SourcePath)'."
+    # Layout rendering happens after the page body itself has been converted.
+    Invoke-HydeLayout -Document $Document -Context $Context
 }
 
 function Resolve-HydeDocumentOutputPath {

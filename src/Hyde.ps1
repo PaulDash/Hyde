@@ -27,17 +27,19 @@ The current implementation supports:
 - loading YAML files from `_data`
 - parsing YAML front matter
 - rendering Markdown documents to HTML
+- rendering single-level layouts through the Liquid module
 - cleaning generated output and cache directories
 
 The current implementation does not yet support:
 - `New`
-- layouts
+- layout inheritance
 - posts
 - collections
 - permalinks
 
 We may never support:
 - plugins
+- syntax highlighting
 - new-theme command
 
 Due to the nature of PowerShell, there is no intention to support:
@@ -168,7 +170,7 @@ switch ($Command) {
 
     # consider "Includes" from _includes directory
 
-    # TODO: Add layouts and layout inheritance.
+    # TODO: Add layout inheritance.
     # TODO: Add posts, collections, and permalink handling.
 
     # read "Layout"

@@ -26,6 +26,7 @@ class HydeDocument : HydeContentItem {
     [string]$RawContent
     [string]$RenderedContent
     [bool]$Published
+    [bool]$RenderWithLiquid
 
     HydeDocument([string]$kind, [string]$sourcePath, [string]$relativePath) : base($kind, $sourcePath, $relativePath) {
         # Documents accumulate front matter, body content, and rendered output as the pipeline runs.
@@ -33,6 +34,7 @@ class HydeDocument : HydeContentItem {
         $this.RawContent = ''
         $this.RenderedContent = ''
         $this.Published = $true
+        $this.RenderWithLiquid = $true
     }
 }
 
