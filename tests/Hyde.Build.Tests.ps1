@@ -98,4 +98,83 @@ published: false
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'draft.html') | Should Be $false
         $draftDocument.Published | Should Be $false
     }
+
+    It 'reports invalid site configuration with context' {
+        $siteRoot = Join-Path -Path $TestDrive -ChildPath 'bad-config-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'bad-config-output'
+
+        [void](New-Item -Path $siteRoot -ItemType Directory -Force)
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+broken: [unterminated
+'@
+
+        $errorMessage = $null
+        try {
+            Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        } catch {
+            $errorMessage = $_.Exception.Message
+        }
+
+        $errorMessage | Should Not BeNullOrEmpty
+        $errorMessage | Should Match 'Build failed while initializing site context'
+        $errorMessage | Should Match 'Could not parse configuration file'
+    }
+
+    It 'reports invalid front matter with document context' {
+        $siteRoot = Join-Path -Path $TestDrive -ChildPath 'bad-front-matter-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'bad-front-matter-output'
+
+        [void](New-Item -Path $siteRoot -ItemType Directory -Force)
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'broken.md') -Encoding UTF8 -Value @'
+---
+title: [unterminated
+---
+# Broken
+'@
+
+        $errorMessage = $null
+        try {
+            Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        } catch {
+            $errorMessage = $_.Exception.Message
+        }
+
+        $errorMessage | Should Not BeNullOrEmpty
+        $errorMessage | Should Match 'Build failed while processing document'
+        $errorMessage | Should Match 'broken\.md'
+        $errorMessage | Should Match 'Could not parse front matter'
+    }
+
+    It 'reports invalid published values with document context' {
+        $siteRoot = Join-Path -Path $TestDrive -ChildPath 'bad-published-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'bad-published-output'
+
+        [void](New-Item -Path $siteRoot -ItemType Directory -Force)
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'broken.md') -Encoding UTF8 -Value @'
+---
+title: Broken
+published: maybe
+---
+# Broken
+'@
+
+        $errorMessage = $null
+        try {
+            Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        } catch {
+            $errorMessage = $_.Exception.Message
+        }
+
+        $errorMessage | Should Not BeNullOrEmpty
+        $errorMessage | Should Match 'Build failed while processing document'
+        $errorMessage | Should Match 'broken\.md'
+        $errorMessage | Should Match "Unsupported value for front matter setting 'published'"
+    }
 }

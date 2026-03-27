@@ -315,11 +315,15 @@ function Write-HydeDocument {
     $destinationPath = Join-Path -Path $Context.DestinationPath -ChildPath $Document.OutputRelativePath
     $destinationDirectory = Split-Path -Path $destinationPath -Parent
 
-    if (-not (Test-Path -LiteralPath $destinationDirectory -PathType Container)) {
-        [void](New-Item -Path $destinationDirectory -ItemType Directory -Force)
-    }
+    try {
+        if (-not (Test-Path -LiteralPath $destinationDirectory -PathType Container)) {
+            [void](New-Item -Path $destinationDirectory -ItemType Directory -Force)
+        }
 
-    Set-Content -LiteralPath $destinationPath -Value $Document.RenderedContent -Encoding UTF8
+        Set-Content -LiteralPath $destinationPath -Value $Document.RenderedContent -Encoding UTF8
+    } catch {
+        throw "Could not write rendered document to '$destinationPath'. $($_.Exception.Message)"
+    }
 }
 
 function Copy-HydeStaticFile {
@@ -336,9 +340,13 @@ function Copy-HydeStaticFile {
     $destinationPath = Join-Path -Path $Context.DestinationPath -ChildPath $StaticFile.OutputRelativePath
     $destinationDirectory = Split-Path -Path $destinationPath -Parent
 
-    if (-not (Test-Path -LiteralPath $destinationDirectory -PathType Container)) {
-        [void](New-Item -Path $destinationDirectory -ItemType Directory -Force)
-    }
+    try {
+        if (-not (Test-Path -LiteralPath $destinationDirectory -PathType Container)) {
+            [void](New-Item -Path $destinationDirectory -ItemType Directory -Force)
+        }
 
-    Copy-Item -LiteralPath $StaticFile.SourcePath -Destination $destinationPath -Force
+        Copy-Item -LiteralPath $StaticFile.SourcePath -Destination $destinationPath -Force
+    } catch {
+        throw "Could not copy static file to '$destinationPath'. $($_.Exception.Message)"
+    }
 }

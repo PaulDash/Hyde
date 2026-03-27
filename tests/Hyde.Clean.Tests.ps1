@@ -45,4 +45,24 @@ title: Test Site
 
         Test-Path -LiteralPath $destinationRoot | Should Be $false
     }
+
+    It 'refuses to remove a destination outside the source tree' {
+        $siteRoot = Join-Path -Path $TestDrive -ChildPath 'site'
+        $outsideRoot = Join-Path -Path $TestDrive -ChildPath 'outside'
+
+        [void](New-Item -Path $siteRoot -ItemType Directory -Force)
+        [void](New-Item -Path $outsideRoot -ItemType Directory -Force)
+        Set-Content -LiteralPath (Join-Path -Path $outsideRoot -ChildPath 'index.html') -Encoding UTF8 -Value '<h1>Hello</h1>'
+
+        $errorMessage = $null
+        try {
+            Invoke-HydeClean -Source $siteRoot -Destination '..\outside' -Environment development -ScriptPath $entryScriptPath | Out-Null
+        } catch {
+            $errorMessage = $_.Exception.Message
+        }
+
+        $errorMessage | Should Not BeNullOrEmpty
+        $errorMessage | Should Match 'Clean failed while removing destination folder'
+        $errorMessage | Should Match 'outside the site source'
+    }
 }

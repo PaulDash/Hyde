@@ -31,15 +31,23 @@ function Invoke-HydeClean {
         $contextParameters['Destination'] = $Destination
     }
 
-    $context = Initialize-HydeBuildContext @contextParameters
-    $targets = Get-HydeCleanTargets -Context $context
+    try {
+        $context = Initialize-HydeBuildContext @contextParameters
+        $targets = Get-HydeCleanTargets -Context $context
+    } catch {
+        throw "Clean failed while initializing site context. $($_.Exception.Message)"
+    }
 
     Write-Information "Running HYDE version $($context.Version)."
     Write-Verbose "Cleaning generated content for '$($context.SourcePath)'."
 
     # Clean each generated target independently so missing paths do not block the rest.
     foreach ($target in $targets) {
-        Remove-HydeGeneratedPath -Path $target.Path -SourcePath $context.SourcePath -Kind $target.Kind
+        try {
+            Remove-HydeGeneratedPath -Path $target.Path -SourcePath $context.SourcePath -Kind $target.Kind
+        } catch {
+            throw "Clean failed while removing $($target.Kind) '$($target.Path)'. $($_.Exception.Message)"
+        }
     }
 
     Write-Information "Cleaned generated output for '$($context.SourcePath)'."

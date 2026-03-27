@@ -132,34 +132,42 @@ function Get-HydeSourceItems {
     while ($pendingDirectories.Count -gt 0) {
         $directoryPath = [string]$pendingDirectories.Dequeue()
 
-        foreach ($directory in Get-ChildItem -LiteralPath $directoryPath -Directory) {
-            $relativeDirectoryPath = [System.IO.Path]::GetRelativePath($Context.SourcePath, $directory.FullName).Replace('\', '/')
-            if (Test-HydeItemExclusion -Item $directory -RelativePath $relativeDirectoryPath -ExcludedState $excludedState) {
-                continue
-            }
+        try {
+            foreach ($directory in Get-ChildItem -LiteralPath $directoryPath -Directory) {
+                $relativeDirectoryPath = [System.IO.Path]::GetRelativePath($Context.SourcePath, $directory.FullName).Replace('\', '/')
+                if (Test-HydeItemExclusion -Item $directory -RelativePath $relativeDirectoryPath -ExcludedState $excludedState) {
+                    continue
+                }
 
-            $pendingDirectories.Enqueue($directory.FullName)
+                $pendingDirectories.Enqueue($directory.FullName)
+            }
+        } catch {
+            throw "Could not enumerate directories in '$directoryPath'. $($_.Exception.Message)"
         }
 
-        foreach ($file in Get-ChildItem -LiteralPath $directoryPath -File) {
-            $relativeFilePath = [System.IO.Path]::GetRelativePath($Context.SourcePath, $file.FullName).Replace('\', '/')
-            if (Test-HydeItemExclusion -Item $file -RelativePath $relativeFilePath -ExcludedState $excludedState) {
-                continue
-            }
+        try {
+            foreach ($file in Get-ChildItem -LiteralPath $directoryPath -File) {
+                $relativeFilePath = [System.IO.Path]::GetRelativePath($Context.SourcePath, $file.FullName).Replace('\', '/')
+                if (Test-HydeItemExclusion -Item $file -RelativePath $relativeFilePath -ExcludedState $excludedState) {
+                    continue
+                }
 
-            if ($contentExtensions -contains $file.Extension.ToLowerInvariant()) {
-                # Documents move into the rendering pipeline and can later gain front matter and output paths.
-                $document = [HydeDocument]::new('Page', $file.FullName, $relativeFilePath)
-                $document.OutputRelativePath = Resolve-HydeDocumentOutputPath -Document $document -Settings $Context.Settings
-                $document.Url = '/' + $document.OutputRelativePath.Replace('\', '/')
-                $Context.AddDocument($document)
-            } else {
-                # Everything else is preserved as a static file.
-                $staticFile = [HydeStaticFile]::new($file.FullName, $relativeFilePath)
-                $staticFile.OutputRelativePath = $relativeFilePath
-                $staticFile.Url = '/' + $relativeFilePath.Replace('\', '/')
-                $Context.AddStaticFile($staticFile)
+                if ($contentExtensions -contains $file.Extension.ToLowerInvariant()) {
+                    # Documents move into the rendering pipeline and can later gain front matter and output paths.
+                    $document = [HydeDocument]::new('Page', $file.FullName, $relativeFilePath)
+                    $document.OutputRelativePath = Resolve-HydeDocumentOutputPath -Document $document -Settings $Context.Settings
+                    $document.Url = '/' + $document.OutputRelativePath.Replace('\', '/')
+                    $Context.AddDocument($document)
+                } else {
+                    # Everything else is preserved as a static file.
+                    $staticFile = [HydeStaticFile]::new($file.FullName, $relativeFilePath)
+                    $staticFile.OutputRelativePath = $relativeFilePath
+                    $staticFile.Url = '/' + $relativeFilePath.Replace('\', '/')
+                    $Context.AddStaticFile($staticFile)
+                }
             }
+        } catch {
+            throw "Could not enumerate files in '$directoryPath'. $($_.Exception.Message)"
         }
     }
 }
