@@ -2,6 +2,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 Import-Module powershell-yaml -ErrorAction Stop
+$moduleRoot = Split-Path -Parent $PSCommandPath
+$script:HydeModuleRoot = $moduleRoot
+$script:HydeManifestPath = Join-Path -Path $moduleRoot -ChildPath 'Hyde.psd1'
+$script:HydeVersion = (Test-ModuleManifest -Path $script:HydeManifestPath).Version.ToString()
+
 $liquidModulePath = Join-Path -Path (Split-Path -Parent $PSCommandPath) -ChildPath 'Liquid\Hyde.Liquid.psm1'
 $loadedLiquidModule = Get-Module |
     Where-Object {
@@ -12,8 +17,6 @@ $loadedLiquidModule = Get-Module |
 if (-not $loadedLiquidModule) {
     Import-Module $liquidModulePath
 }
-
-$moduleRoot = Split-Path -Parent $PSCommandPath
 
 # Load PowerShell classes first so the remaining scripts can reference them.
 . (Join-Path -Path $moduleRoot -ChildPath 'Private\HydeTypes.ps1')
@@ -29,4 +32,4 @@ Get-ChildItem -Path (Join-Path -Path $moduleRoot -ChildPath 'Public') -Filter '*
     Sort-Object FullName |
     ForEach-Object { . $_.FullName }
 
-Export-ModuleMember -Function Publish-StaticSite, Clear-StaticSite, Test-StaticSite
+Export-ModuleMember -Function Hyde, Publish-StaticSite, Clear-StaticSite, Test-StaticSite

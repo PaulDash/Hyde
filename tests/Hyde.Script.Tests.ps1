@@ -3,6 +3,7 @@ Describe 'Hyde script command options' {
         # Use the script entry point so these tests exercise the command wrapper rather than the module functions.
         $projectRoot = Split-Path -Parent $PSScriptRoot
         $entryScriptPath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.ps1'
+        $moduleManifestPath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.psd1'
 
         function New-TestSiteDirectory {
             param(
@@ -33,6 +34,29 @@ title: Home
         {
             & $entryScriptPath Build -Source $siteRoot -Destination $destinationRoot -Environment production -Quiet
         } | Should -Not -Throw
+    }
+
+    It 'allows Hyde Build to be called from the imported module' {
+        $siteRoot = New-TestSiteDirectory -Name 'module-build-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'module-build-output'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+# Hello
+'@
+
+        Import-Module $moduleManifestPath
+
+        {
+            Hyde Build -Source $siteRoot -Destination $destinationRoot -Environment production -Quiet
+        } | Should -Not -Throw
+
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') | Should -BeTrue
     }
 
     It 'passes Verbose through to the called command' {

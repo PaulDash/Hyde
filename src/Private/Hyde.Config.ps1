@@ -97,11 +97,12 @@ function Initialize-HydeBuildContext {
         [Parameter(Mandatory = $true)]
         [string]$Environment,
         [Parameter(Mandatory = $true)]
-        [string]$ScriptPath
+        [string]$ModuleRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$Version
     )
 
-    $moduleRoot = Split-Path -Parent $ScriptPath
-    $defaultConfigPath = Join-Path -Path $moduleRoot -ChildPath 'globalConfig.yaml'
+    $defaultConfigPath = Join-Path -Path $ModuleRoot -ChildPath 'globalConfig.yaml'
     $siteConfigName = '_config.yml'
 
     # Start with Hyde defaults, then layer site config and command-line overrides on top.
@@ -134,7 +135,7 @@ function Initialize-HydeBuildContext {
 
     # Build up the runtime context that the rest of the pipeline will mutate.
     $context = [HydeBuildContext]::new()
-    $context.Version = (Get-PSScriptFileInfo -Path $ScriptPath).ScriptMetadataComment.Version.Version.ToString()
+    $context.Version = $Version
     $context.Environment = $Environment
     $context.Settings = $settings
     $context.Site = Copy-HydeValue -InputObject $settings

@@ -2,7 +2,7 @@
 #Requires -Modules powershell-yaml
 
 <#PSScriptInfo
-.VERSION 0.0.2.1
+.VERSION 0.2.0
 .GUID abebebd5-6f8f-4d36-b3c1-e6313b9eac6f
 .AUTHOR Paul Wojcicki-Jarocki
 .COPYRIGHT © 2026 Paul Dash
@@ -10,7 +10,7 @@
 .PROJECTURI https://github.com/PaulDash/Hyde
 .ICONURI https://github.com/PaulDash/Hyde/raw/main/res/Icon_32x32.png
 .TAGS PowerShell static-site-generator jekyll markdown yaml
-.RELEASENOTES Build, clean, and doctor commands now use module-based internals, typed content items, YAML front matter parsing, markdown page rendering, static file copying, generated-file cleanup, and site validation.
+.RELEASENOTES Added manifest-based module entry, exported Hyde command, collection permalinks, and module-first command routing while keeping Hyde.ps1 as a thin wrapper.
 #>
 
 <#
@@ -30,6 +30,8 @@ The current implementation supports:
 - rendering Markdown documents to HTML
 - rendering single-level layouts through the Liquid module
 - rendering plugin-provided Liquid tags and filters
+- collections
+- permalinks
 - cleaning generated output and cache directories
 - basic doctor-style site validation
 
@@ -37,8 +39,6 @@ The current implementation does not yet support:
 - `New`
 - layout inheritance
 - posts
-- collections
-- permalinks
 
 We may never support:
 - all plugins
@@ -53,13 +53,11 @@ Due to the nature of PowerShell, there is no intention to support:
 Chooses which top-level Hyde action to run.
 
 Available options are:
-- `Build`
 - `New`
+- `Build`
 - `Clean`
 - `Doctor`
 - `Help`
-
-At this stage, `Build`, `Clean`, `Doctor`, and `Help` are implemented.
 
 .PARAMETER Source
 Overrides the configured source directory for the site.
@@ -106,69 +104,23 @@ Shows command help for the script.
 
 [CmdletBinding()]
 param(
-    # Chooses main action to run during this invocation.
+    # Keep the wrapper permissive and let the module command perform command-specific validation.
     [Parameter(Position = 0)]
-    [ValidateSet('New', 'Build', 'Clean', 'Doctor', 'Help')]
-    [string]$Command
+    [string]$Command,
+    [string]$Source,
+    [string]$Destination,
+    [string]$Environment,
+    [switch]$Quiet
 )
-
-dynamicparam {
-    $dynamicParameters = [System.Management.Automation.RuntimeDefinedParameterDictionary]::new()
-
-    function New-HydeDynamicParameter {
-        param(
-            [Parameter(Mandatory = $true)]
-            [string]$Name,
-
-            [Parameter(Mandatory = $true)]
-            [Type]$Type,
-
-            [string[]]$Aliases = @()
-        )
-
-        $attributeCollection = [System.Collections.ObjectModel.Collection[System.Attribute]]::new()
-        $parameterAttribute = [System.Management.Automation.ParameterAttribute]::new()
-        [void]$attributeCollection.Add($parameterAttribute)
-
-        if ($Aliases.Count -gt 0) {
-            $aliasAttribute = [System.Management.Automation.AliasAttribute]::new($Aliases)
-            [void]$attributeCollection.Add($aliasAttribute)
-        }
-
-        return [System.Management.Automation.RuntimeDefinedParameter]::new($Name, $Type, $attributeCollection)
-    }
-
-    switch ($Command) {
-        'Build' {
-            $dynamicParameters.Add('Source', (New-HydeDynamicParameter -Name 'Source' -Type ([string])))
-            $dynamicParameters.Add('Destination', (New-HydeDynamicParameter -Name 'Destination' -Type ([string])))
-            $dynamicParameters.Add('Environment', (New-HydeDynamicParameter -Name 'Environment' -Type ([string]) -Aliases @('JEKYLL_ENV', 'HYDE_ENV')))
-            $dynamicParameters.Add('Quiet', (New-HydeDynamicParameter -Name 'Quiet' -Type ([switch])))
-        }
-        'Clean' {
-            $dynamicParameters.Add('Destination', (New-HydeDynamicParameter -Name 'Destination' -Type ([string])))
-            $dynamicParameters.Add('Quiet', (New-HydeDynamicParameter -Name 'Quiet' -Type ([switch])))
-        }
-        'Doctor' {
-            $dynamicParameters.Add('Source', (New-HydeDynamicParameter -Name 'Source' -Type ([string])))
-            $dynamicParameters.Add('Quiet', (New-HydeDynamicParameter -Name 'Quiet' -Type ([switch])))
-        }
-    }
-
-    return $dynamicParameters
-}
 
 begin {
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Load the module wrapper so the script can delegate to the public commands.
-$modulePath = Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.psm1'
-$liquidModulePath = Join-Path -Path $PSScriptRoot -ChildPath 'Liquid\Hyde.Liquid.psm1'
+# Load the module manifest so the module can act as the real entry point.
+$modulePath = Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.psd1'
 
 # Reuse an existing Hyde module instance in the current session.
-# PowerShell classes are not unload-safe, so removing and re-importing Hyde can create
-# duplicate in-memory types such as HydeDocument that no longer bind to each other.
 $loadedHydeModule = Get-Module |
     Where-Object {
         $_.Path -and $_.Path.Equals($modulePath, [System.StringComparison]::OrdinalIgnoreCase)
@@ -179,74 +131,32 @@ if (-not $loadedHydeModule) {
     Import-Module $modulePath
 }
 
-if ($PSBoundParameters.ContainsKey('Quiet') -and $VerbosePreference -eq 'Continue') {
-    throw "It doesn't make sense to ask for verbose output AND to keep quiet!"
+# Forward the parsed wrapper arguments to the module command so the module remains the primary surface area.
+$commandParameters = @{}
+if ($PSBoundParameters.ContainsKey('Command')) {
+    $commandParameters['Command'] = $Command
 }
 
-# Route the top-level command to the matching public entry point.
-switch ($Command) {
-    'New' {
-        throw 'TODO: Implement the New command to scaffold a site.'
-    }
-    'Build' {
-        $commandParameters = @{
-            Environment = if ($PSBoundParameters.ContainsKey('Environment')) { [string]$PSBoundParameters['Environment'] } else { 'development' }
-            Quiet       = [bool]($PSBoundParameters.ContainsKey('Quiet') -and $PSBoundParameters['Quiet'])
-            ScriptPath  = $PSCommandPath
-        }
+if ($PSBoundParameters.ContainsKey('Source')) {
+    $commandParameters['Source'] = $Source
+}
 
-        if ($VerbosePreference -eq 'Continue') {
-            $commandParameters['Verbose'] = $true
-        }
+if ($PSBoundParameters.ContainsKey('Destination')) {
+    $commandParameters['Destination'] = $Destination
+}
 
-        if ($PSBoundParameters.ContainsKey('Source')) {
-            $commandParameters['Source'] = [string]$PSBoundParameters['Source']
-        }
+if ($PSBoundParameters.ContainsKey('Environment')) {
+    $commandParameters['Environment'] = $Environment
+}
 
-        if ($PSBoundParameters.ContainsKey('Destination')) {
-            $commandParameters['Destination'] = [string]$PSBoundParameters['Destination']
-        }
+if ($PSBoundParameters.ContainsKey('Quiet')) {
+    $commandParameters['Quiet'] = $Quiet
+}
 
-        Publish-StaticSite @commandParameters
-    }
-    'Clean' {
-        $commandParameters = @{
-            Quiet      = [bool]($PSBoundParameters.ContainsKey('Quiet') -and $PSBoundParameters['Quiet'])
-            ScriptPath = $PSCommandPath
-        }
-
-        if ($VerbosePreference -eq 'Continue') {
-            $commandParameters['Verbose'] = $true
-        }
-
-        if ($PSBoundParameters.ContainsKey('Destination')) {
-            $commandParameters['Destination'] = [string]$PSBoundParameters['Destination']
-        }
-
-        Clear-StaticSite @commandParameters
-    }
-    'Doctor' {
-        $commandParameters = @{
-            Quiet      = [bool]($PSBoundParameters.ContainsKey('Quiet') -and $PSBoundParameters['Quiet'])
-            ScriptPath = $PSCommandPath
-        }
-
-        if ($VerbosePreference -eq 'Continue') {
-            $commandParameters['Verbose'] = $true
-        }
-
-        if ($PSBoundParameters.ContainsKey('Source')) {
-            $commandParameters['Source'] = [string]$PSBoundParameters['Source']
-        }
-
-        Test-StaticSite @commandParameters
-    }
-    'Help' {
-        Get-Help -Name $PSCommandPath
-    }
-    default {
-        throw "Choose one of: Build, New, Clean, Doctor, Help. Use 'Help' to see script documentation."
-    }
+if ($VerbosePreference -eq 'Continue') {
+    Hyde @commandParameters -Verbose
+} else {
+    Hyde @commandParameters
 }
 }
 

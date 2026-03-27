@@ -6,8 +6,9 @@ function Publish-StaticSite {
         [Parameter(Mandatory = $true)]
         [string]$Environment,
         [switch]$Quiet,
-        [Parameter(Mandatory = $true)]
-        [string]$ScriptPath
+        [string]$ScriptPath,
+        [string]$ModuleRoot = $script:HydeModuleRoot,
+        [string]$Version = $script:HydeVersion
     )
 
     Set-StrictMode -Version Latest
@@ -19,9 +20,15 @@ function Publish-StaticSite {
     }
 
     # Pass only the caller-provided overrides into the shared context initializer.
+    if ($PSBoundParameters.ContainsKey('ScriptPath')) {
+        # Keep the old wrapper/test contract working while the module becomes the primary entry point.
+        $ModuleRoot = Split-Path -Parent $ScriptPath
+    }
+
     $contextParameters = @{
         Environment = $Environment
-        ScriptPath  = $ScriptPath
+        ModuleRoot  = $ModuleRoot
+        Version     = $Version
     }
 
     if ($PSBoundParameters.ContainsKey('Source')) {

@@ -3,8 +3,9 @@ function Clear-StaticSite {
     param(
         [string]$Destination,
         [switch]$Quiet,
-        [Parameter(Mandatory = $true)]
-        [string]$ScriptPath
+        [string]$ScriptPath,
+        [string]$ModuleRoot = $script:HydeModuleRoot,
+        [string]$Version = $script:HydeVersion
     )
 
     Set-StrictMode -Version Latest
@@ -16,9 +17,15 @@ function Clear-StaticSite {
     }
 
     # Reuse the normal context initialization so clean honors the current site's config and any destination override.
+    if ($PSBoundParameters.ContainsKey('ScriptPath')) {
+        # Keep the old wrapper/test contract working while the module becomes the primary entry point.
+        $ModuleRoot = Split-Path -Parent $ScriptPath
+    }
+
     $contextParameters = @{
         Environment = 'development'
-        ScriptPath  = $ScriptPath
+        ModuleRoot  = $ModuleRoot
+        Version     = $Version
     }
 
     if ($PSBoundParameters.ContainsKey('Destination')) {

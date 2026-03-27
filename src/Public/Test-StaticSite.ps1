@@ -5,8 +5,9 @@ function Test-StaticSite {
         [string]$Destination,
         [string]$Environment = 'development',
         [switch]$Quiet,
-        [Parameter(Mandatory = $true)]
-        [string]$ScriptPath
+        [string]$ScriptPath,
+        [string]$ModuleRoot = $script:HydeModuleRoot,
+        [string]$Version = $script:HydeVersion
     )
 
     Set-StrictMode -Version Latest
@@ -17,9 +18,15 @@ function Test-StaticSite {
         $InformationPreference = 'Continue'
     }
 
+    if ($PSBoundParameters.ContainsKey('ScriptPath')) {
+        # Keep the old wrapper/test contract working while the module becomes the primary entry point.
+        $ModuleRoot = Split-Path -Parent $ScriptPath
+    }
+
     $contextParameters = @{
         Environment = $Environment
-        ScriptPath  = $ScriptPath
+        ModuleRoot  = $ModuleRoot
+        Version     = $Version
     }
 
     if ($PSBoundParameters.ContainsKey('Source')) {
