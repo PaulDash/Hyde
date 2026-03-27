@@ -1,6 +1,73 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+function New-LiquidExtensionRegistry {
+    [CmdletBinding()]
+    param()
+
+    # Each dialect keeps separate custom tags and filters so extensions can stay dialect-specific.
+    return @{
+        Dialects = @{
+            Liquid = @{
+                Tags    = @{}
+                Filters = @{}
+            }
+            JekyllLiquid = @{
+                Tags    = @{}
+                Filters = @{}
+            }
+        }
+    }
+}
+
+function Register-LiquidTag {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Registry,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Dialect,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$Handler
+    )
+
+    if (-not $Registry.Dialects.ContainsKey($Dialect)) {
+        throw "Liquid dialect '$Dialect' is not supported yet."
+    }
+
+    # Custom tags plug into the parser as single inline tags such as {% seo %}.
+    $Registry.Dialects[$Dialect].Tags[$Name.ToLowerInvariant()] = $Handler
+}
+
+function Register-LiquidFilter {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Registry,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Dialect,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+
+        [Parameter(Mandatory = $true)]
+        [scriptblock]$Handler
+    )
+
+    if (-not $Registry.Dialects.ContainsKey($Dialect)) {
+        throw "Liquid dialect '$Dialect' is not supported yet."
+    }
+
+    # Custom filters join the normal filter pipeline and can be targeted to one dialect.
+    $Registry.Dialects[$Dialect].Filters[$Name.ToLowerInvariant()] = $Handler
+}
+
 function Split-LiquidDelimitedString {
     [CmdletBinding()]
     param(
@@ -205,7 +272,9 @@ function Parse-LiquidNodes {
         [Parameter(Mandatory = $true)]
         [ref]$Index,
 
-        [string[]]$EndTags = @()
+        [string[]]$EndTags = @(),
+
+        [hashtable]$Registry
     )
 
     # Convert the flat token stream into a simple AST with nested control-flow nodes.
@@ -257,7 +326,7 @@ function Parse-LiquidNodes {
 
                 $captureName = $matches[1]
                 $Index.Value++
-                $bodyNodes = Parse-LiquidNodes -Tokens $Tokens -Index $Index -EndTags @('endcapture')
+                $bodyNodes = Parse-LiquidNodes -Tokens $Tokens -Index $Index -EndTags @('endcapture') -Registry $Registry
                 if ($Index.Value -ge $Tokens.Count) {
                     throw "Liquid capture tag '$captureName' is missing endcapture."
                 }
@@ -276,7 +345,7 @@ function Parse-LiquidNodes {
                 $Index.Value++
 
                 while ($true) {
-                    $branchNodes = Parse-LiquidNodes -Tokens $Tokens -Index $Index -EndTags @('elsif', 'else', 'endif')
+                    $branchNodes = Parse-LiquidNodes -Tokens $Tokens -Index $Index -EndTags @('elsif', 'else', 'endif') -Registry $Registry
                     [void]$branches.Add([pscustomobject]@{
                         Condition = $condition
                         Nodes     = $branchNodes
@@ -295,7 +364,7 @@ function Parse-LiquidNodes {
                         }
                         'else' {
                             $Index.Value++
-                            $elseNodes = Parse-LiquidNodes -Tokens $Tokens -Index $Index -EndTags @('endif')
+                            $elseNodes = Parse-LiquidNodes -Tokens $Tokens -Index $Index -EndTags @('endif') -Registry $Registry
                             if ($Index.Value -ge $Tokens.Count) {
                                 throw "Liquid if tag is missing endif."
                             }
@@ -329,7 +398,7 @@ function Parse-LiquidNodes {
                 # Parse for blocks with an optional else branch for empty collections.
                 $forMarkup = Parse-LiquidForMarkup -Markup $tagParts.Markup
                 $Index.Value++
-                $bodyNodes = Parse-LiquidNodes -Tokens $Tokens -Index $Index -EndTags @('else', 'endfor')
+                $bodyNodes = Parse-LiquidNodes -Tokens $Tokens -Index $Index -EndTags @('else', 'endfor') -Registry $Registry
                 if ($Index.Value -ge $Tokens.Count) {
                     throw "Liquid for tag is missing endfor."
                 }
@@ -338,7 +407,7 @@ function Parse-LiquidNodes {
                 $elseNodes = @()
                 if ($nextTag.Name -eq 'else') {
                     $Index.Value++
-                    $elseNodes = Parse-LiquidNodes -Tokens $Tokens -Index $Index -EndTags @('endfor')
+                    $elseNodes = Parse-LiquidNodes -Tokens $Tokens -Index $Index -EndTags @('endfor') -Registry $Registry
                     if ($Index.Value -ge $Tokens.Count) {
                         throw "Liquid for tag is missing endfor."
                     }
@@ -357,7 +426,7 @@ function Parse-LiquidNodes {
                 # Unless behaves like an inverted if with an optional else branch.
                 $condition = $tagParts.Markup
                 $Index.Value++
-                $bodyNodes = Parse-LiquidNodes -Tokens $Tokens -Index $Index -EndTags @('else', 'endunless')
+                $bodyNodes = Parse-LiquidNodes -Tokens $Tokens -Index $Index -EndTags @('else', 'endunless') -Registry $Registry
                 if ($Index.Value -ge $Tokens.Count) {
                     throw "Liquid unless tag is missing endunless."
                 }
@@ -366,7 +435,7 @@ function Parse-LiquidNodes {
                 $elseNodes = @()
                 if ($nextTag.Name -eq 'else') {
                     $Index.Value++
-                    $elseNodes = Parse-LiquidNodes -Tokens $Tokens -Index $Index -EndTags @('endunless')
+                    $elseNodes = Parse-LiquidNodes -Tokens $Tokens -Index $Index -EndTags @('endunless') -Registry $Registry
                     if ($Index.Value -ge $Tokens.Count) {
                         throw "Liquid unless tag is missing endunless."
                     }
@@ -441,6 +510,32 @@ function Parse-LiquidNodes {
                 $Index.Value++
             }
             default {
+                $customTagHandler = $null
+                if ($null -ne $Registry -and
+                    $Registry.ContainsKey('Dialects') -and
+                    $Registry.Dialects.ContainsKey('Liquid') -and
+                    $Registry.Dialects['Liquid'].Tags.ContainsKey($tagParts.Name.ToLowerInvariant())) {
+                    $customTagHandler = $Registry.Dialects['Liquid'].Tags[$tagParts.Name.ToLowerInvariant()]
+                }
+
+                if ($null -eq $customTagHandler -and
+                    $null -ne $Registry -and
+                    $Registry.ContainsKey('Dialects') -and
+                    $Registry.Dialects.ContainsKey('JekyllLiquid') -and
+                    $Registry.Dialects['JekyllLiquid'].Tags.ContainsKey($tagParts.Name.ToLowerInvariant())) {
+                    $customTagHandler = $Registry.Dialects['JekyllLiquid'].Tags[$tagParts.Name.ToLowerInvariant()]
+                }
+
+                if ($null -ne $customTagHandler) {
+                    [void]$nodes.Add([pscustomobject]@{
+                        Type    = 'CustomTag'
+                        Name    = $tagParts.Name
+                        Markup  = $tagParts.Markup
+                    })
+                    $Index.Value++
+                    continue
+                }
+
                 throw "Liquid tag '$($tagParts.Name)' is not supported."
             }
         }
@@ -454,13 +549,15 @@ function Parse-LiquidTemplate {
     param(
         [Parameter(Mandatory = $true)]
         [AllowEmptyString()]
-        [string]$Template
+        [string]$Template,
+
+        [hashtable]$Registry
     )
 
     # Parsing starts by tokenizing the template, then building nested nodes from those tokens.
     $tokens = ConvertTo-LiquidTokens -Template $Template
     $index = 0
-    return Parse-LiquidNodes -Tokens $tokens -Index ([ref]$index)
+    return Parse-LiquidNodes -Tokens $tokens -Index ([ref]$index) -Registry $Registry
 }
 
 function Get-LiquidRuntimeValue {
@@ -610,6 +707,93 @@ function Test-LiquidTruthy {
     return (-not ($null -eq $Value -or $Value -eq $false))
 }
 
+function Get-LiquidDialectExtensions {
+    [CmdletBinding()]
+    param(
+        [hashtable]$Registry,
+        [Parameter(Mandatory = $true)]
+        [string]$Dialect
+    )
+
+    if ($null -eq $Registry -or -not $Registry.ContainsKey('Dialects')) {
+        return @()
+    }
+
+    $extensions = New-Object System.Collections.ArrayList
+    if ($Registry.Dialects.ContainsKey('Liquid')) {
+        [void]$extensions.Add($Registry.Dialects['Liquid'])
+    }
+
+    if (($Dialect -ne 'Liquid') -and $Registry.Dialects.ContainsKey($Dialect)) {
+        [void]$extensions.Add($Registry.Dialects[$Dialect])
+    }
+
+    return @($extensions.ToArray())
+}
+
+function Get-LiquidCustomFilter {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+
+        [hashtable]$Runtime
+    )
+
+    foreach ($dialectExtensions in Get-LiquidDialectExtensions -Registry $Runtime.Registry -Dialect $Runtime.Dialect) {
+        if ($dialectExtensions.Filters.ContainsKey($Name.ToLowerInvariant())) {
+            return $dialectExtensions.Filters[$Name.ToLowerInvariant()]
+        }
+    }
+
+    return $null
+}
+
+function Get-LiquidCustomTag {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Name,
+
+        [hashtable]$Runtime
+    )
+
+    foreach ($dialectExtensions in Get-LiquidDialectExtensions -Registry $Runtime.Registry -Dialect $Runtime.Dialect) {
+        if ($dialectExtensions.Tags.ContainsKey($Name.ToLowerInvariant())) {
+            return $dialectExtensions.Tags[$Name.ToLowerInvariant()]
+        }
+    }
+
+    return $null
+}
+
+function New-LiquidExtensionInvocation {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Runtime
+    )
+
+    # Extension handlers get a small helper surface instead of reaching into module internals directly.
+    return @{
+        Runtime = $Runtime
+        Helpers = @{
+            ResolveExpression = {
+                param([string]$Expression)
+                Resolve-LiquidExpression -Expression $Expression -Runtime $Runtime
+            }
+            ResolveVariable = {
+                param([string]$Path)
+                Resolve-LiquidVariable -Runtime $Runtime -Path $Path
+            }
+            ConvertToString = {
+                param($Value)
+                ConvertTo-LiquidOutputString -Value $Value
+            }
+        }
+    }
+}
+
 function Invoke-LiquidFilter {
     [CmdletBinding()]
     param(
@@ -625,6 +809,15 @@ function Invoke-LiquidFilter {
 
     # Start with a small filter surface that is useful in layouts and easy to extend later.
     $dialect = if ($null -ne $Runtime -and $Runtime.ContainsKey('Dialect')) { $Runtime.Dialect } else { 'Liquid' }
+    $customFilter = if ($null -ne $Runtime) { Get-LiquidCustomFilter -Name $Name -Runtime $Runtime } else { $null }
+    if ($null -ne $customFilter) {
+        $invocation = New-LiquidExtensionInvocation -Runtime $Runtime
+        $invocation['Name'] = $Name
+        $invocation['InputObject'] = $InputObject
+        $invocation['Arguments'] = $Arguments
+        return (& $customFilter $invocation)
+    }
+
     switch ($Name.ToLowerInvariant()) {
         'append' { return (ConvertTo-LiquidOutputString -Value $InputObject) + (ConvertTo-LiquidOutputString -Value $Arguments[0]) }
         'prepend' { return (ConvertTo-LiquidOutputString -Value $Arguments[0]) + (ConvertTo-LiquidOutputString -Value $InputObject) }
@@ -755,8 +948,12 @@ function Resolve-LiquidExpression {
         $arguments = @()
 
         if ($filterParts.Count -gt 1) {
+            $argumentExpressions = @(
+                Split-LiquidDelimitedString -InputText ([string]$filterParts[1]) -Delimiter ',' |
+                    ForEach-Object { [string]$_ }
+            )
             $arguments = @(
-                Split-LiquidDelimitedString -InputText $filterParts[1] -Delimiter ',' |
+                $argumentExpressions |
                     ForEach-Object { ConvertTo-LiquidLiteralValue -Expression $_ -Runtime $Runtime }
             )
         }
@@ -889,7 +1086,9 @@ function New-LiquidRuntime {
 
         [string]$IncludeRoot,
 
-        [string[]]$IncludeStack = @()
+        [string[]]$IncludeStack = @(),
+
+        [hashtable]$Registry
     )
 
     # The runtime keeps a scope stack so assign/capture can add temporary variables during rendering.
@@ -901,6 +1100,7 @@ function New-LiquidRuntime {
         Dialect      = $Dialect
         IncludeRoot  = $IncludeRoot
         IncludeStack = @($IncludeStack)
+        Registry     = if ($null -ne $Registry) { $Registry } else { New-LiquidExtensionRegistry }
     }
 }
 
@@ -1013,7 +1213,7 @@ function Invoke-LiquidInclude {
 
     $includeContext['include'] = $includeVariables
     $template = Get-Content -LiteralPath $includePath -Raw
-    return Invoke-LiquidTemplate -Template $template -Context $includeContext -Dialect $Runtime.Dialect -IncludeRoot $Runtime.IncludeRoot -IncludeStack ($Runtime.IncludeStack + $includePath)
+    return Invoke-LiquidTemplate -Template $template -Context $includeContext -Dialect $Runtime.Dialect -IncludeRoot $Runtime.IncludeRoot -IncludeStack ($Runtime.IncludeStack + $includePath) -Registry $Runtime.Registry
 }
 
 function ConvertTo-LiquidEnumerable {
@@ -1130,6 +1330,17 @@ function ConvertFrom-LiquidNodes {
             'Include' {
                 [void]$builder.Append((Invoke-LiquidInclude -Node $node -Runtime $Runtime))
             }
+            'CustomTag' {
+                $customTag = Get-LiquidCustomTag -Name $node.Name -Runtime $Runtime
+                if ($null -eq $customTag) {
+                    throw "Liquid tag '$($node.Name)' is not supported in the '$($Runtime.Dialect)' dialect."
+                }
+
+                $invocation = New-LiquidExtensionInvocation -Runtime $Runtime
+                $invocation['Name'] = $node.Name
+                $invocation['Markup'] = $node.Markup
+                [void]$builder.Append((ConvertTo-LiquidOutputString -Value (& $customTag $invocation)))
+            }
             default {
                 throw "Liquid node type '$($node.Type)' is not supported."
             }
@@ -1153,7 +1364,9 @@ function Invoke-LiquidTemplate {
 
         [string]$IncludeRoot,
 
-        [string[]]$IncludeStack = @()
+        [string[]]$IncludeStack = @(),
+
+        [hashtable]$Registry = (New-LiquidExtensionRegistry)
     )
 
     # Dialect is the forward-looking switch point for future Liquid family variants.
@@ -1165,9 +1378,9 @@ function Invoke-LiquidTemplate {
         }
     }
 
-    $runtime = New-LiquidRuntime -Context $Context -Dialect $Dialect -IncludeRoot $IncludeRoot -IncludeStack $IncludeStack
-    $nodes = Parse-LiquidTemplate -Template $Template
+    $runtime = New-LiquidRuntime -Context $Context -Dialect $Dialect -IncludeRoot $IncludeRoot -IncludeStack $IncludeStack -Registry $Registry
+    $nodes = Parse-LiquidTemplate -Template $Template -Registry $Registry
     return ConvertFrom-LiquidNodes -Nodes $nodes -Runtime $runtime
 }
 
-Export-ModuleMember -Function Invoke-LiquidTemplate
+Export-ModuleMember -Function Invoke-LiquidTemplate, New-LiquidExtensionRegistry, Register-LiquidTag, Register-LiquidFilter

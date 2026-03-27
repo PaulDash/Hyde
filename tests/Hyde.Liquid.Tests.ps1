@@ -105,6 +105,35 @@ Describe 'Hyde Liquid module' {
         $result | Should -Be '/my-baseurl/assets/style.css|https://example.com/my-baseurl/assets/style.css|{"title":"Home"}'
     }
 
+    It 'supports custom tags and filters through a registry' {
+        $registry = New-LiquidExtensionRegistry
+        Register-LiquidTag -Registry $registry -Dialect 'JekyllLiquid' -Name 'seo' -Handler {
+            param($Invocation)
+
+            $site = & $Invocation.Helpers.ResolveVariable 'site'
+            $page = & $Invocation.Helpers.ResolveVariable 'page'
+            return "<title>$($page.title) | $($site.title)</title>"
+        }
+        Register-LiquidFilter -Registry $registry -Dialect 'JekyllLiquid' -Name 'surround' -Handler {
+            param($Invocation)
+
+            return "$($Invocation.Arguments[0])$($Invocation.InputObject)$($Invocation.Arguments[0])"
+        }
+
+        $template = '{% seo %} {{ page.title | surround: "[" }}'
+        $context = @{
+            site = @{
+                title = 'Test Site'
+            }
+            page = @{
+                title = 'Home'
+            }
+        }
+
+        $result = Invoke-LiquidTemplate -Template $template -Context $context -Dialect 'JekyllLiquid' -Registry $registry
+        $result | Should -Be '<title>Home | Test Site</title> [Home['
+    }
+
     It 'rejects Jekyll-specific filters in the plain Liquid dialect' {
         {
             Invoke-LiquidTemplate -Template '{{ "/assets/style.css" | relative_url }}' -Context @{ site = @{ baseurl = '/my-baseurl' } }

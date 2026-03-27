@@ -140,6 +140,8 @@ function Initialize-HydeBuildContext {
     $context.Site = Copy-HydeValue -InputObject $settings
     $context.SourcePath = $sourcePath
     $context.DestinationPath = $destinationPath
+    $context.PluginRegistry = New-HydePluginRegistry
+    $context.LiquidRegistry = New-LiquidExtensionRegistry
 
     # These values are generated per invocation and do not come from configuration files.
     $context.Site['time'] = Get-Date
@@ -147,7 +149,9 @@ function Initialize-HydeBuildContext {
     $context.Site['posts'] = New-Object System.Collections.ArrayList
     $context.Site['static_files'] = New-Object System.Collections.ArrayList
 
+    Import-HydePlugins -Context $context
     Import-HydeDataFiles -Context $context
+    Invoke-HydePluginHook -Context $context -HookName 'AfterInitialize' -Arguments @{ Context = $context }
     Write-Verbose "Initialized Hyde build context."
 
     return $context

@@ -42,6 +42,7 @@ function Publish-StaticSite {
     Write-Information "Running HYDE version $($context.Version)."
     Write-Verbose "Building site from '$($context.SourcePath)' to '$($context.DestinationPath)'."
     Write-Verbose "Using environment '$($context.Environment)'."
+    Write-Verbose "Loaded $($context.LoadedPlugins.Count) plugin(s)."
 
     try {
         if (-not (Test-Path -LiteralPath $context.DestinationPath -PathType Container)) {

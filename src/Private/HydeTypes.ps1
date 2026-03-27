@@ -54,15 +54,21 @@ class HydeBuildContext {
     [hashtable]$Site
     [string]$SourcePath
     [string]$DestinationPath
+    [hashtable]$PluginRegistry
+    [hashtable]$LiquidRegistry
     [System.Collections.ArrayList]$Documents
     [System.Collections.ArrayList]$StaticFiles
+    [System.Collections.ArrayList]$LoadedPlugins
 
     HydeBuildContext() {
         # The build context is the shared state bag for one Hyde invocation.
         $this.Settings = @{}
         $this.Site = @{}
+        $this.PluginRegistry = @{}
+        $this.LiquidRegistry = @{}
         $this.Documents = New-Object System.Collections.ArrayList
         $this.StaticFiles = New-Object System.Collections.ArrayList
+        $this.LoadedPlugins = New-Object System.Collections.ArrayList
     }
 
     [void] AddDocument([HydeDocument]$document) {

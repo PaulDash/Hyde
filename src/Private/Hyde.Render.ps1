@@ -148,7 +148,7 @@ function Invoke-HydeDocumentLiquid {
         }
     }
 
-    $Document.RawContent = Invoke-LiquidTemplate -Template $Document.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (Resolve-HydeIncludesPath -Context $Context)
+    $Document.RawContent = Invoke-LiquidTemplate -Template $Document.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (Resolve-HydeIncludesPath -Context $Context) -Registry $Context.LiquidRegistry
     Write-Verbose "Rendered Liquid content for '$($Document.RelativePath)'."
 }
 
@@ -195,7 +195,7 @@ function Invoke-HydeLayout {
         }
     }
 
-    $Document.RenderedContent = Invoke-LiquidTemplate -Template $layoutDocument.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (Resolve-HydeIncludesPath -Context $Context)
+    $Document.RenderedContent = Invoke-LiquidTemplate -Template $layoutDocument.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (Resolve-HydeIncludesPath -Context $Context) -Registry $Context.LiquidRegistry
     Write-Verbose "Rendered layout '$layoutName' for '$($Document.RelativePath)'."
 }
 
@@ -456,6 +456,11 @@ function Convert-HydeDocument {
         return
     }
 
+    Invoke-HydePluginHook -Context $Context -HookName 'BeforeRenderDocument' -Arguments @{
+        Context  = $Context
+        Document = $Document
+    }
+
     # Liquid rendering happens against the document body before any markup conversion.
     Invoke-HydeDocumentLiquid -Document $Document -Context $Context
 
@@ -474,6 +479,10 @@ function Convert-HydeDocument {
 
     # Layout rendering happens after the page body itself has been converted.
     Invoke-HydeLayout -Document $Document -Context $Context
+    Invoke-HydePluginHook -Context $Context -HookName 'AfterRenderDocument' -Arguments @{
+        Context  = $Context
+        Document = $Document
+    }
 }
 
 function Resolve-HydeDocumentOutputPath {
@@ -483,16 +492,37 @@ function Resolve-HydeDocumentOutputPath {
         [HydeDocument]$Document,
 
         [Parameter(Mandatory = $true)]
-        [hashtable]$Settings
+        [HydeBuildContext]$Context
     )
 
     # Markdown sources render to .html while html inputs keep their existing filenames.
-    $markdownExtensions = Get-HydeMarkdownExtensions -Settings $Settings
+    $markdownExtensions = Get-HydeMarkdownExtensions -Settings $Context.Settings
     if ($Document.Extension -in $markdownExtensions) {
-        return [System.IO.Path]::ChangeExtension($Document.RelativePath, '.html').Replace('\', '/')
+        $outputPath = [System.IO.Path]::ChangeExtension($Document.RelativePath, '.html').Replace('\', '/')
+    } else {
+        $outputPath = $Document.RelativePath.Replace('\', '/')
     }
 
-    return $Document.RelativePath.Replace('\', '/')
+    return (Resolve-HydePluginValue -Context $Context -HookName 'ResolveDocumentOutputPath' -CurrentValue $outputPath -Arguments @{
+            Context  = $Context
+            Document = $Document
+        })
+}
+
+function Resolve-HydeStaticFileOutputPath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeStaticFile]$StaticFile,
+
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    return (Resolve-HydePluginValue -Context $Context -HookName 'ResolveStaticFileOutputPath' -CurrentValue $StaticFile.RelativePath.Replace('\', '/') -Arguments @{
+            Context    = $Context
+            StaticFile = $StaticFile
+        })
 }
 
 function Write-HydeDocument {
@@ -509,6 +539,11 @@ function Write-HydeDocument {
         return
     }
 
+    Invoke-HydePluginHook -Context $Context -HookName 'BeforeWriteDocument' -Arguments @{
+        Context  = $Context
+        Document = $Document
+    }
+
     # Materialize the destination tree lazily as each document is written.
     $destinationPath = Join-Path -Path $Context.DestinationPath -ChildPath $Document.OutputRelativePath
     $destinationDirectory = Split-Path -Path $destinationPath -Parent
@@ -523,19 +558,29 @@ function Write-HydeDocument {
     } catch {
         throw "Could not write rendered document to '$destinationPath'. $($_.Exception.Message)"
     }
+
+    Invoke-HydePluginHook -Context $Context -HookName 'AfterWriteDocument' -Arguments @{
+        Context  = $Context
+        Document = $Document
+    }
 }
 
 function Copy-HydeStaticFile {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [HydeStaticFile]$StaticFile,
+    [HydeStaticFile]$StaticFile,
 
         [Parameter(Mandatory = $true)]
-        [HydeBuildContext]$Context
+    [HydeBuildContext]$Context
     )
 
     # Static files reuse the same output tree logic but skip the rendering step entirely.
+    Invoke-HydePluginHook -Context $Context -HookName 'BeforeCopyStaticFile' -Arguments @{
+        Context    = $Context
+        StaticFile = $StaticFile
+    }
+
     $destinationPath = Join-Path -Path $Context.DestinationPath -ChildPath $StaticFile.OutputRelativePath
     $destinationDirectory = Split-Path -Path $destinationPath -Parent
 
@@ -548,5 +593,10 @@ function Copy-HydeStaticFile {
         Write-Verbose "Copied static file to '$destinationPath'."
     } catch {
         throw "Could not copy static file to '$destinationPath'. $($_.Exception.Message)"
+    }
+
+    Invoke-HydePluginHook -Context $Context -HookName 'AfterCopyStaticFile' -Arguments @{
+        Context    = $Context
+        StaticFile = $StaticFile
     }
 }

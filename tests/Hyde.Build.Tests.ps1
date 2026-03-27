@@ -259,6 +259,93 @@ title: Home
         $indexOutput | Should -Match '<aside>Hello / Home</aside>'
     }
 
+    It 'loads a plugin that registers a custom seo Liquid tag' {
+        $siteRoot = New-TestSiteDirectory -Name 'plugin-seo-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'plugin-seo-output'
+        $pluginsDirectory = Join-Path -Path $siteRoot -ChildPath '_plugins'
+
+        [void](New-Item -Path $pluginsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+plugins:
+  - seo
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $pluginsDirectory -ChildPath 'seo.ps1') -Encoding UTF8 -Value @'
+param($Context)
+
+@{
+    Name = 'seo'
+    Liquid = @{
+        Tags = @{
+            seo = {
+                param($Invocation)
+
+                $site = & $Invocation.Helpers.ResolveVariable 'site'
+                $page = & $Invocation.Helpers.ResolveVariable 'page'
+                return "<title>$($page.title) | $($site.title)</title>"
+            }
+        }
+    }
+}
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.html') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+{% seo %}
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+
+        $indexOutput | Should -Match '<title>Home \| Test Site</title>'
+        $context.LoadedPlugins.Name | Should -Contain 'seo'
+    }
+
+    It 'loads a plugin that changes document output paths' {
+        $siteRoot = New-TestSiteDirectory -Name 'plugin-output-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'plugin-output-output'
+        $pluginsDirectory = Join-Path -Path $siteRoot -ChildPath '_plugins'
+
+        [void](New-Item -Path $pluginsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $pluginsDirectory -ChildPath 'lastmod.ps1') -Encoding UTF8 -Value @'
+param($Context)
+
+@{
+    Name = 'lastmod'
+    Hooks = @{
+        ResolveDocumentOutputPath = {
+            param($CurrentValue, $Invocation)
+
+            $lastWriteTime = (Get-Item -LiteralPath $Invocation.Document.SourcePath).LastWriteTimeUtc
+            return ('archive/{0}/{1}' -f $lastWriteTime.ToString('yyyyMMdd'), $CurrentValue)
+        }
+    }
+}
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+# Hello
+'@
+
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        $expectedDateSegment = (Get-Item -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md')).LastWriteTimeUtc.ToString('yyyyMMdd')
+        $outputPath = Join-Path -Path $destinationRoot -ChildPath "archive\$expectedDateSegment\index.html"
+
+        Test-Path -LiteralPath $outputPath | Should -BeTrue
+    }
+
     It 'renders Liquid for loops against site data' {
         $siteRoot = New-TestSiteDirectory -Name 'for-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'for-output'

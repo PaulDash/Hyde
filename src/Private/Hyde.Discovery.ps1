@@ -159,19 +159,27 @@ function Get-HydeSourceItems {
                 if ($contentExtensions -contains $file.Extension.ToLowerInvariant()) {
                     # Documents move into the rendering pipeline and can later gain front matter and output paths.
                     $document = [HydeDocument]::new('Page', $file.FullName, $relativeFilePath)
-                    $document.OutputRelativePath = Resolve-HydeDocumentOutputPath -Document $document -Settings $Context.Settings
+                    $document.OutputRelativePath = Resolve-HydeDocumentOutputPath -Document $document -Context $Context
                     $document.Url = '/' + $document.OutputRelativePath.Replace('\', '/')
                     $Context.AddDocument($document)
+                    Invoke-HydePluginHook -Context $Context -HookName 'AfterDiscoverDocument' -Arguments @{
+                        Context  = $Context
+                        Document = $document
+                    }
                     Write-Verbose "Discovered document '$relativeFilePath'."
                 } else {
                     # Everything else is preserved as a static file.
                     $staticFile = [HydeStaticFile]::new($file.FullName, $relativeFilePath)
-                    $staticFile.OutputRelativePath = $relativeFilePath
+                    $staticFile.OutputRelativePath = Resolve-HydeStaticFileOutputPath -StaticFile $staticFile -Context $Context
                     $staticFile.Url = '/' + $relativeFilePath.Replace('\', '/')
                     foreach ($default in Get-HydeMatchingDefaults -Context $Context -Item $staticFile) {
                         Merge-HydeFrontMatterDefaults -Target $staticFile.Metadata -Defaults $default.Values
                     }
                     $Context.AddStaticFile($staticFile)
+                    Invoke-HydePluginHook -Context $Context -HookName 'AfterDiscoverStaticFile' -Arguments @{
+                        Context    = $Context
+                        StaticFile = $staticFile
+                    }
                     Write-Verbose "Discovered static file '$relativeFilePath'."
                 }
             }
