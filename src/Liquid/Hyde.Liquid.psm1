@@ -130,6 +130,54 @@ function Get-LiquidTagParts {
     }
 }
 
+function Split-LiquidWhitespaceTokens {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string]$InputText
+    )
+
+    # Include-style tags need whitespace tokenization that keeps quoted strings intact.
+    $matches = [System.Text.RegularExpressions.Regex]::Matches(
+        $InputText,
+        '(?:"[^"]*"|''[^'']*''|\S+)'
+    )
+
+    return ,@($matches | ForEach-Object { $_.Value })
+}
+
+function Parse-LiquidIncludeMarkup {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Markup
+    )
+
+    # Include accepts a target plus optional key=value parameters.
+    $tokens = Split-LiquidWhitespaceTokens -InputText $Markup
+    if ($tokens.Count -eq 0) {
+        throw "Liquid include tag is invalid: '$Markup'."
+    }
+
+    $parameters = New-Object System.Collections.ArrayList
+    foreach ($token in @($tokens | Select-Object -Skip 1)) {
+        if ($token -notmatch '^([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*(.+)$') {
+            throw "Liquid include parameter is invalid: '$token'."
+        }
+
+        [void]$parameters.Add([pscustomobject]@{
+            Name       = $matches[1]
+            Expression = $matches[2]
+        })
+    }
+
+    return [pscustomobject]@{
+        TargetExpression = $tokens[0]
+        Parameters       = @($parameters.ToArray())
+    }
+}
+
 function Parse-LiquidNodes {
     [CmdletBinding()]
     param(
@@ -333,6 +381,15 @@ function Parse-LiquidNodes {
                     Type  = 'Text'
                     Value = $rawBuilder.ToString()
                 })
+            }
+            'include' {
+                $includeMarkup = Parse-LiquidIncludeMarkup -Markup $tagParts.Markup
+                [void]$nodes.Add([pscustomobject]@{
+                    Type             = 'Include'
+                    TargetExpression = $includeMarkup.TargetExpression
+                    Parameters       = $includeMarkup.Parameters
+                })
+                $Index.Value++
             }
             '' {
                 $Index.Value++
@@ -782,7 +839,11 @@ function New-LiquidRuntime {
         [hashtable]$Context,
 
         [Parameter(Mandatory = $true)]
-        [string]$Dialect
+        [string]$Dialect,
+
+        [string]$IncludeRoot,
+
+        [string[]]$IncludeStack = @()
     )
 
     # The runtime keeps a scope stack so assign/capture can add temporary variables during rendering.
@@ -790,8 +851,10 @@ function New-LiquidRuntime {
     [void]$scopes.Add($Context)
 
     return @{
-        Scopes  = $scopes
-        Dialect = $Dialect
+        Scopes       = $scopes
+        Dialect      = $Dialect
+        IncludeRoot  = $IncludeRoot
+        IncludeStack = @($IncludeStack)
     }
 }
 
@@ -820,6 +883,91 @@ function Remove-LiquidScope {
     if ($Runtime.Scopes.Count -gt 1) {
         $Runtime.Scopes.RemoveAt(0)
     }
+}
+
+function Resolve-LiquidIncludePath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$IncludeTarget,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Runtime
+    )
+
+    # Includes resolve from the configured include root and stay inside that tree.
+    if ([string]::IsNullOrWhiteSpace($Runtime.IncludeRoot)) {
+        throw "Liquid include root is not configured."
+    }
+
+    $normalizedTarget = $IncludeTarget.Replace('/', [System.IO.Path]::DirectorySeparatorChar).Replace('\', [System.IO.Path]::DirectorySeparatorChar)
+    $includePath = Join-Path -Path $Runtime.IncludeRoot -ChildPath $normalizedTarget
+    $resolvedIncludePath = [System.IO.Path]::GetFullPath($includePath)
+    $resolvedIncludeRoot = [System.IO.Path]::GetFullPath($Runtime.IncludeRoot)
+
+    if (-not $resolvedIncludePath.StartsWith($resolvedIncludeRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase) -and
+        ($resolvedIncludePath -ne $resolvedIncludeRoot)) {
+        throw "Liquid include '$IncludeTarget' resolves outside the include root."
+    }
+
+    if (-not (Test-Path -LiteralPath $resolvedIncludePath -PathType Leaf)) {
+        throw "Could not locate the included file '$IncludeTarget' in '$resolvedIncludeRoot'."
+    }
+
+    return $resolvedIncludePath
+}
+
+function Invoke-LiquidInclude {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $Node,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Runtime
+    )
+
+    # Include is a Jekyll-style extension point in this module, exposed only through the JekyllLiquid dialect.
+    if ($Runtime.Dialect -ne 'JekyllLiquid') {
+        throw "Liquid tag 'include' is not supported in the '$($Runtime.Dialect)' dialect."
+    }
+
+    $includeTarget = Resolve-LiquidExpression -Expression $Node.TargetExpression -Runtime $Runtime
+    $includeName = ConvertTo-LiquidOutputString -Value $includeTarget
+    if ([string]::IsNullOrWhiteSpace($includeName)) {
+        # Jekyll commonly uses bare include filenames without quotes, so fall back to the raw token when it is not a resolved variable.
+        $includeName = $Node.TargetExpression.Trim()
+    }
+
+    if ([string]::IsNullOrWhiteSpace($includeName)) {
+        throw "Liquid include target is empty."
+    }
+
+    $includePath = Resolve-LiquidIncludePath -IncludeTarget $includeName -Runtime $Runtime
+    if ($Runtime.IncludeStack -contains $includePath) {
+        throw "Liquid include '$includeName' is recursively including itself."
+    }
+
+    $includeVariables = @{}
+    foreach ($parameter in $Node.Parameters) {
+        $includeVariables[$parameter.Name] = Resolve-LiquidExpression -Expression $parameter.Expression -Runtime $Runtime
+    }
+
+    $includeVariables['file'] = $includeName
+    $includeContext = @{}
+    foreach ($scope in $Runtime.Scopes) {
+        if ($scope -is [System.Collections.IDictionary]) {
+            foreach ($key in $scope.Keys) {
+                if (-not $includeContext.ContainsKey($key)) {
+                    $includeContext[$key] = $scope[$key]
+                }
+            }
+        }
+    }
+
+    $includeContext['include'] = $includeVariables
+    $template = Get-Content -LiteralPath $includePath -Raw
+    return Invoke-LiquidTemplate -Template $template -Context $includeContext -Dialect $Runtime.Dialect -IncludeRoot $Runtime.IncludeRoot -IncludeStack ($Runtime.IncludeStack + $includePath)
 }
 
 function ConvertFrom-LiquidNodes {
@@ -873,6 +1021,9 @@ function ConvertFrom-LiquidNodes {
                     [void]$builder.Append((ConvertFrom-LiquidNodes -Nodes $node.Else -Runtime $Runtime))
                 }
             }
+            'Include' {
+                [void]$builder.Append((Invoke-LiquidInclude -Node $node -Runtime $Runtime))
+            }
             default {
                 throw "Liquid node type '$($node.Type)' is not supported."
             }
@@ -892,7 +1043,11 @@ function Invoke-LiquidTemplate {
         [Parameter(Mandatory = $true)]
         [hashtable]$Context,
 
-        [string]$Dialect = 'Liquid'
+        [string]$Dialect = 'Liquid',
+
+        [string]$IncludeRoot,
+
+        [string[]]$IncludeStack = @()
     )
 
     # Dialect is the forward-looking switch point for future Liquid family variants.
@@ -904,7 +1059,7 @@ function Invoke-LiquidTemplate {
         }
     }
 
-    $runtime = New-LiquidRuntime -Context $Context -Dialect $Dialect
+    $runtime = New-LiquidRuntime -Context $Context -Dialect $Dialect -IncludeRoot $IncludeRoot -IncludeStack $IncludeStack
     $nodes = Parse-LiquidTemplate -Template $Template
     return ConvertFrom-LiquidNodes -Nodes $nodes -Runtime $runtime
 }

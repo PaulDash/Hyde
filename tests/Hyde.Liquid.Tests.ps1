@@ -37,6 +37,32 @@ Describe 'Hyde Liquid module' {
         $result | Should -Be 'AB{{ untouched }}'
     }
 
+    It 'supports include in the JekyllLiquid dialect with include variables' {
+        $includeRoot = Join-Path -Path $TestDrive -ChildPath 'includes'
+        [void](New-Item -Path $includeRoot -ItemType Directory -Force)
+        Set-Content -LiteralPath (Join-Path -Path $includeRoot -ChildPath 'card.html') -Encoding UTF8 -Value 'Card: {{ include.title }} / {{ page.title }}'
+
+        $template = 'Before {% include card.html title=page.title %} After'
+        $context = @{
+            page = @{
+                title = 'Home'
+            }
+        }
+
+        $result = Invoke-LiquidTemplate -Template $template -Context $context -Dialect 'JekyllLiquid' -IncludeRoot $includeRoot
+        $result | Should -Match 'Before Card: Home / Home\s+After'
+    }
+
+    It 'rejects include in the plain Liquid dialect' {
+        $includeRoot = Join-Path -Path $TestDrive -ChildPath 'includes'
+        [void](New-Item -Path $includeRoot -ItemType Directory -Force)
+        Set-Content -LiteralPath (Join-Path -Path $includeRoot -ChildPath 'card.html') -Encoding UTF8 -Value 'Card'
+
+        {
+            Invoke-LiquidTemplate -Template '{% include card.html %}' -Context @{} -IncludeRoot $includeRoot
+        } | Should -Throw -ExpectedMessage "*Liquid tag 'include' is not supported in the 'Liquid' dialect.*"
+    }
+
     It 'supports Jekyll-specific URL and serialization filters in the JekyllLiquid dialect' {
         $template = '{{ "/assets/style.css" | relative_url }}|{{ "/assets/style.css" | absolute_url }}|{{ page.data | jsonify }}'
         $context = @{

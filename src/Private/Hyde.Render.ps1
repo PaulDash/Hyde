@@ -85,6 +85,23 @@ function Resolve-HydeLayoutPath {
     throw "Could not find layout '$LayoutName' in '$layoutsDirectoryPath'."
 }
 
+function Resolve-HydeIncludesPath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    # Includes resolve from the configured includes directory and are passed into the Liquid runtime.
+    $includesDirectoryName = if ($Context.Settings.ContainsKey('includes_dir') -and $Context.Settings.includes_dir) {
+        $Context.Settings.includes_dir
+    } else {
+        '_includes'
+    }
+
+    return (Join-Path -Path $Context.SourcePath -ChildPath $includesDirectoryName)
+}
+
 function New-HydePageVariables {
     [CmdletBinding()]
     param(
@@ -131,7 +148,7 @@ function Invoke-HydeDocumentLiquid {
         }
     }
 
-    $Document.RawContent = Invoke-LiquidTemplate -Template $Document.RawContent -Context $liquidContext -Dialect 'JekyllLiquid'
+    $Document.RawContent = Invoke-LiquidTemplate -Template $Document.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (Resolve-HydeIncludesPath -Context $Context)
     Write-Verbose "Rendered Liquid content for '$($Document.RelativePath)'."
 }
 
@@ -178,7 +195,7 @@ function Invoke-HydeLayout {
         }
     }
 
-    $Document.RenderedContent = Invoke-LiquidTemplate -Template $layoutDocument.RawContent -Context $liquidContext -Dialect 'JekyllLiquid'
+    $Document.RenderedContent = Invoke-LiquidTemplate -Template $layoutDocument.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (Resolve-HydeIncludesPath -Context $Context)
     Write-Verbose "Rendered layout '$layoutName' for '$($Document.RelativePath)'."
 }
 

@@ -231,6 +231,34 @@ layout: default
         $context.Documents.Count | Should -Be 1
     }
 
+    It 'renders Jekyll includes from the includes directory' {
+        $siteRoot = New-TestSiteDirectory -Name 'include-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'include-output'
+        $includesDirectory = Join-Path -Path $siteRoot -ChildPath '_includes'
+
+        [void](New-Item -Path $includesDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $includesDirectory -ChildPath 'notice.html') -Encoding UTF8 -Value @'
+<aside>{{ include.message }} / {{ page.title }}</aside>
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+{% include notice.html message="Hello" %}
+'@
+
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+
+        $indexOutput | Should -Match '<aside>Hello / Home</aside>'
+    }
+
     It 'applies front matter defaults by path and page type while allowing explicit front matter to win' {
         $siteRoot = New-TestSiteDirectory -Name 'defaults-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'defaults-output'
