@@ -22,20 +22,24 @@ class HydeContentItem {
 }
 
 class HydeDocument : HydeContentItem {
+    [string]$CollectionName
     [hashtable]$FrontMatter
     [string]$RawContent
     [string]$RenderedContent
     [string]$Title
     [bool]$Published
+    [bool]$WriteOutput
     [bool]$RenderWithLiquid
 
     HydeDocument([string]$kind, [string]$sourcePath, [string]$relativePath) : base($kind, $sourcePath, $relativePath) {
         # Documents accumulate front matter, body content, and rendered output as the pipeline runs.
+        $this.CollectionName = ''
         $this.FrontMatter = @{}
         $this.RawContent = ''
         $this.RenderedContent = ''
         $this.Title = ''
         $this.Published = $true
+        $this.WriteOutput = $true
         $this.RenderWithLiquid = $true
     }
 }
@@ -76,7 +80,18 @@ class HydeBuildContext {
     [void] AddDocument([HydeDocument]$document) {
         # Keep the strongly-typed list and the site variable surface in sync.
         [void]$this.Documents.Add($document)
-        [void]$this.Site.pages.Add($document)
+        if ($document.Kind -eq 'Page') {
+            [void]$this.Site.pages.Add($document)
+            return
+        }
+
+        if ($document.Kind -eq 'CollectionDocument' -and -not [string]::IsNullOrWhiteSpace($document.CollectionName)) {
+            [void]$this.Site.collections[$document.CollectionName].docs.Add($document)
+            [void]$this.Site[$document.CollectionName].Add($document)
+            if ($document.CollectionName -eq 'posts') {
+                [void]$this.Site.posts.Add($document)
+            }
+        }
     }
 
     [void] AddStaticFile([HydeStaticFile]$staticFile) {

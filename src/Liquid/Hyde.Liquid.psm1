@@ -574,11 +574,46 @@ function Get-LiquidRuntimeValue {
         return $null
     }
 
+    # Many PowerShell collection types expose Count/Length as properties even when interface checks are inconsistent.
+    switch ($MemberName.ToLowerInvariant()) {
+        'size' {
+            if ($Value -is [System.Collections.IEnumerable] -and $Value -isnot [string]) {
+                return @($Value).Count
+            }
+
+            $countProperty = $Value.PSObject.Properties | Where-Object { $_.Name -in @('Count', 'Length') } | Select-Object -First 1
+            if ($null -ne $countProperty) {
+                return $countProperty.Value
+            }
+        }
+        'first' {
+            if ($Value -is [System.Collections.IEnumerable] -and $Value -isnot [string]) {
+                $items = @($Value)
+                if ($items.Count -gt 0) {
+                    return $items[0]
+                }
+
+                return $null
+            }
+        }
+        'last' {
+            if ($Value -is [System.Collections.IEnumerable] -and $Value -isnot [string]) {
+                $items = @($Value)
+                if ($items.Count -gt 0) {
+                    return $items[$items.Count - 1]
+                }
+
+                return $null
+            }
+        }
+    }
+
     # Resolve one member access against the current value, covering hashtables, lists, strings, and objects.
     if ($Value -is [System.Collections.IDictionary]) {
         foreach ($key in $Value.Keys) {
             if ([string]$key -ieq $MemberName) {
-                return $Value[$key]
+                Write-Output -NoEnumerate $Value[$key]
+                return
             }
         }
 
@@ -588,12 +623,31 @@ function Get-LiquidRuntimeValue {
     if ($Value -is [System.Collections.IList]) {
         switch ($MemberName.ToLowerInvariant()) {
             'size' { return $Value.Count }
-            'first' { return if ($Value.Count -gt 0) { $Value[0] } else { $null } }
-            'last' { return if ($Value.Count -gt 0) { $Value[$Value.Count - 1] } else { $null } }
+            'first' {
+                if ($Value.Count -gt 0) {
+                    Write-Output -NoEnumerate $Value[0]
+                    return
+                }
+
+                return $null
+            }
+            'last' {
+                if ($Value.Count -gt 0) {
+                    Write-Output -NoEnumerate $Value[$Value.Count - 1]
+                    return
+                }
+
+                return $null
+            }
             default {
                 if ($MemberName -match '^\d+$') {
                     $index = [int]$MemberName
-                    return if ($index -lt $Value.Count) { $Value[$index] } else { $null }
+                    if ($index -lt $Value.Count) {
+                        Write-Output -NoEnumerate $Value[$index]
+                        return
+                    }
+
+                    return $null
                 }
             }
         }
@@ -609,7 +663,8 @@ function Get-LiquidRuntimeValue {
 
     $property = $Value.PSObject.Properties | Where-Object { $_.Name -ieq $MemberName } | Select-Object -First 1
     if ($null -ne $property) {
-        return $property.Value
+        Write-Output -NoEnumerate $property.Value
+        return
     }
 
     return $null
@@ -628,16 +683,110 @@ function Resolve-LiquidVariable {
     # Liquid looks up dotted paths by walking the current scope stack, then each nested member.
     $segments = $Path.Split('.')
     foreach ($scope in $Runtime.Scopes) {
-        $value = Get-LiquidRuntimeValue -Value $scope -MemberName $segments[0]
-        if ($null -eq $value -and -not ($scope -is [System.Collections.IDictionary] -and ($scope.Contains($segments[0]) -or $scope.ContainsKey($segments[0])))) {
+        $value = $null
+        $foundValue = $false
+
+        if ($scope -is [System.Collections.IDictionary]) {
+            foreach ($key in $scope.Keys) {
+                if ([string]$key -ieq $segments[0]) {
+                    $value = $scope[$key]
+                    $foundValue = $true
+                    break
+                }
+            }
+        } else {
+            $property = $scope.PSObject.Properties | Where-Object { $_.Name -ieq $segments[0] } | Select-Object -First 1
+            if ($null -ne $property) {
+                $value = $property.Value
+                $foundValue = $true
+            }
+        }
+
+        if (-not $foundValue) {
             continue
         }
 
         for ($index = 1; $index -lt $segments.Length; $index++) {
-            $value = Get-LiquidRuntimeValue -Value $value -MemberName $segments[$index]
+            if ($null -eq $value) {
+                break
+            }
+
+            $memberName = $segments[$index]
+            $handledMember = $false
+            switch ($memberName.ToLowerInvariant()) {
+                'size' {
+                    if ($value -is [string]) {
+                        $value = $value.Length
+                        $handledMember = $true
+                    } elseif ($value -is [System.Collections.IEnumerable] -and $value -isnot [string]) {
+                        $value = @($value).Count
+                        $handledMember = $true
+                    }
+                }
+                'first' {
+                    if ($value -is [System.Collections.IEnumerable] -and $value -isnot [string] -and $value -isnot [System.Collections.IDictionary]) {
+                        $items = @($value)
+                        if ($items.Count -gt 0) {
+                            $value = $items[0]
+                        } else {
+                            $value = $null
+                        }
+                        $handledMember = $true
+                    }
+                }
+                'last' {
+                    if ($value -is [System.Collections.IEnumerable] -and $value -isnot [string] -and $value -isnot [System.Collections.IDictionary]) {
+                        $items = @($value)
+                        if ($items.Count -gt 0) {
+                            $value = $items[$items.Count - 1]
+                        } else {
+                            $value = $null
+                        }
+                        $handledMember = $true
+                    }
+                }
+            }
+
+            if ($handledMember) {
+                continue
+            }
+
+            $resolvedMemberValue = $null
+            $resolvedMember = $false
+
+            if ($value -is [System.Collections.IDictionary]) {
+                foreach ($key in $value.Keys) {
+                    if ([string]$key -ieq $memberName) {
+                        $resolvedMemberValue = $value[$key]
+                        $resolvedMember = $true
+                        break
+                    }
+                }
+            } elseif ($value -is [System.Collections.IList] -and $memberName -match '^\d+$') {
+                $memberIndex = [int]$memberName
+                if ($memberIndex -lt $value.Count) {
+                    $resolvedMemberValue = $value[$memberIndex]
+                    $resolvedMember = $true
+                }
+            } else {
+                $property = $value.PSObject.Properties | Where-Object { $_.Name -ieq $memberName } | Select-Object -First 1
+                if ($null -ne $property) {
+                    $resolvedMemberValue = $property.Value
+                    $resolvedMember = $true
+                }
+            }
+
+            if (-not $resolvedMember) {
+                $value = $null
+                break
+            }
+
+            $value = $resolvedMemberValue
         }
 
-        return $value
+        if ($null -ne $value) {
+            return $value
+        }
     }
 
     return $null

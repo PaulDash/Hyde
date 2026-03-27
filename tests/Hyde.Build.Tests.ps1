@@ -269,6 +269,73 @@ Body text.
         $indexOutput | Should -Match '<title>Plugin Title</title>'
     }
 
+    It 'discovers configured collections and writes output when the collection enables output' {
+        $siteRoot = New-TestSiteDirectory -Name 'collections-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'collections-output'
+        $collectionDirectory = Join-Path -Path $siteRoot -ChildPath '_staff'
+
+        [void](New-Item -Path $collectionDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+collections:
+  staff:
+    output: true
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $collectionDirectory -ChildPath 'jane.md') -Encoding UTF8 -Value @'
+---
+title: Jane
+---
+# Jane
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.html') -Encoding UTF8 -Value @'
+Staff count: {{ site.staff.size }} / {{ site.collections.staff.docs.size }}
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $collectionDocument = $context.Documents | Where-Object { $_.CollectionName -eq 'staff' }
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+
+        $collectionDocument.Kind | Should -Be 'CollectionDocument'
+        $collectionDocument.WriteOutput | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'staff\jane.html') | Should -BeTrue
+        $context.Site.collections.staff.docs.Count | Should -Be 1
+        $context.Site.staff.Count | Should -Be 1
+        $indexOutput | Should -Match 'Staff count: 1 / 1'
+    }
+
+    It 'does not write collection documents when the collection output setting is false' {
+        $siteRoot = New-TestSiteDirectory -Name 'collections-no-output-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'collections-no-output-output'
+        $collectionDirectory = Join-Path -Path $siteRoot -ChildPath '_recipes'
+
+        [void](New-Item -Path $collectionDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+collections:
+  recipes:
+    output: false
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $collectionDirectory -ChildPath 'toast.md') -Encoding UTF8 -Value @'
+---
+title: Toast
+---
+# Toast
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $collectionDocument = $context.Documents | Where-Object { $_.CollectionName -eq 'recipes' }
+
+        $collectionDocument.WriteOutput | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'recipes\toast.html') | Should -BeFalse
+        $context.Site.collections.recipes.docs.Count | Should -Be 1
+        $context.Site.recipes.Count | Should -Be 1
+    }
+
     It 'renders Jekyll includes from the includes directory' {
         $siteRoot = New-TestSiteDirectory -Name 'include-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'include-output'

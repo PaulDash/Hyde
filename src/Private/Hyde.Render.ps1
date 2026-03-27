@@ -120,6 +120,7 @@ function New-HydePageVariables {
     }
 
     $page['content'] = $Document.RenderedContent
+    $page['collection'] = $Document.CollectionName
     $page['url'] = $Document.Url
     $page['path'] = $Document.RelativePath
     $page['name'] = $Document.Name
@@ -509,10 +510,23 @@ function Resolve-HydeDocumentOutputPath {
 
     # Markdown sources render to .html while html inputs keep their existing filenames.
     $markdownExtensions = Get-HydeMarkdownExtensions -Settings $Context.Settings
+    $sourceRelativePath = $Document.RelativePath
+    if ($Document.Kind -eq 'CollectionDocument' -and -not [string]::IsNullOrWhiteSpace($Document.CollectionName)) {
+        $collectionMarker = '/_{0}/' -f $Document.CollectionName
+        $normalizedRelativePath = $sourceRelativePath.Replace('\', '/')
+        $markerIndex = $normalizedRelativePath.IndexOf($collectionMarker, [System.StringComparison]::OrdinalIgnoreCase)
+        if ($markerIndex -ge 0) {
+            $pathWithinCollection = $normalizedRelativePath.Substring($markerIndex + $collectionMarker.Length)
+            $sourceRelativePath = '{0}/{1}' -f $Document.CollectionName, $pathWithinCollection
+        } elseif ($normalizedRelativePath.StartsWith('_{0}/' -f $Document.CollectionName, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $sourceRelativePath = '{0}/{1}' -f $Document.CollectionName, $normalizedRelativePath.Substring($Document.CollectionName.Length + 2)
+        }
+    }
+
     if ($Document.Extension -in $markdownExtensions) {
-        $outputPath = [System.IO.Path]::ChangeExtension($Document.RelativePath, '.html').Replace('\', '/')
+        $outputPath = [System.IO.Path]::ChangeExtension($sourceRelativePath, '.html').Replace('\', '/')
     } else {
-        $outputPath = $Document.RelativePath.Replace('\', '/')
+        $outputPath = $sourceRelativePath.Replace('\', '/')
     }
 
     return (Resolve-HydePluginValue -Context $Context -HookName 'ResolveDocumentOutputPath' -CurrentValue $outputPath -Arguments @{
@@ -547,7 +561,7 @@ function Write-HydeDocument {
         [HydeBuildContext]$Context
     )
 
-    if (-not $Document.Published) {
+    if (-not $Document.Published -or -not $Document.WriteOutput) {
         return
     }
 

@@ -148,6 +148,9 @@ function Initialize-HydeBuildContext {
     $context.Site['pages'] = New-Object System.Collections.ArrayList
     $context.Site['posts'] = New-Object System.Collections.ArrayList
     $context.Site['static_files'] = New-Object System.Collections.ArrayList
+    $context.Site['collections'] = @{}
+
+    Initialize-HydeCollections -Context $context
 
     Import-HydePlugins -Context $context
     Import-HydeDataFiles -Context $context
@@ -157,11 +160,62 @@ function Initialize-HydeBuildContext {
     return $context
 }
 
+function Get-HydeCollectionDefinitions {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $Context
+    )
+
+    # Collections are configured under the Jekyll-style collections map in _config.yml.
+    if (-not $Context.Settings.ContainsKey('collections') -or -not $Context.Settings.collections) {
+        return @()
+    }
+
+    $definitions = New-Object System.Collections.ArrayList
+    foreach ($collectionName in $Context.Settings.collections.Keys) {
+        $collectionSettings = if ($Context.Settings.collections[$collectionName] -is [hashtable]) {
+            $Context.Settings.collections[$collectionName]
+        } else {
+            @{}
+        }
+
+        [void]$definitions.Add([pscustomobject]@{
+            Label     = [string]$collectionName
+            Directory = '_' + [string]$collectionName
+            Output    = ($collectionSettings.ContainsKey('output') -and [bool]$collectionSettings.output)
+            Settings  = $collectionSettings
+        })
+    }
+
+    return @($definitions.ToArray())
+}
+
+function Initialize-HydeCollections {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $Context
+    )
+
+    foreach ($definition in Get-HydeCollectionDefinitions -Context $Context) {
+        # Expose collections through both site.collections.<label> and site.<label>.
+        $Context.Site.collections[$definition.Label] = @{
+            label     = $definition.Label
+            directory = $definition.Directory
+            output    = $definition.Output
+            docs      = New-Object System.Collections.ArrayList
+        }
+
+        $Context.Site[$definition.Label] = New-Object System.Collections.ArrayList
+    }
+}
+
 function Get-HydeFrontMatterDefaults {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [HydeBuildContext]$Context
+        $Context
     )
 
     # Normalize configured defaults into a consistent internal shape.
@@ -257,6 +311,7 @@ function Get-HydeItemDefaultType {
 
     switch ($Item.Kind) {
         'Page' { return 'pages' }
+        'CollectionDocument' { return $Item.CollectionName }
         default { return '' }
     }
 }
@@ -265,7 +320,7 @@ function Get-HydeMatchingDefaults {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [HydeBuildContext]$Context,
+        $Context,
 
         [Parameter(Mandatory = $true)]
         $Item
@@ -312,7 +367,7 @@ function Get-HydeCleanTargets {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [HydeBuildContext]$Context
+        $Context
     )
 
     # Hyde clean intentionally targets the same generated artifacts that Jekyll clean removes.

@@ -80,6 +80,11 @@ function Publish-StaticSite {
                 continue
             }
 
+            if (-not $document.WriteOutput) {
+                Write-Verbose "Skipping output for collection document '$($document.RelativePath)' because its collection is not configured for output."
+                continue
+            }
+
             Write-Verbose "Writing document '$($document.RelativePath)' to '$($document.OutputRelativePath)'."
             Write-HydeDocument -Document $document -Context $context
             $publishedDocumentCount++

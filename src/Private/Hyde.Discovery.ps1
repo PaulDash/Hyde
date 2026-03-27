@@ -2,7 +2,7 @@ function Get-HydeExcludedState {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [HydeBuildContext]$Context
+        $Context
     )
 
     # Start with Jekyll-style implicit exclusions, then extend them from config.
@@ -119,7 +119,7 @@ function Get-HydeSourceItems {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [HydeBuildContext]$Context
+        $Context
     )
 
     # Walk the source tree once and classify each file as a renderable document or a static asset.
@@ -187,13 +187,15 @@ function Get-HydeSourceItems {
             throw "Could not enumerate files in '$directoryPath'. $($_.Exception.Message)"
         }
     }
+
+    Get-HydeCollectionItems -Context $Context
 }
 
 function Import-HydeDataFiles {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
-        [HydeBuildContext]$Context
+        $Context
     )
 
     # Hyde exposes _data files through site.data before any documents are rendered.
@@ -223,5 +225,55 @@ function Import-HydeDataFiles {
         $dataContent = Read-HydeConfigFile -Path $dataFile.FullName
         $Context.Site.data[$dataFile.BaseName] = $dataContent
         Write-Verbose "Imported data file '$($dataFile.Name)'."
+    }
+}
+
+function Get-HydeCollectionItems {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $Context
+    )
+
+    $collectionDefinitions = @(Get-HydeCollectionDefinitions -Context $Context)
+    if ($collectionDefinitions.Count -eq 0) {
+        return
+    }
+
+    $collectionsDirectoryName = if ($Context.Settings.ContainsKey('collections_dir') -and $Context.Settings.collections_dir) {
+        $Context.Settings.collections_dir
+    } else {
+        '.'
+    }
+
+    $collectionsRootPath = Resolve-HydePath -Location $collectionsDirectoryName -BasePath $Context.SourcePath
+    $markdownExtensions = Get-HydeMarkdownExtensions -Settings $Context.Settings
+    $contentExtensions = @('.htm', '.html') + $markdownExtensions
+
+    foreach ($definition in $collectionDefinitions) {
+        $collectionDirectoryPath = Join-Path -Path $collectionsRootPath -ChildPath $definition.Directory
+        if (-not (Test-Path -LiteralPath $collectionDirectoryPath -PathType Container)) {
+            continue
+        }
+
+        Write-Verbose "Scanning collection '$($definition.Label)' in '$collectionDirectoryPath'."
+        foreach ($file in Get-ChildItem -LiteralPath $collectionDirectoryPath -File -Recurse) {
+            if ($contentExtensions -notcontains $file.Extension.ToLowerInvariant()) {
+                continue
+            }
+
+            $relativeFilePath = [System.IO.Path]::GetRelativePath($Context.SourcePath, $file.FullName).Replace('\', '/')
+            $document = [HydeDocument]::new('CollectionDocument', $file.FullName, $relativeFilePath)
+            $document.CollectionName = $definition.Label
+            $document.WriteOutput = $definition.Output
+            $document.OutputRelativePath = Resolve-HydeDocumentOutputPath -Document $document -Context $Context
+            $document.Url = '/' + $document.OutputRelativePath.Replace('\', '/')
+            $Context.AddDocument($document)
+            Invoke-HydePluginHook -Context $Context -HookName 'AfterDiscoverDocument' -Arguments @{
+                Context  = $Context
+                Document = $document
+            }
+            Write-Verbose "Discovered collection document '$relativeFilePath' in '$($definition.Label)'."
+        }
     }
 }

@@ -132,7 +132,7 @@ function Test-HydeOutputConflicts {
     $seenOutputs = @{}
 
     foreach ($document in $Context.Documents) {
-        if (-not $document.Published) {
+        if (-not $document.Published -or -not $document.WriteOutput) {
             continue
         }
 

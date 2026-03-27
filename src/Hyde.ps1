@@ -253,7 +253,6 @@ switch ($Command) {
 # read in theme info into ThemeVariables
 
 # TODO: Implement `New` site scaffolding
-# TODO: add support for "Collections"
 
 # loop through files
     # check if file is to be "published"
@@ -265,7 +264,7 @@ switch ($Command) {
 
     # consider "Includes" from _includes directory
 
-    # TODO: Add posts, collections, and permalink handling.
+    # TODO: Add posts and permalink handling.
 
     # read "Layout"
     # TODO: implement Layout inheritance by pre-parsing files in _layouts
