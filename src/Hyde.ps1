@@ -2,7 +2,7 @@
 #Requires -Modules powershell-yaml
 
 <#PSScriptInfo
-.VERSION 0.2.1
+.VERSION 0.2.3
 .GUID abebebd5-6f8f-4d36-b3c1-e6313b9eac6f
 .AUTHOR Paul Wojcicki-Jarocki
 .COPYRIGHT © 2026 Paul Dash
@@ -10,96 +10,7 @@
 .PROJECTURI https://github.com/PaulDash/Hyde
 .ICONURI https://github.com/PaulDash/Hyde/raw/main/res/Icon_32x32.png
 .TAGS PowerShell static-site-generator jekyll markdown yaml
-.RELEASENOTES Added manifest-based module entry, exported Hyde command, collection permalinks, module-first command routing, and lower-camel-case private helper names.
-#>
-
-<#
-.SYNOPSIS
-PowerShell static site generator. The ugly Mr. Hyde to the popular Jekyll.
-.DESCRIPTION
-Hyde is a PowerShell static site generator inspired by Jekyll.  Created as a fun project to only generate my own private webpage, but useful as an example when teaching about PowerShell.
-
-The current implementation supports:
-- loading Hyde defaults from `globalConfig.yaml`
-- loading site settings from `_config.yml`
-- loading site and built-in plugins
-- discovering documents and static files
-- copying HTML and static files to the destination site
-- loading YAML files from `_data`
-- parsing YAML front matter
-- rendering Markdown documents to HTML
-- rendering single-level layouts through the Liquid module
-- rendering plugin-provided Liquid tags and filters
-- collections
-- permalinks
-- cleaning generated output and cache directories
-- basic doctor-style site validation
-
-The current implementation does not yet support:
-- `New`
-- layout inheritance
-- posts
-
-We may never support:
-- all plugins
-- syntax highlighting
-- new-theme command
-
-Due to the nature of PowerShell, there is no intention to support:
-- serve command
-- file watch mode
-
-.PARAMETER Command
-Chooses which top-level Hyde action to run.
-
-Available options are:
-- `New`
-- `Build`
-- `Clean`
-- `Doctor`
-- `Help`
-
-.PARAMETER Source
-Overrides the configured source directory for the site.
-Supported by: `Build`, `Doctor`
-
-.PARAMETER Destination
-Overrides the configured destination directory for generated output.
-Supported by: `Build`, `Clean`
-
-.PARAMETER Environment
-Sets the build environment value exposed internally during the build.
-Supported by: `Build`
-
-.PARAMETER Quiet
-Suppresses Hyde information messages during execution.
-Supported by: `Build`, `Clean`, `Doctor`
-
-.EXAMPLE
-.\Hyde.ps1 Build
-
-Builds the site using paths from configuration.
-
-.EXAMPLE
-.\Hyde.ps1 Build -Source . -Destination .\_site
-
-Builds the site from the current directory into `.\_site`.
-
-.EXAMPLE
-.\Hyde.ps1 Clean
-
-Removes the generated destination folder, metadata file, and cache directories for the site.
-
-.EXAMPLE
-.\Hyde.ps1 Doctor
-
-Checks the site for common problems such as invalid front matter, missing layouts, and output-path conflicts.
-
-.EXAMPLE
-.\Hyde.ps1 Help
-
-Shows command help for the script.
-
+.RELEASENOTES Added manifest-based module entry, exported Hyde command, collection permalinks, module-first command routing, lower-camel-case private helper names, moved command help onto the module surface, and simplified the wrapper script.
 #>
 
 [CmdletBinding()]

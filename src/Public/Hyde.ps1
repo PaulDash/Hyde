@@ -1,3 +1,80 @@
+<#
+.SYNOPSIS
+PowerShell static site generator. The ugly Mr. Hyde to the popular Jekyll.
+.DESCRIPTION
+Hyde is a PowerShell static site generator inspired by Jekyll. Created as a fun project to only generate a private webpage, but useful as an example when teaching about PowerShell.
+
+The current implementation supports:
+- loading Hyde defaults from `globalConfig.yaml`
+- loading site settings from `_config.yml`
+- loading site and built-in plugins
+- discovering documents and static files
+- copying HTML and static files to the destination site
+- loading YAML files from `_data`
+- parsing YAML front matter
+- rendering Markdown documents to HTML
+- rendering single-level layouts through the Liquid module
+- rendering plugin-provided Liquid tags and filters
+- collections
+- permalinks
+- cleaning generated output and cache directories
+- basic doctor-style site validation
+
+The current implementation does not yet support:
+- `New`
+- layout inheritance
+- posts
+
+We may never support:
+- all plugins
+- syntax highlighting
+- new-theme command
+
+Due to the nature of PowerShell, there is no intention to support:
+- serve command
+- file watch mode
+.PARAMETER Command
+Chooses which top-level Hyde action to run.
+
+Available options are:
+- `New`
+- `Build`
+- `Clean`
+- `Doctor`
+- `Help`
+.PARAMETER Source
+Overrides the configured source directory for the site.
+Supported by: `Build`, `Doctor`
+.PARAMETER Destination
+Overrides the configured destination directory for generated output.
+Supported by: `Build`, `Clean`
+.PARAMETER Environment
+Sets the build environment value exposed internally during the build.
+Supported by: `Build`
+.PARAMETER Quiet
+Suppresses Hyde information messages during execution.
+Supported by: `Build`, `Clean`, `Doctor`
+.EXAMPLE
+Hyde Build
+
+Builds the site using paths from configuration.
+.EXAMPLE
+Hyde Build -Source . -Destination .\_site
+
+Builds the site from the current directory into `.\_site`.
+.EXAMPLE
+Hyde Clean
+
+Removes the generated destination folder, metadata file, and cache directories for the site.
+.EXAMPLE
+Hyde Doctor
+
+Checks the site for common problems such as invalid front matter, missing layouts, and output-path conflicts.
+.EXAMPLE
+Hyde Help
+
+Shows command help for the module command.
+#>
 function Hyde {
     [CmdletBinding()]
     param(
