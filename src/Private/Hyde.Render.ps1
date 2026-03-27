@@ -1,3 +1,28 @@
+function ConvertTo-HydePublishedState {
+    [CmdletBinding()]
+    param(
+        $InputObject
+    )
+
+    if ($null -eq $InputObject) {
+        return $true
+    }
+
+    if ($InputObject -is [bool]) {
+        return $InputObject
+    }
+
+    if ($InputObject -is [string]) {
+        switch ($InputObject.Trim().ToLowerInvariant()) {
+            'true' { return $true }
+            'false' { return $false }
+            default { throw "Unsupported value for front matter setting 'published': '$InputObject'." }
+        }
+    }
+
+    return [bool]$InputObject
+}
+
 function Read-HydeFrontMatter {
     [CmdletBinding()]
     param(
@@ -43,7 +68,7 @@ function Read-HydeFrontMatter {
 
     # Hyde honors the published flag early so later stages can skip output generation.
     if ($Document.FrontMatter.ContainsKey('published')) {
-        $Document.Published = [bool]$Document.FrontMatter.published
+        $Document.Published = ConvertTo-HydePublishedState -InputObject $Document.FrontMatter.published
     }
 }
 

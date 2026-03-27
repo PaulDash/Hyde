@@ -65,4 +65,37 @@ title: About
         $context.Documents[0].FrontMatter.title | Should Not BeNullOrEmpty
         $context.StaticFiles.Count | Should Be 1
     }
+
+    It 'does not write pages marked published false' {
+        $siteRoot = Join-Path -Path $TestDrive -ChildPath 'site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'output'
+
+        [void](New-Item -Path $siteRoot -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+# Hello
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'draft.md') -Encoding UTF8 -Value @'
+---
+title: Draft
+published: false
+---
+# Hidden
+'@
+
+        $context = Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $draftDocument = $context.Documents | Where-Object { $_.BaseName -eq 'draft' }
+
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') | Should Be $true
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'draft.html') | Should Be $false
+        $draftDocument.Published | Should Be $false
+    }
 }

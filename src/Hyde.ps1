@@ -168,8 +168,6 @@ switch ($Command) {
 
     # consider "Includes" from _includes directory
 
-    # TODO: add support for "unpublished" pages
-
     # TODO: Add layouts and layout inheritance.
     # TODO: Add posts, collections, and permalink handling.
 
