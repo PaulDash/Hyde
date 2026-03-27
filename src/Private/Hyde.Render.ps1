@@ -118,6 +118,7 @@ function Invoke-HydeDocumentLiquid {
     )
 
     if (-not $Document.RenderWithLiquid) {
+        Write-Verbose "Liquid rendering disabled for '$($Document.RelativePath)'."
         return
     }
 
@@ -131,6 +132,7 @@ function Invoke-HydeDocumentLiquid {
     }
 
     $Document.RawContent = Invoke-LiquidTemplate -Template $Document.RawContent -Context $liquidContext -Dialect 'JekyllLiquid'
+    Write-Verbose "Rendered Liquid content for '$($Document.RelativePath)'."
 }
 
 function Invoke-HydeLayout {
@@ -149,10 +151,12 @@ function Invoke-HydeLayout {
 
     $layoutName = [string]$Document.FrontMatter.layout
     if ([string]::IsNullOrWhiteSpace($layoutName) -or $layoutName -in @('none', 'null')) {
+        Write-Verbose "No layout applied to '$($Document.RelativePath)'."
         return
     }
 
     $layoutPath = Resolve-HydeLayoutPath -LayoutName $layoutName -Context $Context
+    Write-Verbose "Applying layout '$layoutName' from '$layoutPath' to '$($Document.RelativePath)'."
     $layoutDocument = [HydeDocument]::new('Layout', $layoutPath, [System.IO.Path]::GetRelativePath($Context.SourcePath, $layoutPath))
     Read-HydeFrontMatter -Document $layoutDocument
 
@@ -175,6 +179,7 @@ function Invoke-HydeLayout {
     }
 
     $Document.RenderedContent = Invoke-LiquidTemplate -Template $layoutDocument.RawContent -Context $liquidContext -Dialect 'JekyllLiquid'
+    Write-Verbose "Rendered layout '$layoutName' for '$($Document.RelativePath)'."
 }
 
 function Read-HydeFrontMatter {
@@ -214,12 +219,14 @@ function Read-HydeFrontMatter {
         }
 
         $Document.RawContent = $rawFileContent.Substring($match.Length)
+        Write-Verbose "Parsed front matter for '$($Document.RelativePath)'."
     } else {
         if ($Strict) {
             throw "Strict front matter is enabled but '$($Document.SourcePath)' does not start with front matter."
         }
 
         $Document.RawContent = $rawFileContent
+        Write-Verbose "No front matter found for '$($Document.RelativePath)'."
     }
 
     # Apply matching defaults before interpreting final front matter flags.
@@ -237,6 +244,8 @@ function Read-HydeFrontMatter {
     if ($Document.FrontMatter.ContainsKey('render_with_liquid')) {
         $Document.RenderWithLiquid = ConvertTo-HydeBooleanFrontMatterValue -SettingName 'render_with_liquid' -InputObject $Document.FrontMatter.render_with_liquid -DefaultValue $true
     }
+
+    Write-Verbose "Document '$($Document.RelativePath)' resolved with published=$($Document.Published) and render_with_liquid=$($Document.RenderWithLiquid)."
 }
 
 function Convert-HydeInlineMarkdown {
@@ -426,6 +435,7 @@ function Convert-HydeDocument {
     Read-HydeFrontMatter -Document $Document -Context $Context -Strict:$strictFrontMatter
 
     if (-not $Document.Published) {
+        Write-Verbose "Stopping render pipeline for unpublished document '$($Document.RelativePath)'."
         return
     }
 
@@ -436,9 +446,11 @@ function Convert-HydeDocument {
     if ($Document.Extension -in @('.htm', '.html')) {
         # HTML pages are currently copied through after front matter is stripped.
         $Document.RenderedContent = $Document.RawContent
+        Write-Verbose "Using HTML passthrough renderer for '$($Document.RelativePath)'."
     } elseif ($Document.Extension -in $markdownExtensions) {
         # Markdown pages are converted into HTML before being written to disk.
         $Document.RenderedContent = Convert-HydeMarkdown -Markdown $Document.RawContent
+        Write-Verbose "Converted markdown document '$($Document.RelativePath)' to HTML."
     } else {
         throw "No renderer exists for '$($Document.SourcePath)'."
     }
@@ -490,6 +502,7 @@ function Write-HydeDocument {
         }
 
         Set-Content -LiteralPath $destinationPath -Value $Document.RenderedContent -Encoding UTF8
+        Write-Verbose "Wrote rendered document to '$destinationPath'."
     } catch {
         throw "Could not write rendered document to '$destinationPath'. $($_.Exception.Message)"
     }
@@ -515,6 +528,7 @@ function Copy-HydeStaticFile {
         }
 
         Copy-Item -LiteralPath $StaticFile.SourcePath -Destination $destinationPath -Force
+        Write-Verbose "Copied static file to '$destinationPath'."
     } catch {
         throw "Could not copy static file to '$destinationPath'. $($_.Exception.Message)"
     }

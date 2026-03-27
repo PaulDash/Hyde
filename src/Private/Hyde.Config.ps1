@@ -105,15 +105,20 @@ function Initialize-HydeBuildContext {
     $siteConfigName = '_config.yml'
 
     # Start with Hyde defaults, then layer site config and command-line overrides on top.
+    Write-Verbose "Loading Hyde defaults from '$defaultConfigPath'."
     $settings = Read-HydeConfigFile -Path $defaultConfigPath
 
     $sourceSetting = if ($PSBoundParameters.ContainsKey('Source')) { $Source } else { $settings.source }
     $sourcePath = Resolve-HydePath -Location $sourceSetting
+    Write-Verbose "Resolved source path to '$sourcePath'."
 
     $siteConfigPath = Join-Path -Path $sourcePath -ChildPath $siteConfigName
     if (Test-Path -LiteralPath $siteConfigPath -PathType Leaf) {
+        Write-Verbose "Loading site configuration from '$siteConfigPath'."
         $siteConfig = Read-HydeConfigFile -Path $siteConfigPath
         Merge-HydeConfig -Existing $settings -Difference $siteConfig
+    } else {
+        Write-Verbose "No site configuration file found at '$siteConfigPath'."
     }
 
     if ($PSBoundParameters.ContainsKey('Source')) {
@@ -125,6 +130,7 @@ function Initialize-HydeBuildContext {
     }
 
     $destinationPath = Resolve-HydePath -Location $settings.destination -BasePath $sourcePath -MayNotExist
+    Write-Verbose "Resolved destination path to '$destinationPath'."
 
     # Build up the runtime context that the rest of the pipeline will mutate.
     $context = [HydeBuildContext]::new()
@@ -142,6 +148,7 @@ function Initialize-HydeBuildContext {
     $context.Site['static_files'] = New-Object System.Collections.ArrayList
 
     Import-HydeDataFiles -Context $context
+    Write-Verbose "Initialized Hyde build context."
 
     return $context
 }

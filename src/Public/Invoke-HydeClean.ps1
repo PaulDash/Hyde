@@ -40,10 +40,13 @@ function Invoke-HydeClean {
 
     Write-Information "Running HYDE version $($context.Version)."
     Write-Verbose "Cleaning generated content for '$($context.SourcePath)'."
+    Write-Verbose "Using environment '$($context.Environment)'."
+    Write-Verbose "Prepared $($targets.Count) clean target(s)."
 
     # Clean each generated target independently so missing paths do not block the rest.
     foreach ($target in $targets) {
         try {
+            Write-Verbose "Removing $($target.Kind) at '$($target.Path)'."
             Remove-HydeGeneratedPath -Path $target.Path -SourcePath $context.SourcePath -Kind $target.Kind
         } catch {
             throw "Clean failed while removing $($target.Kind) '$($target.Path)'. $($_.Exception.Message)"

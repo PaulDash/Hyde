@@ -55,6 +55,23 @@ title: Test Site
         Test-Path -LiteralPath $destinationRoot | Should -BeFalse
     }
 
+    It 'emits verbose output for clean targets' {
+        $siteRoot = New-TestSiteDirectory -Name 'verbose-clean-site'
+        $destinationRoot = Join-Path -Path $siteRoot -ChildPath '_site'
+
+        [void](New-Item -Path $destinationRoot -ItemType Directory -Force)
+        [void](New-Item -Path (Join-Path -Path $siteRoot -ChildPath '.jekyll-cache') -ItemType Directory -Force)
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        $verboseRecords = @(Invoke-HydeClean -Source $siteRoot -Environment development -ScriptPath $entryScriptPath -Verbose 4>&1)
+        $verboseText = $verboseRecords | Where-Object { $_ -is [System.Management.Automation.VerboseRecord] } | ForEach-Object { $_.Message }
+
+        $verboseText | Should -Contain "Cleaning generated content for '$siteRoot'."
+        $verboseText | Should -Contain "Removing destination folder at '$destinationRoot'."
+    }
+
     It 'refuses to remove a destination outside the source tree' {
         $siteRoot = New-TestSiteDirectory -Name 'site'
         $outsideRoot = New-TestSiteDirectory -Name 'outside'

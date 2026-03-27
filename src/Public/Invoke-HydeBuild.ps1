@@ -40,10 +40,14 @@ function Invoke-HydeBuild {
 
     Write-Information "Running HYDE version $($context.Version)."
     Write-Verbose "Building site from '$($context.SourcePath)' to '$($context.DestinationPath)'."
+    Write-Verbose "Using environment '$($context.Environment)'."
 
     try {
         if (-not (Test-Path -LiteralPath $context.DestinationPath -PathType Container)) {
+            Write-Verbose "Creating destination directory '$($context.DestinationPath)'."
             [void](New-Item -Path $context.DestinationPath -ItemType Directory -Force)
+        } else {
+            Write-Verbose "Destination directory '$($context.DestinationPath)' already exists."
         }
     } catch {
         throw "Build failed while preparing destination '$($context.DestinationPath)'. $($_.Exception.Message)"
@@ -57,11 +61,19 @@ function Invoke-HydeBuild {
     }
 
     Write-Information "Processing $($context.Documents.Count) document(s) and $($context.StaticFiles.Count) static file(s)."
+    Write-Verbose "Discovered $($context.Documents.Count) document(s) and $($context.StaticFiles.Count) static file(s)."
 
     # Documents are rendered and written first so any rendering failures stop the build early.
     foreach ($document in $context.Documents) {
         try {
+            Write-Verbose "Rendering document '$($document.RelativePath)'."
             Convert-HydeDocument -Document $document -Context $context
+            if (-not $document.Published) {
+                Write-Verbose "Skipping unpublished document '$($document.RelativePath)'."
+                continue
+            }
+
+            Write-Verbose "Writing document '$($document.RelativePath)' to '$($document.OutputRelativePath)'."
             Write-HydeDocument -Document $document -Context $context
         } catch {
             throw "Build failed while processing document '$($document.SourcePath)'. $($_.Exception.Message)"
@@ -71,6 +83,7 @@ function Invoke-HydeBuild {
     # Static assets are copied after document rendering.
     foreach ($staticFile in $context.StaticFiles) {
         try {
+            Write-Verbose "Copying static file '$($staticFile.RelativePath)' to '$($staticFile.OutputRelativePath)'."
             Copy-HydeStaticFile -StaticFile $staticFile -Context $context
         } catch {
             throw "Build failed while copying static file '$($staticFile.SourcePath)'. $($_.Exception.Message)"

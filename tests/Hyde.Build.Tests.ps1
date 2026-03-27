@@ -108,6 +108,35 @@ published: false
         $draftDocument.Published | Should -BeFalse
     }
 
+    It 'emits verbose output for build stages' {
+        $siteRoot = New-TestSiteDirectory -Name 'verbose-build-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'verbose-build-output'
+        $assetsDirectory = Join-Path -Path $siteRoot -ChildPath 'assets'
+
+        [void](New-Item -Path $assetsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+# Hello
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $assetsDirectory -ChildPath 'site.css') -Encoding UTF8 -Value 'body { color: black; }'
+
+        # Capture the verbose stream to verify that Hyde reports the main build phases.
+        $verboseRecords = @(Invoke-HydeBuild -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath -Verbose 4>&1)
+        $verboseText = $verboseRecords | Where-Object { $_ -is [System.Management.Automation.VerboseRecord] } | ForEach-Object { $_.Message }
+
+        $verboseText | Should -Contain "Building site from '$siteRoot' to '$destinationRoot'."
+        $verboseText | Should -Contain "Rendering document 'index.md'."
+        $verboseText | Should -Contain "Copying static file 'assets/site.css' to 'assets/site.css'."
+    }
+
     It 'renders Liquid in document content by default' {
         $siteRoot = New-TestSiteDirectory -Name 'content-liquid-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'content-liquid-output'

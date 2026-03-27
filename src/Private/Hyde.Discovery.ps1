@@ -131,14 +131,17 @@ function Get-HydeSourceItems {
 
     while ($pendingDirectories.Count -gt 0) {
         $directoryPath = [string]$pendingDirectories.Dequeue()
+        Write-Verbose "Scanning directory '$directoryPath'."
 
         try {
             foreach ($directory in Get-ChildItem -LiteralPath $directoryPath -Directory) {
                 $relativeDirectoryPath = [System.IO.Path]::GetRelativePath($Context.SourcePath, $directory.FullName).Replace('\', '/')
                 if (Test-HydeItemExclusion -Item $directory -RelativePath $relativeDirectoryPath -ExcludedState $excludedState) {
+                    Write-Verbose "Excluding directory '$relativeDirectoryPath'."
                     continue
                 }
 
+                Write-Verbose "Queueing directory '$relativeDirectoryPath'."
                 $pendingDirectories.Enqueue($directory.FullName)
             }
         } catch {
@@ -149,6 +152,7 @@ function Get-HydeSourceItems {
             foreach ($file in Get-ChildItem -LiteralPath $directoryPath -File) {
                 $relativeFilePath = [System.IO.Path]::GetRelativePath($Context.SourcePath, $file.FullName).Replace('\', '/')
                 if (Test-HydeItemExclusion -Item $file -RelativePath $relativeFilePath -ExcludedState $excludedState) {
+                    Write-Verbose "Excluding file '$relativeFilePath'."
                     continue
                 }
 
@@ -158,6 +162,7 @@ function Get-HydeSourceItems {
                     $document.OutputRelativePath = Resolve-HydeDocumentOutputPath -Document $document -Settings $Context.Settings
                     $document.Url = '/' + $document.OutputRelativePath.Replace('\', '/')
                     $Context.AddDocument($document)
+                    Write-Verbose "Discovered document '$relativeFilePath'."
                 } else {
                     # Everything else is preserved as a static file.
                     $staticFile = [HydeStaticFile]::new($file.FullName, $relativeFilePath)
@@ -167,6 +172,7 @@ function Get-HydeSourceItems {
                         Merge-HydeFrontMatterDefaults -Target $staticFile.Metadata -Defaults $default.Values
                     }
                     $Context.AddStaticFile($staticFile)
+                    Write-Verbose "Discovered static file '$relativeFilePath'."
                 }
             }
         } catch {
@@ -195,6 +201,7 @@ function Import-HydeDataFiles {
 
     $dataDirectoryPath = Join-Path -Path $Context.SourcePath -ChildPath $dataDirectoryName
     if (-not (Test-Path -LiteralPath $dataDirectoryPath -PathType Container)) {
+        Write-Verbose "No data directory found at '$dataDirectoryPath'."
         return
     }
 
@@ -207,5 +214,6 @@ function Import-HydeDataFiles {
 
         $dataContent = Read-HydeConfigFile -Path $dataFile.FullName
         $Context.Site.data[$dataFile.BaseName] = $dataContent
+        Write-Verbose "Imported data file '$($dataFile.Name)'."
     }
 }
