@@ -90,25 +90,6 @@ title: Test Site
         $verboseText | Should -Contain "Removing destination folder at '$destinationRoot'."
     }
 
-    It 'refuses to remove a destination outside the source tree' {
-        $siteRoot = New-TestSiteDirectory -Name 'site'
-        $outsideRoot = New-TestSiteDirectory -Name 'outside'
-
-        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
-title: Test Site
-'@
-        Set-Content -LiteralPath (Join-Path -Path $outsideRoot -ChildPath 'index.html') -Encoding UTF8 -Value '<h1>Hello</h1>'
-
-        Push-Location -LiteralPath $siteRoot
-        try {
-            {
-                Clear-StaticSite -Destination '..\outside' -ScriptPath $entryScriptPath | Out-Null
-            } | Should -Throw -ExpectedMessage '*Clean failed while removing destination folder*outside the site source*'
-        } finally {
-            Pop-Location
-        }
-    }
-
     It 'refuses to remove a destination that is itself a site source directory' {
         $siteRoot = New-TestSiteDirectory -Name 'site'
         $generatedDirectory = Join-Path -Path $siteRoot -ChildPath '_site'

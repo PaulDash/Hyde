@@ -259,6 +259,38 @@ title: Home
         $indexOutput | Should -Match '<aside>Hello / Home</aside>'
     }
 
+    It 'renders Liquid for loops against site data' {
+        $siteRoot = New-TestSiteDirectory -Name 'for-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'for-output'
+        $dataDirectory = Join-Path -Path $siteRoot -ChildPath '_data'
+
+        [void](New-Item -Path $dataDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $dataDirectory -ChildPath 'nav.yml') -Encoding UTF8 -Value @'
+- Home
+- About
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+{% for item in site.data.nav %}
+- {{ forloop.index }} {{ item }}
+{% endfor %}
+'@
+
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+
+        $indexOutput | Should -Match '<li>1 Home</li>'
+        $indexOutput | Should -Match '<li>2 About</li>'
+    }
+
     It 'applies front matter defaults by path and page type while allowing explicit front matter to win' {
         $siteRoot = New-TestSiteDirectory -Name 'defaults-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'defaults-output'

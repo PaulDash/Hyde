@@ -53,6 +53,30 @@ Describe 'Hyde Liquid module' {
         $result | Should -Match 'Before Card: Home / Home\s+After'
     }
 
+    It 'supports for loops and forloop metadata' {
+        $template = '{% for item in page.items %}[{{ forloop.index }}:{{ item }}{% if forloop.last %}:last{% endif %}]{% else %}[empty]{% endfor %}'
+        $context = @{
+            page = @{
+                items = @('one', 'two')
+            }
+        }
+
+        $result = Invoke-LiquidTemplate -Template $template -Context $context
+        $result | Should -Be '[1:one][2:two:last]'
+    }
+
+    It 'supports for else when a collection is empty' {
+        $template = '{% for item in page.items %}[{{ item }}]{% else %}[empty]{% endfor %}'
+        $context = @{
+            page = @{
+                items = @()
+            }
+        }
+
+        $result = Invoke-LiquidTemplate -Template $template -Context $context
+        $result | Should -Be '[empty]'
+    }
+
     It 'rejects include in the plain Liquid dialect' {
         $includeRoot = Join-Path -Path $TestDrive -ChildPath 'includes'
         [void](New-Item -Path $includeRoot -ItemType Directory -Force)

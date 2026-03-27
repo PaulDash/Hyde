@@ -178,6 +178,24 @@ function Parse-LiquidIncludeMarkup {
     }
 }
 
+function Parse-LiquidForMarkup {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Markup
+    )
+
+    # Basic for loops follow the Liquid shape: "item in collection".
+    if ($Markup -notmatch '^([A-Za-z_][A-Za-z0-9_]*)\s+in\s+(.+)$') {
+        throw "Liquid for tag is invalid: '$Markup'."
+    }
+
+    return [pscustomobject]@{
+        VariableName         = $matches[1]
+        CollectionExpression = $matches[2]
+    }
+}
+
 function Parse-LiquidNodes {
     [CmdletBinding()]
     param(
@@ -306,6 +324,34 @@ function Parse-LiquidNodes {
 
                     break
                 }
+            }
+            'for' {
+                # Parse for blocks with an optional else branch for empty collections.
+                $forMarkup = Parse-LiquidForMarkup -Markup $tagParts.Markup
+                $Index.Value++
+                $bodyNodes = Parse-LiquidNodes -Tokens $Tokens -Index $Index -EndTags @('else', 'endfor')
+                if ($Index.Value -ge $Tokens.Count) {
+                    throw "Liquid for tag is missing endfor."
+                }
+
+                $nextTag = Get-LiquidTagParts -Markup $Tokens[$Index.Value].Value
+                $elseNodes = @()
+                if ($nextTag.Name -eq 'else') {
+                    $Index.Value++
+                    $elseNodes = Parse-LiquidNodes -Tokens $Tokens -Index $Index -EndTags @('endfor')
+                    if ($Index.Value -ge $Tokens.Count) {
+                        throw "Liquid for tag is missing endfor."
+                    }
+                }
+
+                $Index.Value++
+                [void]$nodes.Add([pscustomobject]@{
+                    Type                 = 'For'
+                    VariableName         = $forMarkup.VariableName
+                    CollectionExpression = $forMarkup.CollectionExpression
+                    Nodes                = $bodyNodes
+                    Else                 = $elseNodes
+                })
             }
             'unless' {
                 # Unless behaves like an inverted if with an optional else branch.
@@ -970,6 +1016,32 @@ function Invoke-LiquidInclude {
     return Invoke-LiquidTemplate -Template $template -Context $includeContext -Dialect $Runtime.Dialect -IncludeRoot $Runtime.IncludeRoot -IncludeStack ($Runtime.IncludeStack + $includePath)
 }
 
+function ConvertTo-LiquidEnumerable {
+    [CmdletBinding()]
+    param(
+        $Value
+    )
+
+    # For loops render lists naturally and treat scalars as one-item sequences.
+    if ($null -eq $Value) {
+        return @()
+    }
+
+    if ($Value -is [string]) {
+        return @($Value)
+    }
+
+    if ($Value -is [System.Collections.IDictionary]) {
+        return @($Value.GetEnumerator())
+    }
+
+    if ($Value -is [System.Collections.IEnumerable]) {
+        return @($Value)
+    }
+
+    return @($Value)
+}
+
 function ConvertFrom-LiquidNodes {
     [CmdletBinding()]
     param(
@@ -1019,6 +1091,40 @@ function ConvertFrom-LiquidNodes {
                     [void]$builder.Append((ConvertFrom-LiquidNodes -Nodes $node.Nodes -Runtime $Runtime))
                 } elseif ($node.Else.Count -gt 0) {
                     [void]$builder.Append((ConvertFrom-LiquidNodes -Nodes $node.Else -Runtime $Runtime))
+                }
+            }
+            'For' {
+                $items = @(ConvertTo-LiquidEnumerable -Value (Resolve-LiquidExpression -Expression $node.CollectionExpression -Runtime $Runtime))
+                if ($items.Count -eq 0) {
+                    if ($node.Else.Count -gt 0) {
+                        [void]$builder.Append((ConvertFrom-LiquidNodes -Nodes $node.Else -Runtime $Runtime))
+                    }
+                    continue
+                }
+
+                $outerForLoop = Resolve-LiquidVariable -Runtime $Runtime -Path 'forloop'
+                for ($index = 0; $index -lt $items.Count; $index++) {
+                    $loopScope = @{
+                        $node.VariableName = $items[$index]
+                        forloop            = @{
+                            name     = $node.VariableName
+                            length   = $items.Count
+                            index    = $index + 1
+                            index0   = $index
+                            rindex   = $items.Count - $index
+                            rindex0  = $items.Count - $index - 1
+                            first    = ($index -eq 0)
+                            last     = ($index -eq ($items.Count - 1))
+                            parentloop = $outerForLoop
+                        }
+                    }
+
+                    Add-LiquidScope -Runtime $Runtime -Scope $loopScope
+                    try {
+                        [void]$builder.Append((ConvertFrom-LiquidNodes -Nodes $node.Nodes -Runtime $Runtime))
+                    } finally {
+                        Remove-LiquidScope -Runtime $Runtime
+                    }
                 }
             }
             'Include' {
