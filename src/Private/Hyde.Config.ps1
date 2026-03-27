@@ -362,12 +362,6 @@ function Remove-HydeGeneratedPath {
     $resolvedSourcePath = [System.IO.Path]::GetFullPath($SourcePath)
     $resolvedTargetPath = [System.IO.Path]::GetFullPath($Path)
 
-    # Clean is currently conservative and only removes paths inside the source tree.
-    if (($resolvedTargetPath -ne $resolvedSourcePath) -and
-        (-not $resolvedTargetPath.StartsWith($resolvedSourcePath + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase))) {
-        throw "Refusing to remove $Kind path '$resolvedTargetPath' because it is outside the site source '$resolvedSourcePath'."
-    }
-
     # Clean must never remove an actual site source directory, even if the destination points at it.
     if (($Kind -eq 'destination folder') -and (Test-HydeSiteRootPath -Path $resolvedTargetPath)) {
         throw "Refusing to remove destination folder path '$resolvedTargetPath' because it is the source of a site."
