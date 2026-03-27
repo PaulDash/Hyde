@@ -362,12 +362,6 @@ function Remove-HydeGeneratedPath {
     $resolvedSourcePath = [System.IO.Path]::GetFullPath($SourcePath)
     $resolvedTargetPath = [System.IO.Path]::GetFullPath($Path)
 
-    # Refuse paths that look too short to be a real generated child path.
-    if ($resolvedTargetPath.Length -lt ($resolvedSourcePath.Length + 2) -and
-        $resolvedTargetPath -ne $resolvedSourcePath) {
-        throw "Refusing to remove suspicious $Kind path '$resolvedTargetPath'."
-    }
-
     # Clean is currently conservative and only removes paths inside the source tree.
     if (($resolvedTargetPath -ne $resolvedSourcePath) -and
         (-not $resolvedTargetPath.StartsWith($resolvedSourcePath + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase))) {
