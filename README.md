@@ -7,19 +7,17 @@ PowerShell static site generator. The ugly Mr. Hyde to the popular Jekyll. Creat
 
 In three (3) days and nights, I managed to implement much of the configuration loading. There's a lot of it going on from different sources. A lot.
 
-As of this writing, Hyde only copies static files and does NOT process pages or posts.
+A year and something later, with the power of AI, much more functionality has been added. This makes Hyde usable.
 
-This code is not usable until I find another 72 hours straight. Or YOU help out!
+Suggestions on the code's required evolution and help actually writing that code is now very much appreciated.
 
 ## Not implemented
 
-- Plugins
+- most Plugins
 - any functionality which requires Plugins
 - Sass Converter (duh, it's a Plugin)
 - gem-based themes (obviously)
 - Textile content
-- Collections
-- Permalinks (for now)
 - Layout inheritance (is this a deal-breaker?)
 - Pagination (for now)
 - Data Files in JSON, CSV, TSV
