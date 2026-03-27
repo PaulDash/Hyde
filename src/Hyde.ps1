@@ -163,7 +163,21 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 # Load the module wrapper so the script can delegate to the public commands.
-Import-Module (Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.psm1') -Force
+$modulePath = Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.psm1'
+$liquidModulePath = Join-Path -Path $PSScriptRoot -ChildPath 'Liquid\Hyde.Liquid.psm1'
+
+# In long-lived editor sessions, unload any existing Hyde modules first so the script uses the current code on disk.
+Get-Module |
+    Where-Object {
+        $_.Path -and (
+            $_.Path.Equals($modulePath, [System.StringComparison]::OrdinalIgnoreCase) -or
+            $_.Path.Equals($liquidModulePath, [System.StringComparison]::OrdinalIgnoreCase)
+        )
+    } |
+    Sort-Object Name -Descending |
+    ForEach-Object { Remove-Module -ModuleInfo $_ -Force -ErrorAction SilentlyContinue }
+
+Import-Module $modulePath
 
 if ($PSBoundParameters.ContainsKey('Quiet') -and $VerbosePreference -eq 'Continue') {
     throw "It doesn't make sense to ask for verbose output AND to keep quiet!"

@@ -2,7 +2,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 Import-Module powershell-yaml -ErrorAction Stop
-Import-Module (Join-Path -Path (Split-Path -Parent $PSCommandPath) -ChildPath 'Liquid\Hyde.Liquid.psm1') -Force
+Import-Module (Join-Path -Path (Split-Path -Parent $PSCommandPath) -ChildPath 'Liquid\Hyde.Liquid.psm1')
 
 $moduleRoot = Split-Path -Parent $PSCommandPath
 

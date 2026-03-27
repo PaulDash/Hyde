@@ -56,6 +56,27 @@ title: Home
         $verboseText | Should -Contain "Starting document rendering phase."
     }
 
+    It 'can run the script build command twice in the same session' {
+        $siteRoot = New-TestSiteDirectory -Name 'repeat-build-site'
+        $firstDestinationRoot = Join-Path -Path $TestDrive -ChildPath 'repeat-build-output-1'
+        $secondDestinationRoot = Join-Path -Path $TestDrive -ChildPath 'repeat-build-output-2'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+# Hello
+'@
+
+        {
+            & $entryScriptPath Build -Source $siteRoot -Destination $firstDestinationRoot -Quiet
+            & $entryScriptPath Build -Source $siteRoot -Destination $secondDestinationRoot -Quiet
+        } | Should -Not -Throw
+    }
+
     It 'rejects Source for Clean' {
         {
             & $entryScriptPath Clean -Source '.'
