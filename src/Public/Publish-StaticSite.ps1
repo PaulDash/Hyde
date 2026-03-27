@@ -65,6 +65,18 @@ function Publish-StaticSite {
 
     Write-Information "Processing $($context.Documents.Count) document(s) and $($context.StaticFiles.Count) static file(s)."
     Write-Verbose "Discovered $($context.Documents.Count) document(s) and $($context.StaticFiles.Count) static file(s)."
+    Write-Verbose "Preparing document metadata phase."
+
+    # Resolve front matter and semantic metadata for every document before any template loops read site collections.
+    foreach ($document in $context.Documents) {
+        try {
+            Write-Verbose "Preparing document metadata for '$($document.RelativePath)'."
+            Initialize-HydeDocument -Document $document -Context $context
+        } catch {
+            throw "Build failed while preparing document '$($document.SourcePath)'. $($_.Exception.Message)"
+        }
+    }
+
     Write-Verbose "Starting document rendering phase."
 
     # Documents are rendered and written first so any rendering failures stop the build early.

@@ -278,6 +278,38 @@ function Read-HydeFrontMatter {
     Write-Verbose "Document '$($Document.RelativePath)' resolved with title='$($Document.Title)', published=$($Document.Published), and render_with_liquid=$($Document.RenderWithLiquid)."
 }
 
+function Initialize-HydeDocument {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document,
+
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    if ($Document.IsPrepared) {
+        return
+    }
+
+    # Prepare front matter and plugin-derived metadata before any page renders against site.* collections.
+    $strictFrontMatter = $false
+    if ($Context.Settings.ContainsKey('strict_front_matter')) {
+        $strictFrontMatter = [bool]$Context.Settings.strict_front_matter
+    }
+
+    Read-HydeFrontMatter -Document $Document -Context $Context -Strict:$strictFrontMatter
+
+    if ($Document.Published) {
+        Invoke-HydePluginHook -Context $Context -HookName 'BeforeRenderDocument' -Arguments @{
+            Context  = $Context
+            Document = $Document
+        }
+    }
+
+    $Document.IsPrepared = $true
+}
+
 function Convert-HydeInlineMarkdown {
     [CmdletBinding()]
     param(
@@ -456,22 +488,12 @@ function Convert-HydeDocument {
         [HydeBuildContext]$Context
     )
 
-    # Rendering starts by parsing front matter, then selecting the renderer by file extension.
-    $strictFrontMatter = $false
-    if ($Context.Settings.ContainsKey('strict_front_matter')) {
-        $strictFrontMatter = [bool]$Context.Settings.strict_front_matter
-    }
-
-    Read-HydeFrontMatter -Document $Document -Context $Context -Strict:$strictFrontMatter
+    # Rendering starts by preparing front matter and plugin-derived metadata.
+    Initialize-HydeDocument -Document $Document -Context $Context
 
     if (-not $Document.Published) {
         Write-Verbose "Stopping render pipeline for unpublished document '$($Document.RelativePath)'."
         return
-    }
-
-    Invoke-HydePluginHook -Context $Context -HookName 'BeforeRenderDocument' -Arguments @{
-        Context  = $Context
-        Document = $Document
     }
 
     # Liquid rendering happens against the document body before any markup conversion.

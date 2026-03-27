@@ -368,6 +368,45 @@ collections:
         $context.Site.notes.Count | Should -Be 0
     }
 
+    It 'exposes prepared collection titles to Liquid loops before the collection documents are rendered' {
+        $siteRoot = New-TestSiteDirectory -Name 'collections-title-loop-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'collections-title-loop-output'
+        $collectionDirectory = Join-Path -Path $siteRoot -ChildPath '_notes'
+
+        [void](New-Item -Path $collectionDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+plugins:
+  - titles-from-headings
+collections:
+  notes:
+    output: true
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'notes-index.md') -Encoding UTF8 -Value @'
+---
+title: Notes Index
+---
+<ul>
+{% for note in site.notes %}
+  <li><a href="{{ note.url }}">{{ note.title }}</a></li>
+{% endfor %}
+</ul>
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $collectionDirectory -ChildPath 'welcome.md') -Encoding UTF8 -Value @'
+---
+---
+# Welcome Note
+'@
+
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'notes-index.html') -Raw
+
+        $indexOutput | Should -Match '<li><a href="/notes/welcome\.html">Welcome Note</a></li>'
+    }
+
     It 'renders Jekyll includes from the includes directory' {
         $siteRoot = New-TestSiteDirectory -Name 'include-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'include-output'
@@ -656,7 +695,7 @@ title: [unterminated
 
         {
             Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
-        } | Should -Throw -ExpectedMessage '*Build failed while processing document*broken.md*Could not parse front matter*'
+        } | Should -Throw -ExpectedMessage '*Build failed while preparing document*broken.md*Could not parse front matter*'
     }
 
     It 'reports invalid published values with document context' {
@@ -675,6 +714,6 @@ published: maybe
 
         {
             Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
-        } | Should -Throw -ExpectedMessage "*Build failed while processing document*broken.md*Unsupported value for front matter setting 'published'*"
+        } | Should -Throw -ExpectedMessage "*Build failed while preparing document*broken.md*Unsupported value for front matter setting 'published'*"
     }
 }
