@@ -61,6 +61,28 @@ function Get-HydePluginConfigurationNames {
     return @($configuredNames.ToArray())
 }
 
+function Get-HydePluginCandidateNames {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PluginName
+    )
+
+    # Hyde accepts Jekyll-style plugin names and translates them into simpler Hyde-friendly names.
+    $candidates = New-Object System.Collections.ArrayList
+    [void]$candidates.Add($PluginName)
+
+    if ($PluginName.StartsWith('jekyll-', [System.StringComparison]::OrdinalIgnoreCase)) {
+        $trimmedName = $PluginName.Substring(7)
+        if (-not [string]::IsNullOrWhiteSpace($trimmedName)) {
+            [void]$candidates.Add($trimmedName)
+            [void]$candidates.Add("hyde-$trimmedName")
+        }
+    }
+
+    return @($candidates | Select-Object -Unique)
+}
+
 function Get-HydeWhitelistedPluginNames {
     [CmdletBinding()]
     param(
@@ -109,26 +131,23 @@ function Resolve-HydePluginFiles {
         }
     }
 
-    $pluginAliases = @{
-        'seo'            = 'seo-tag'
-        'jekyll-seo-tag' = 'seo-tag'
-    }
-
     $resolvedFiles = New-Object System.Collections.ArrayList
     $seenPluginPaths = New-Object System.Collections.Generic.HashSet[string]([System.StringComparer]::OrdinalIgnoreCase)
     foreach ($pluginName in $configuredNames) {
         $resolvedPluginFile = $null
-        $lookupName = if ($pluginAliases.ContainsKey($pluginName)) { $pluginAliases[$pluginName] } else { $pluginName }
+        foreach ($candidateName in Get-HydePluginCandidateNames -PluginName $pluginName) {
+            if ($pluginMap.ContainsKey($candidateName)) {
+                $resolvedPluginFile = $pluginMap[$candidateName]
+                break
+            }
 
-        if ($pluginMap.ContainsKey($pluginName)) {
-            $resolvedPluginFile = $pluginMap[$pluginName]
-        } elseif ($pluginMap.ContainsKey($lookupName)) {
-            $resolvedPluginFile = $pluginMap[$lookupName]
-        } elseif ($builtInPluginMap.ContainsKey($pluginName)) {
-            $resolvedPluginFile = $builtInPluginMap[$pluginName]
-        } elseif ($builtInPluginMap.ContainsKey($lookupName)) {
-            $resolvedPluginFile = $builtInPluginMap[$lookupName]
-        } else {
+            if ($builtInPluginMap.ContainsKey($candidateName)) {
+                $resolvedPluginFile = $builtInPluginMap[$candidateName]
+                break
+            }
+        }
+
+        if ($null -eq $resolvedPluginFile) {
             throw "Could not locate plugin '$pluginName' in '$pluginsDirectory' or '$builtInPluginsDirectory'."
         }
 

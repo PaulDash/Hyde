@@ -330,6 +330,47 @@ title: Home
         Test-Path -LiteralPath $outputPath | Should -BeTrue
     }
 
+    It 'translates jekyll-prefixed plugin names to matching Hyde plugin files' {
+        $siteRoot = New-TestSiteDirectory -Name 'plugin-translation-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'plugin-translation-output'
+        $pluginsDirectory = Join-Path -Path $siteRoot -ChildPath '_plugins'
+
+        [void](New-Item -Path $pluginsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+plugins:
+  - jekyll-lastmod
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $pluginsDirectory -ChildPath 'hyde-lastmod.ps1') -Encoding UTF8 -Value @'
+param($Context)
+
+@{
+    Name = 'hyde-lastmod'
+    Hooks = @{
+        ResolveDocumentOutputPath = {
+            param($CurrentValue, $Invocation)
+
+            return ('translated/{0}' -f $CurrentValue)
+        }
+    }
+}
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+# Hello
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'translated\index.html') | Should -BeTrue
+        $context.LoadedPlugins.Name | Should -Contain 'hyde-lastmod'
+    }
+
     It 'renders Liquid for loops against site data' {
         $siteRoot = New-TestSiteDirectory -Name 'for-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'for-output'
