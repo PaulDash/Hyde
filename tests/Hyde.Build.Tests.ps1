@@ -259,41 +259,23 @@ title: Home
         $indexOutput | Should -Match '<aside>Hello / Home</aside>'
     }
 
-    It 'loads a plugin that registers a custom seo Liquid tag' {
+    It 'loads the built-in seo plugin and renders title description and canonical tags' {
         $siteRoot = New-TestSiteDirectory -Name 'plugin-seo-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'plugin-seo-output'
-        $pluginsDirectory = Join-Path -Path $siteRoot -ChildPath '_plugins'
-
-        [void](New-Item -Path $pluginsDirectory -ItemType Directory -Force)
 
         Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
 title: Test Site
+description: Site Description
+url: https://example.com
+baseurl: /docs
 plugins:
-  - seo
-'@
-
-        Set-Content -LiteralPath (Join-Path -Path $pluginsDirectory -ChildPath 'seo.ps1') -Encoding UTF8 -Value @'
-param($Context)
-
-@{
-    Name = 'seo'
-    Liquid = @{
-        Tags = @{
-            seo = {
-                param($Invocation)
-
-                $site = & $Invocation.Helpers.ResolveVariable 'site'
-                $page = & $Invocation.Helpers.ResolveVariable 'page'
-                return "<title>$($page.title) | $($site.title)</title>"
-            }
-        }
-    }
-}
+  - jekyll-seo-tag
 '@
 
         Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.html') -Encoding UTF8 -Value @'
 ---
 title: Home
+description: Page Description
 ---
 {% seo %}
 '@
@@ -302,7 +284,9 @@ title: Home
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
         $indexOutput | Should -Match '<title>Home \| Test Site</title>'
-        $context.LoadedPlugins.Name | Should -Contain 'seo'
+        $indexOutput | Should -Match '<meta name="description" content="Page Description">'
+        $indexOutput | Should -Match '<link rel="canonical" href="https://example.com/docs/index\.html">'
+        $context.LoadedPlugins.Name | Should -Contain 'seo-tag'
     }
 
     It 'loads a plugin that changes document output paths' {

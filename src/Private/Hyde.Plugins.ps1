@@ -84,12 +84,14 @@ function Resolve-HydePluginFiles {
 
     # Hyde plugins are PowerShell scripts under the configured plugin directory.
     $pluginsDirectory = Resolve-HydePluginDirectory -Context $Context
+    $builtInPluginsDirectory = Join-Path -Path (Split-Path -Path $PSScriptRoot -Parent) -ChildPath 'Plugins'
     if (-not (Test-Path -LiteralPath $pluginsDirectory -PathType Container)) {
         Write-Verbose "No plugin directory found at '$pluginsDirectory'."
-        return @()
+        $pluginFiles = @()
+    } else {
+        $pluginFiles = @(Get-ChildItem -LiteralPath $pluginsDirectory -Filter '*.ps1' -File | Sort-Object BaseName)
     }
 
-    $pluginFiles = @(Get-ChildItem -LiteralPath $pluginsDirectory -Filter '*.ps1' -File | Sort-Object BaseName)
     $configuredNames = @(Get-HydePluginConfigurationNames -Context $Context)
     if ($configuredNames.Count -eq 0) {
         return $pluginFiles
@@ -100,13 +102,39 @@ function Resolve-HydePluginFiles {
         $pluginMap[$pluginFile.BaseName] = $pluginFile
     }
 
+    $builtInPluginMap = @{}
+    if (Test-Path -LiteralPath $builtInPluginsDirectory -PathType Container) {
+        foreach ($pluginFile in Get-ChildItem -LiteralPath $builtInPluginsDirectory -Filter '*.ps1' -File | Sort-Object BaseName) {
+            $builtInPluginMap[$pluginFile.BaseName] = $pluginFile
+        }
+    }
+
+    $pluginAliases = @{
+        'seo'            = 'seo-tag'
+        'jekyll-seo-tag' = 'seo-tag'
+    }
+
     $resolvedFiles = New-Object System.Collections.ArrayList
+    $seenPluginPaths = New-Object System.Collections.Generic.HashSet[string]([System.StringComparer]::OrdinalIgnoreCase)
     foreach ($pluginName in $configuredNames) {
-        if (-not $pluginMap.ContainsKey($pluginName)) {
-            throw "Could not locate plugin '$pluginName' in '$pluginsDirectory'."
+        $resolvedPluginFile = $null
+        $lookupName = if ($pluginAliases.ContainsKey($pluginName)) { $pluginAliases[$pluginName] } else { $pluginName }
+
+        if ($pluginMap.ContainsKey($pluginName)) {
+            $resolvedPluginFile = $pluginMap[$pluginName]
+        } elseif ($pluginMap.ContainsKey($lookupName)) {
+            $resolvedPluginFile = $pluginMap[$lookupName]
+        } elseif ($builtInPluginMap.ContainsKey($pluginName)) {
+            $resolvedPluginFile = $builtInPluginMap[$pluginName]
+        } elseif ($builtInPluginMap.ContainsKey($lookupName)) {
+            $resolvedPluginFile = $builtInPluginMap[$lookupName]
+        } else {
+            throw "Could not locate plugin '$pluginName' in '$pluginsDirectory' or '$builtInPluginsDirectory'."
         }
 
-        [void]$resolvedFiles.Add($pluginMap[$pluginName])
+        if ($seenPluginPaths.Add($resolvedPluginFile.FullName)) {
+            [void]$resolvedFiles.Add($resolvedPluginFile)
+        }
     }
 
     return @($resolvedFiles.ToArray())

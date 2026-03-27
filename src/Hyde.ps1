@@ -22,12 +22,14 @@ Hyde is a PowerShell static site generator inspired by Jekyll.  Created as a fun
 The current implementation supports:
 - loading Hyde defaults from `globalConfig.yaml`
 - loading site settings from `_config.yml`
+- loading site and built-in plugins
 - discovering documents and static files
 - copying HTML and static files to the destination site
 - loading YAML files from `_data`
 - parsing YAML front matter
 - rendering Markdown documents to HTML
 - rendering single-level layouts through the Liquid module
+- rendering plugin-provided Liquid tags and filters
 - cleaning generated output and cache directories
 - basic doctor-style site validation
 
@@ -39,7 +41,7 @@ The current implementation does not yet support:
 - permalinks
 
 We may never support:
-- plugins
+- all plugins
 - syntax highlighting
 - new-theme command
 
