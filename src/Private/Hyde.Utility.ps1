@@ -1,0 +1,100 @@
+function ConvertTo-HydeHashtable {
+    [CmdletBinding()]
+    param(
+        [Parameter(ValueFromPipeline = $true)]
+        $InputObject
+    )
+
+    process {
+        if ($null -eq $InputObject) {
+            return $null
+        }
+
+        if ($InputObject -is [System.Collections.IDictionary]) {
+            $result = @{}
+            foreach ($key in $InputObject.Keys) {
+                $result[$key] = ConvertTo-HydeHashtable -InputObject $InputObject[$key]
+            }
+
+            return $result
+        }
+
+        if ($InputObject -is [pscustomobject]) {
+            $result = @{}
+            foreach ($property in $InputObject.PSObject.Properties) {
+                $result[$property.Name] = ConvertTo-HydeHashtable -InputObject $property.Value
+            }
+
+            return $result
+        }
+
+        if ($InputObject -is [System.Collections.IEnumerable] -and $InputObject -isnot [string]) {
+            $result = New-Object System.Collections.ArrayList
+            foreach ($item in $InputObject) {
+                [void]$result.Add((ConvertTo-HydeHashtable -InputObject $item))
+            }
+
+            return ,$result.ToArray()
+        }
+
+        return $InputObject
+    }
+}
+
+function Copy-HydeValue {
+    [CmdletBinding()]
+    param(
+        $InputObject
+    )
+
+    if ($null -eq $InputObject) {
+        return $null
+    }
+
+    if ($InputObject -is [System.Collections.IDictionary]) {
+        $copy = @{}
+        foreach ($key in $InputObject.Keys) {
+            $copy[$key] = Copy-HydeValue -InputObject $InputObject[$key]
+        }
+
+        return $copy
+    }
+
+    if ($InputObject -is [System.Collections.IEnumerable] -and $InputObject -isnot [string]) {
+        $copy = New-Object System.Collections.ArrayList
+        foreach ($item in $InputObject) {
+            [void]$copy.Add((Copy-HydeValue -InputObject $item))
+        }
+
+        return ,$copy.ToArray()
+    }
+
+    return $InputObject
+}
+
+function Get-HydeMarkdownExtensions {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Settings
+    )
+
+    $extensions = @('.md', '.markdown')
+
+    if ($Settings.ContainsKey('markdown_ext') -and $Settings.markdown_ext) {
+        $extensions = @(
+            $Settings.markdown_ext -split ',' |
+                ForEach-Object { $_.Trim() } |
+                Where-Object { $_ } |
+                ForEach-Object {
+                    if ($_.StartsWith('.')) {
+                        $_.ToLowerInvariant()
+                    } else {
+                        ".$($_.ToLowerInvariant())"
+                    }
+                }
+        )
+    }
+
+    return $extensions
+}
