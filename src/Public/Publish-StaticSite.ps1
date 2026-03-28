@@ -50,6 +50,7 @@ function Publish-StaticSite {
     Write-Verbose "Building site from '$($context.SourcePath)' to '$($context.DestinationPath)'."
     Write-Verbose "Using environment '$($context.Environment)'."
     Write-Verbose "Loaded $($context.LoadedPlugins.Count) plugin(s)."
+    initializeHydeLayouts -Context $context
 
     try {
         if (-not (Test-Path -LiteralPath $context.DestinationPath -PathType Container)) {

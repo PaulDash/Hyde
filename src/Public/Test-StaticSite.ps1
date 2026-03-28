@@ -42,6 +42,7 @@ function Test-StaticSite {
     } catch {
         throw "Doctor failed while initializing site context. $($_.Exception.Message)"
     }
+    initializeHydeLayouts -Context $context
 
     Write-Information "Running HYDE version $($context.Version)."
     Write-Verbose "Testing site at '$($context.SourcePath)'."

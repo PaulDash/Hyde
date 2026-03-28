@@ -69,6 +69,38 @@ layout: missing
         ($report.Issues.Code -contains 'DuplicateOutputPath') | Should -BeTrue
     }
 
+    It 'accepts inherited layouts when every layout in the chain exists' {
+        $siteRoot = New-TestSiteDirectory -Name 'doctor-layout-chain-site'
+        $layoutsDirectory = Join-Path -Path $siteRoot -ChildPath '_layouts'
+
+        [void](New-Item -Path $layoutsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $layoutsDirectory -ChildPath 'base.html') -Encoding UTF8 -Value '<main>{{ content }}</main>'
+        Set-Content -LiteralPath (Join-Path -Path $layoutsDirectory -ChildPath 'notes.html') -Encoding UTF8 -Value @'
+---
+layout: base
+---
+<section>{{ content }}</section>
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+layout: notes
+---
+# Hello
+'@
+
+        $report = Test-StaticSite -Source $siteRoot -Environment development -ScriptPath $entryScriptPath
+
+        $report.Healthy | Should -BeTrue
+        $report.Issues.Count | Should -Be 0
+    }
+
     It 'reports invalid front matter without stopping the whole doctor run' {
         $siteRoot = New-TestSiteDirectory -Name 'doctor-front-matter-site'
 

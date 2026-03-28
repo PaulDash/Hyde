@@ -65,27 +65,10 @@ function testHydeLayoutForIssues {
     }
 
     try {
-        $layoutPath = resolveHydeLayoutPath -LayoutName $layoutName -Context $Context
+        [void](getHydeLayoutChain -LayoutName $layoutName -Context $Context)
     } catch {
         addHydeValidationIssue -Report $Report -Code 'MissingLayout' -Path $Document.RelativePath -Message $_.Exception.Message
         return
-    }
-
-    $layoutDocument = [HydeDocument]::new('Layout', $layoutPath, [System.IO.Path]::GetRelativePath($Context.SourcePath, $layoutPath))
-
-    try {
-        readHydeFrontMatter -Document $layoutDocument
-    } catch {
-        addHydeValidationIssue -Report $Report -Code 'InvalidLayoutFrontMatter' -Path $layoutDocument.RelativePath -Message $_.Exception.Message
-        return
-    }
-
-    # Hyde intentionally stops at one layout level for now, so doctor reports that limitation clearly.
-    if ($layoutDocument.FrontMatter.ContainsKey('layout')) {
-        $parentLayout = [string]$layoutDocument.FrontMatter.layout
-        if (-not [string]::IsNullOrWhiteSpace($parentLayout) -and $parentLayout -notin @('none', 'null')) {
-            addHydeValidationIssue -Report $Report -Code 'UnsupportedLayoutInheritance' -Path $layoutDocument.RelativePath -Message "Layout inheritance is not supported yet for '$layoutPath'."
-        }
     }
 }
 

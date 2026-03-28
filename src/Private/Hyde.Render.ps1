@@ -272,6 +272,106 @@ function resolveHydeLayoutPath {
     throw "Could not find layout '$LayoutName' in '$layoutsDirectoryPath'."
 }
 
+function initializeHydeLayouts {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    # Parse layout files once so documents and doctor checks resolve the same inheritance graph.
+    $Context.Layouts.Clear()
+
+    $layoutsDirectoryName = if ($Context.Settings.ContainsKey('layouts_dir') -and $Context.Settings.layouts_dir) {
+        $Context.Settings.layouts_dir
+    } else {
+        '_layouts'
+    }
+
+    $layoutsDirectoryPath = Join-Path -Path $Context.SourcePath -ChildPath $layoutsDirectoryName
+    if (-not (Test-Path -LiteralPath $layoutsDirectoryPath -PathType Container)) {
+        Write-Verbose "No layouts directory found at '$layoutsDirectoryPath'."
+        return
+    }
+
+    foreach ($layoutFile in Get-ChildItem -LiteralPath $layoutsDirectoryPath -File) {
+        $layoutRelativePath = [System.IO.Path]::GetRelativePath($Context.SourcePath, $layoutFile.FullName).Replace('\', '/')
+        $layoutDocument = [HydeDocument]::new('Layout', $layoutFile.FullName, $layoutRelativePath)
+        readHydeFrontMatter -Document $layoutDocument
+
+        $Context.Layouts[$layoutFile.Name.ToLowerInvariant()] = $layoutDocument
+        if (-not $Context.Layouts.ContainsKey($layoutFile.BaseName.ToLowerInvariant())) {
+            $Context.Layouts[$layoutFile.BaseName.ToLowerInvariant()] = $layoutDocument
+        }
+
+        Write-Verbose "Pre-parsed layout '$($layoutFile.Name)'."
+    }
+}
+
+function getHydeLayoutDocument {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$LayoutName,
+
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    $layoutCandidates = @($LayoutName)
+    if (-not [System.IO.Path]::GetExtension($LayoutName)) {
+        $layoutCandidates += "$LayoutName.html"
+    }
+
+    foreach ($candidate in $layoutCandidates) {
+        $normalizedCandidate = $candidate.ToLowerInvariant()
+        if ($Context.Layouts.ContainsKey($normalizedCandidate)) {
+            return $Context.Layouts[$normalizedCandidate]
+        }
+    }
+
+    $layoutsDirectoryName = if ($Context.Settings.ContainsKey('layouts_dir') -and $Context.Settings.layouts_dir) {
+        $Context.Settings.layouts_dir
+    } else {
+        '_layouts'
+    }
+
+    $layoutsDirectoryPath = Join-Path -Path $Context.SourcePath -ChildPath $layoutsDirectoryName
+    throw "Could not find layout '$LayoutName' in '$layoutsDirectoryPath'."
+}
+
+function getHydeLayoutChain {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$LayoutName,
+
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    $layoutChain = New-Object System.Collections.ArrayList
+    $visitedLayoutNames = New-Object System.Collections.Generic.HashSet[string]([System.StringComparer]::OrdinalIgnoreCase)
+    $currentLayoutName = $LayoutName
+
+    while (-not [string]::IsNullOrWhiteSpace($currentLayoutName) -and $currentLayoutName -notin @('none', 'null')) {
+        if (-not $visitedLayoutNames.Add($currentLayoutName)) {
+            throw "Layout inheritance cycle detected at layout '$currentLayoutName'."
+        }
+
+        $layoutDocument = getHydeLayoutDocument -LayoutName $currentLayoutName -Context $Context
+        [void]$layoutChain.Add($layoutDocument)
+
+        if ($layoutDocument.FrontMatter.ContainsKey('layout')) {
+            $currentLayoutName = [string]$layoutDocument.FrontMatter.layout
+        } else {
+            $currentLayoutName = ''
+        }
+    }
+
+    return @($layoutChain.ToArray())
+}
+
 function resolveHydeIncludesPath {
     [CmdletBinding()]
     param(
@@ -371,31 +471,27 @@ function invokeHydeLayout {
         return
     }
 
-    $layoutPath = resolveHydeLayoutPath -LayoutName $layoutName -Context $Context
-    Write-Verbose "Applying layout '$layoutName' from '$layoutPath' to '$($Document.RelativePath)'."
-    $layoutDocument = [HydeDocument]::new('Layout', $layoutPath, [System.IO.Path]::GetRelativePath($Context.SourcePath, $layoutPath))
-    readHydeFrontMatter -Document $layoutDocument
+    $layoutChain = getHydeLayoutChain -LayoutName $layoutName -Context $Context
+    $renderedContent = $Document.RenderedContent
 
-    if ($layoutDocument.FrontMatter.ContainsKey('layout')) {
-        $parentLayout = [string]$layoutDocument.FrontMatter.layout
-        if (-not [string]::IsNullOrWhiteSpace($parentLayout) -and $parentLayout -notin @('none', 'null')) {
-            throw "Layout inheritance is not supported yet for '$layoutPath'."
+    foreach ($layoutDocument in $layoutChain) {
+        Write-Verbose "Applying layout '$([System.IO.Path]::GetFileName($layoutDocument.SourcePath))' to '$($Document.RelativePath)'."
+        $liquidContext = @{
+            content = $renderedContent
+            page    = newHydePageVariables -Document $Document
+            site    = $Context.Site
+            layout  = $layoutDocument.FrontMatter
+            hyde    = @{
+                version     = $Context.Version
+                environment = $Context.Environment
+            }
         }
+
+        $renderedContent = Invoke-LiquidTemplate -Template $layoutDocument.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (resolveHydeIncludesPath -Context $Context) -Registry $Context.LiquidRegistry
     }
 
-    $liquidContext = @{
-        content = $Document.RenderedContent
-        page    = newHydePageVariables -Document $Document
-        site    = $Context.Site
-        layout  = $layoutDocument.FrontMatter
-        hyde    = @{
-            version     = $Context.Version
-            environment = $Context.Environment
-        }
-    }
-
-    $Document.RenderedContent = Invoke-LiquidTemplate -Template $layoutDocument.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (resolveHydeIncludesPath -Context $Context) -Registry $Context.LiquidRegistry
-    Write-Verbose "Rendered layout '$layoutName' for '$($Document.RelativePath)'."
+    $Document.RenderedContent = $renderedContent
+    Write-Verbose "Rendered layout chain '$layoutName' for '$($Document.RelativePath)'."
 }
 
 function readHydeFrontMatter {

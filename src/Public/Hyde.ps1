@@ -21,10 +21,6 @@ The current implementation supports:
 - cleaning generated output and cache directories
 - basic doctor-style site validation
 
-The current implementation does not yet support:
-- layout inheritance
-- posts
-
 We may never support:
 - all plugins
 - syntax highlighting

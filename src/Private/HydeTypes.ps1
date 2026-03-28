@@ -70,6 +70,7 @@ class HydeBuildContext {
     [string]$DestinationPath
     [hashtable]$PluginRegistry
     [hashtable]$LiquidRegistry
+    [hashtable]$Layouts
     [System.Collections.ArrayList]$Documents
     [System.Collections.ArrayList]$StaticFiles
     [System.Collections.ArrayList]$LoadedPlugins
@@ -80,6 +81,7 @@ class HydeBuildContext {
         $this.Site = @{}
         $this.PluginRegistry = @{}
         $this.LiquidRegistry = @{}
+        $this.Layouts = @{}
         $this.Documents = New-Object System.Collections.ArrayList
         $this.StaticFiles = New-Object System.Collections.ArrayList
         $this.LoadedPlugins = New-Object System.Collections.ArrayList

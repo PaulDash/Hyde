@@ -231,6 +231,43 @@ layout: default
         $context.Documents.Count | Should -Be 1
     }
 
+    It 'applies parent layouts by using the pre-parsed layout inheritance chain' {
+        $siteRoot = New-TestSiteDirectory -Name 'layout-inheritance-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'layout-inheritance-output'
+        $layoutsDirectory = Join-Path -Path $siteRoot -ChildPath '_layouts'
+
+        [void](New-Item -Path $layoutsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $layoutsDirectory -ChildPath 'base.html') -Encoding UTF8 -Value @'
+<html><body><div class="base">{{ content }}</div></body></html>
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $layoutsDirectory -ChildPath 'notes.html') -Encoding UTF8 -Value @'
+---
+layout: base
+section_name: Notes
+---
+<section><h1>{{ layout.section_name }}</h1>{{ content }}</section>
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+layout: notes
+---
+# Hello
+'@
+
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+
+        $indexOutput | Should -Match '<div class="base"><section><h1>Notes</h1><h1>Hello</h1></section>\s*</div>'
+    }
+
     It 'writes pages to a front matter permalink and exposes the permalink URL' {
         $siteRoot = New-TestSiteDirectory -Name 'page-permalink-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'page-permalink-output'
