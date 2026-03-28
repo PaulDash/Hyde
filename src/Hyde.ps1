@@ -80,5 +80,4 @@ if ($VerbosePreference -eq 'Continue') {
 }
 }
 
-# TODO: Add posts
 # TODO: implement Layout inheritance by pre-parsing files in _layouts
