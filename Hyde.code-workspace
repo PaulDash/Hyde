@@ -7,5 +7,9 @@
 			"path": "../PowerLiquid"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"chat.tools.terminal.autoApprove": {
+			".\\testExecution.ps1": true
+		}
+	}
 }
