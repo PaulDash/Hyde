@@ -478,9 +478,6 @@ function removeHydeGeneratedPath {
         [string]$Path,
 
         [Parameter(Mandatory = $true)]
-        [string]$SourcePath,
-
-        [Parameter(Mandatory = $true)]
         [string]$Kind
     )
 

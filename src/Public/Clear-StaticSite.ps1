@@ -1,6 +1,7 @@
 function Clear-StaticSite {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(
+        [string]$SourcePath,
         [string]$Destination,
         [switch]$Quiet,
         [string]$ScriptPath,
@@ -16,7 +17,7 @@ function Clear-StaticSite {
         $InformationPreference = 'Continue'
     }
 
-    # Reuse the normal context initialization so clean honors the current site's config and any destination override.
+    # Reuse the normal context initialization so clean can read the site's config and any destination override.
     if ($PSBoundParameters.ContainsKey('ScriptPath')) {
         # Keep the old wrapper/test contract working while the module becomes the primary entry point.
         $ModuleRoot = Split-Path -Parent $ScriptPath
@@ -26,6 +27,11 @@ function Clear-StaticSite {
         Environment = 'development'
         ModuleRoot  = $ModuleRoot
         Version     = $Version
+    }
+
+    if ($PSBoundParameters.ContainsKey('SourcePath')) {
+        # Clean only uses the source path to discover the configured destination from site config.
+        $contextParameters['Source'] = $SourcePath
     }
 
     if ($PSBoundParameters.ContainsKey('Destination')) {
@@ -48,7 +54,7 @@ function Clear-StaticSite {
         try {
             if ($PSCmdlet.ShouldProcess($target.Path, "Remove $($target.Kind)")) {
                 Write-Verbose "Removing $($target.Kind) at '$($target.Path)'."
-                removeHydeGeneratedPath -Path $target.Path -SourcePath $context.SourcePath -Kind $target.Kind
+                removeHydeGeneratedPath -Path $target.Path -Kind $target.Kind
             } else {
                 Write-Verbose "Skipping removal of $($target.Kind) at '$($target.Path)' because ShouldProcess declined it."
             }

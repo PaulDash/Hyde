@@ -137,6 +137,20 @@ title: Home
         } | Should -Throw -ExpectedMessage "*parameter name 'Source'*"
     }
 
+    It 'allows SourcePath for Clean' {
+        $siteRoot = New-TestSiteDirectory -Name 'clean-sourcepath-site'
+        $destinationRoot = Join-Path -Path $siteRoot -ChildPath '_site'
+
+        [void](New-Item -Path $destinationRoot -ItemType Directory -Force)
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        {
+            & $entryScriptPath Clean -SourcePath $siteRoot -Quiet
+        } | Should -Not -Throw
+    }
+
     It 'rejects Environment for Clean' {
         {
             & $entryScriptPath Clean -Environment production

@@ -2,7 +2,7 @@
 #Requires -Modules powershell-yaml
 
 <#PSScriptInfo
-.VERSION 0.4.2
+.VERSION 0.4.3
 .GUID abebebd5-6f8f-4d36-b3c1-e6313b9eac6f
 .AUTHOR Paul Wojcicki-Jarocki
 .COPYRIGHT © 2026 Paul Dash
@@ -10,7 +10,7 @@
 .PROJECTURI https://github.com/PaulDash/Hyde
 .ICONURI https://github.com/PaulDash/Hyde/raw/main/res/Icon_32x32.png
 .TAGS PowerShell static-site-generator jekyll markdown yaml
-.RELEASENOTES Added pre-parsed layout inheritance support so Hyde can resolve and render parent layout chains during both build and doctor workflows.
+.RELEASENOTES Added Clean support for -SourcePath so Hyde can inspect a site's configuration to discover the generated destination while still allowing -Destination to override it.
 #>
 
 [CmdletBinding()]
@@ -19,6 +19,7 @@ param(
     [Parameter(Position = 0)]
     [string]$Command,
     [string]$Source,
+    [string]$SourcePath,
     [string]$Destination,
     [string]$Environment,
     [switch]$Quiet,
@@ -30,6 +31,19 @@ param(
 begin {
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+switch ($Command) {
+    'Clean' {
+        if ($PSBoundParameters.ContainsKey('Source')) {
+            throw "A parameter cannot be found that matches parameter name 'Source'."
+        }
+    }
+    'Doctor' {
+        if ($PSBoundParameters.ContainsKey('Destination')) {
+            throw "A parameter cannot be found that matches parameter name 'Destination'."
+        }
+    }
+}
 
 # Load the module manifest so the module can act as the real entry point.
 $modulePath = Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.psd1'
@@ -53,6 +67,10 @@ if ($PSBoundParameters.ContainsKey('Command')) {
 
 if ($PSBoundParameters.ContainsKey('Source')) {
     $commandParameters['Source'] = $Source
+}
+
+if ($PSBoundParameters.ContainsKey('SourcePath')) {
+    $commandParameters['SourcePath'] = $SourcePath
 }
 
 if ($PSBoundParameters.ContainsKey('Destination')) {

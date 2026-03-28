@@ -68,6 +68,54 @@ title: Test Site
         Test-Path -LiteralPath $destinationRoot | Should -BeFalse
     }
 
+    It 'uses SourcePath to read the configured destination from another site root' {
+        $siteRoot = New-TestSiteDirectory -Name 'remote-site'
+        $destinationRoot = Join-Path -Path $siteRoot -ChildPath 'output'
+        $workingDirectory = New-TestSiteDirectory -Name 'clean-caller'
+
+        [void](New-Item -Path $destinationRoot -ItemType Directory -Force)
+        Set-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Encoding UTF8 -Value '<h1>Hello</h1>'
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+destination: output
+'@
+
+        Push-Location -LiteralPath $workingDirectory
+        try {
+            Clear-StaticSite -SourcePath $siteRoot -ScriptPath $entryScriptPath | Out-Null
+        } finally {
+            Pop-Location
+        }
+
+        Test-Path -LiteralPath $destinationRoot | Should -BeFalse
+    }
+
+    It 'lets Destination override the configured destination discovered through SourcePath' {
+        $siteRoot = New-TestSiteDirectory -Name 'override-site'
+        $configuredDestinationRoot = Join-Path -Path $siteRoot -ChildPath 'output'
+        $overrideDestinationRoot = Join-Path -Path $siteRoot -ChildPath 'public'
+        $workingDirectory = New-TestSiteDirectory -Name 'override-caller'
+
+        [void](New-Item -Path $configuredDestinationRoot -ItemType Directory -Force)
+        [void](New-Item -Path $overrideDestinationRoot -ItemType Directory -Force)
+        Set-Content -LiteralPath (Join-Path -Path $configuredDestinationRoot -ChildPath 'index.html') -Encoding UTF8 -Value '<h1>Configured</h1>'
+        Set-Content -LiteralPath (Join-Path -Path $overrideDestinationRoot -ChildPath 'index.html') -Encoding UTF8 -Value '<h1>Override</h1>'
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+destination: output
+'@
+
+        Push-Location -LiteralPath $workingDirectory
+        try {
+            Clear-StaticSite -SourcePath $siteRoot -Destination $overrideDestinationRoot -ScriptPath $entryScriptPath | Out-Null
+        } finally {
+            Pop-Location
+        }
+
+        Test-Path -LiteralPath $overrideDestinationRoot | Should -BeFalse
+        Test-Path -LiteralPath $configuredDestinationRoot | Should -BeTrue
+    }
+
     It 'emits verbose output for clean targets' {
         $siteRoot = New-TestSiteDirectory -Name 'verbose-clean-site'
         $destinationRoot = Join-Path -Path $siteRoot -ChildPath '_site'

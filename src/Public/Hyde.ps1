@@ -41,6 +41,9 @@ Available options are:
 .PARAMETER Source
 Overrides the configured source directory for the site.
 Supported by: `Build`, `Doctor`
+.PARAMETER SourcePath
+Uses the given site source directory only to read configuration for `Clean`.
+Supported by: `Clean`
 .PARAMETER Destination
 Overrides the configured destination directory for generated output.
 Supported by: `Build`, `Clean`, `New`
@@ -65,6 +68,10 @@ Builds the site from the current directory into `.\_site`.
 Hyde Clean
 
 Removes the generated destination folder, metadata file, and cache directories for the site.
+.EXAMPLE
+Hyde Clean -SourcePath .\site
+
+Reads `.\site\_config.yml` to determine the generated destination path to clean.
 .EXAMPLE
 Hyde New mysite
 
@@ -133,6 +140,7 @@ function Hyde {
                 $dynamicParameters.Add('Quiet', (newHydeDynamicParameter -Name 'Quiet' -Type ([switch])))
             }
             'Clean' {
+                $dynamicParameters.Add('SourcePath', (newHydeDynamicParameter -Name 'SourcePath' -Type ([string])))
                 $dynamicParameters.Add('Destination', (newHydeDynamicParameter -Name 'Destination' -Type ([string])))
                 $dynamicParameters.Add('Quiet', (newHydeDynamicParameter -Name 'Quiet' -Type ([switch])))
             }
@@ -201,6 +209,10 @@ function Hyde {
 
                 if ($VerbosePreference -eq 'Continue') {
                     $commandParameters['Verbose'] = $true
+                }
+
+                if ($PSBoundParameters.ContainsKey('SourcePath')) {
+                    $commandParameters['SourcePath'] = [string]$PSBoundParameters['SourcePath']
                 }
 
                 if ($PSBoundParameters.ContainsKey('Destination')) {
