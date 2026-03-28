@@ -463,6 +463,106 @@ collections:
         $document.OutputRelativePath | Should -Be 'notes/dns-client/index.html'
     }
 
+    It 'discovers dated posts, sorts site.posts, and applies the default post permalink workflow' {
+        $siteRoot = New-TestSiteDirectory -Name 'posts-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'posts-output'
+        $postsDirectory = Join-Path -Path $siteRoot -ChildPath '_posts'
+
+        [void](New-Item -Path $postsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+{% for post in site.posts %}
+- {{ post.title }}|{{ post.url }}
+{% endfor %}
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $postsDirectory -ChildPath '2026-03-27-older-post.md') -Encoding UTF8 -Value @'
+---
+title: Older Post
+---
+# Older
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $postsDirectory -ChildPath '2026-03-28-newer-post.md') -Encoding UTF8 -Value @'
+---
+title: Newer Post
+---
+# Newer
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+        $postUrls = @($context.Site.posts | ForEach-Object { $_.Url })
+
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath '2026\03\28\newer-post.html') | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath '2026\03\27\older-post.html') | Should -BeTrue
+        $postUrls[0] | Should -Be '/2026/03/28/newer-post.html'
+        $postUrls[1] | Should -Be '/2026/03/27/older-post.html'
+        $indexOutput | Should -Match 'Newer Post\|/2026/03/28/newer-post\.html'
+        $indexOutput | Should -Match 'Older Post\|/2026/03/27/older-post\.html'
+    }
+
+    It 'filters future posts unless future is enabled' {
+        $siteRoot = New-TestSiteDirectory -Name 'future-posts-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'future-posts-output'
+        $postsDirectory = Join-Path -Path $siteRoot -ChildPath '_posts'
+        $futureDate = (Get-Date).AddDays(2)
+
+        [void](New-Item -Path $postsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $postsDirectory -ChildPath ('{0}-future-post.md' -f $futureDate.ToString('yyyy-MM-dd'))) -Encoding UTF8 -Value @'
+---
+title: Future Post
+---
+# Future
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+
+        $context.Site.posts.Count | Should -Be 0
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath ('{0}\future-post.html' -f $futureDate.ToString('yyyy\\MM\\dd'))) | Should -BeFalse
+    }
+
+    It 'can publish drafts from _drafts when show_drafts is enabled' {
+        $siteRoot = New-TestSiteDirectory -Name 'draft-posts-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'draft-posts-output'
+        $draftsDirectory = Join-Path -Path $siteRoot -ChildPath '_drafts'
+
+        [void](New-Item -Path $draftsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+show_drafts: true
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $draftsDirectory -ChildPath 'preview.md') -Encoding UTF8 -Value @'
+---
+title: Preview Draft
+---
+# Preview
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $draftDocument = $context.Documents | Where-Object { $_.RelativePath -eq '_drafts/preview.md' }
+
+        $draftDocument.IsDraft | Should -BeTrue
+        $draftDocument.CollectionName | Should -Be 'posts'
+        $draftDocument.Published | Should -BeTrue
+        $context.Site.posts.Count | Should -Be 1
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath $draftDocument.OutputRelativePath.Replace('/', '\')) | Should -BeTrue
+    }
+
     It 'renders Jekyll includes from the includes directory' {
         $siteRoot = New-TestSiteDirectory -Name 'include-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'include-output'

@@ -231,6 +231,44 @@ function initializeHydeCollections {
     }
 }
 
+function syncHydePosts {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    if (-not $Context.Site.ContainsKey('posts') -or -not $Context.Site.ContainsKey('collections') -or -not $Context.Site.collections.ContainsKey('posts')) {
+        return
+    }
+
+    $eligiblePosts = @(
+        $Context.Documents |
+            Where-Object {
+                $_.CollectionName -eq 'posts' -and
+                $_.Published
+            } |
+            Sort-Object -Property @{ Expression = { $_.PostDate } ; Descending = $true }, @{ Expression = { $_.RelativePath } ; Descending = $false }
+    )
+
+    $postLimit = 0
+    if ($Context.Settings.ContainsKey('limit_posts') -and $Context.Settings.limit_posts) {
+        $postLimit = [int]$Context.Settings.limit_posts
+    }
+
+    if ($postLimit -gt 0 -and $eligiblePosts.Count -gt $postLimit) {
+        $eligiblePosts = @($eligiblePosts | Select-Object -First $postLimit)
+    }
+
+    $Context.Site.posts.Clear()
+    $Context.Site.collections.posts.docs.Clear()
+
+    foreach ($post in $eligiblePosts) {
+        [void]$Context.Site.posts.Add($post)
+        [void]$Context.Site.collections.posts.docs.Add($post)
+    }
+}
+
 function getHydeFrontMatterDefaults {
     [CmdletBinding()]
     param(

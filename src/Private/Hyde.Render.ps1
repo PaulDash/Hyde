@@ -67,6 +67,40 @@ function convertToHydeSlug {
     return $normalizedText
 }
 
+function convertToHydeDateTime {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SettingName,
+
+        $InputObject
+    )
+
+    if ($InputObject -is [datetime]) {
+        return $InputObject
+    }
+
+    if ($InputObject -is [datetimeoffset]) {
+        return $InputObject.DateTime
+    }
+
+    try {
+        return [datetime]$InputObject
+    } catch {
+        throw "Unsupported value for front matter setting '$SettingName': '$InputObject'."
+    }
+}
+
+function testHydePostDocument {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document
+    )
+
+    return ($Document.CollectionName -eq 'posts')
+}
+
 function getHydeDocumentCategories {
     [CmdletBinding()]
     param(
@@ -115,6 +149,20 @@ function getHydeDocumentPermalinkPattern {
         }
     }
 
+    if (testHydePostDocument -Document $Document) {
+        $configuredPermalink = if ($Context.Settings.ContainsKey('permalink') -and -not [string]::IsNullOrWhiteSpace([string]$Context.Settings.permalink)) {
+            [string]$Context.Settings.permalink
+        } else {
+            'date'
+        }
+
+        switch ($configuredPermalink.Trim().ToLowerInvariant()) {
+            'date' { return '/:categories/:year/:month/:day/:title:output_ext' }
+            'pretty' { return '/:categories/:year/:month/:day/:title/' }
+            default { return $configuredPermalink }
+        }
+    }
+
     return ''
 }
 
@@ -141,18 +189,28 @@ function resolveHydePermalink {
 
     $titleValue = if (-not [string]::IsNullOrWhiteSpace($Document.Title)) {
         $Document.Title
+    } elseif ((testHydePostDocument -Document $Document) -and -not [string]::IsNullOrWhiteSpace($Document.Slug)) {
+        $Document.Slug
     } elseif ($Document.FrontMatter.ContainsKey('title') -and -not [string]::IsNullOrWhiteSpace([string]$Document.FrontMatter.title)) {
         [string]$Document.FrontMatter.title
     } else {
         $Document.BaseName
     }
 
+    $postDate = if ($Document.PostDate -ne [datetime]::MinValue) { $Document.PostDate } else { Get-Date }
+
     $tokenValues = @{
         collection = $Document.CollectionName
         title      = convertToHydeSlug -Text $titleValue
-        slug       = convertToHydeSlug -Text $titleValue
+        slug       = if (-not [string]::IsNullOrWhiteSpace($Document.Slug)) { $Document.Slug } else { convertToHydeSlug -Text $titleValue }
         name       = $Document.BaseName
         categories = ((getHydeDocumentCategories -Document $Document) -join '/')
+        year       = $postDate.ToString('yyyy')
+        month      = $postDate.ToString('MM')
+        i_month    = $postDate.Month
+        day        = $postDate.ToString('dd')
+        i_day      = $postDate.Day
+        output_ext = [System.IO.Path]::GetExtension($DefaultOutputPath)
     }
 
     $resolvedPermalink = $permalinkPattern.Replace('\', '/').Trim()
@@ -255,6 +313,12 @@ function newHydePageVariables {
     $page['name'] = $Document.Name
     $page['basename'] = $Document.BaseName
     $page['extname'] = $Document.Extension
+    $page['slug'] = $Document.Slug
+    $page['draft'] = $Document.IsDraft
+
+    if ($Document.PostDate -ne [datetime]::MinValue) {
+        $page['date'] = $Document.PostDate
+    }
 
     return $page
 }
@@ -402,6 +466,26 @@ function readHydeFrontMatter {
 
     if ($Document.FrontMatter.ContainsKey('render_with_liquid')) {
         $Document.RenderWithLiquid = convertToHydeBooleanFrontMatterValue -SettingName 'render_with_liquid' -InputObject $Document.FrontMatter.render_with_liquid -DefaultValue $true
+    }
+
+    if ((testHydePostDocument -Document $Document) -and $Document.FrontMatter.ContainsKey('date')) {
+        $Document.PostDate = convertToHydeDateTime -SettingName 'date' -InputObject $Document.FrontMatter.date
+    }
+
+    if (testHydePostDocument -Document $Document) {
+        $includeDraftPosts = ($Context.Settings.ContainsKey('show_drafts') -and [bool]$Context.Settings.show_drafts)
+        $includeFuturePosts = ($Context.Settings.ContainsKey('future') -and [bool]$Context.Settings.future)
+        $includeUnpublishedPosts = ($Context.Settings.ContainsKey('unpublished') -and [bool]$Context.Settings.unpublished)
+
+        if ($Document.IsDraft) {
+            $Document.Published = $includeDraftPosts
+        } elseif (-not $includeFuturePosts -and $Document.PostDate -gt (Get-Date)) {
+            $Document.Published = $false
+        } elseif (-not $includeUnpublishedPosts -and $Document.FrontMatter.ContainsKey('published') -and -not $Document.Published) {
+            $Document.Published = $false
+        } elseif ($includeUnpublishedPosts -and $Document.FrontMatter.ContainsKey('published') -and -not $Document.Published) {
+            $Document.Published = $true
+        }
     }
 
     Write-Verbose "Document '$($Document.RelativePath)' resolved with title='$($Document.Title)', published=$($Document.Published), and render_with_liquid=$($Document.RenderWithLiquid)."
@@ -668,14 +752,18 @@ function resolveHydeDocumentOutputPath {
     $markdownExtensions = getHydeMarkdownExtensions -Settings $Context.Settings
     $sourceRelativePath = $Document.RelativePath
     if ($Document.Kind -eq 'CollectionDocument' -and -not [string]::IsNullOrWhiteSpace($Document.CollectionName)) {
-        $collectionMarker = '/_{0}/' -f $Document.CollectionName
         $normalizedRelativePath = $sourceRelativePath.Replace('\', '/')
-        $markerIndex = $normalizedRelativePath.IndexOf($collectionMarker, [System.StringComparison]::OrdinalIgnoreCase)
-        if ($markerIndex -ge 0) {
-            $pathWithinCollection = $normalizedRelativePath.Substring($markerIndex + $collectionMarker.Length)
-            $sourceRelativePath = '{0}/{1}' -f $Document.CollectionName, $pathWithinCollection
-        } elseif ($normalizedRelativePath.StartsWith('_{0}/' -f $Document.CollectionName, [System.StringComparison]::OrdinalIgnoreCase)) {
-            $sourceRelativePath = '{0}/{1}' -f $Document.CollectionName, $normalizedRelativePath.Substring($Document.CollectionName.Length + 2)
+        if ($Document.CollectionName -eq 'posts') {
+            $sourceRelativePath = 'posts/{0}' -f $Document.Name
+        } else {
+            $collectionMarker = '/_{0}/' -f $Document.CollectionName
+            $markerIndex = $normalizedRelativePath.IndexOf($collectionMarker, [System.StringComparison]::OrdinalIgnoreCase)
+            if ($markerIndex -ge 0) {
+                $pathWithinCollection = $normalizedRelativePath.Substring($markerIndex + $collectionMarker.Length)
+                $sourceRelativePath = '{0}/{1}' -f $Document.CollectionName, $pathWithinCollection
+            } elseif ($normalizedRelativePath.StartsWith('_{0}/' -f $Document.CollectionName, [System.StringComparison]::OrdinalIgnoreCase)) {
+                $sourceRelativePath = '{0}/{1}' -f $Document.CollectionName, $normalizedRelativePath.Substring($Document.CollectionName.Length + 2)
+            }
         }
     }
 

@@ -84,6 +84,9 @@ function Publish-StaticSite {
         }
     }
 
+    # Post loops should see the final published, sorted post set before any page starts rendering.
+    syncHydePosts -Context $context
+
     Write-Verbose "Starting document rendering phase."
 
     # Documents are rendered and written first so any rendering failures stop the build early.

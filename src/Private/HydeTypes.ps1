@@ -27,10 +27,13 @@ class HydeDocument : HydeContentItem {
     [string]$RawContent
     [string]$RenderedContent
     [string]$Title
+    [string]$Slug
+    [datetime]$PostDate
     [bool]$Published
     [bool]$WriteOutput
     [bool]$RenderWithLiquid
     [bool]$IsPrepared
+    [bool]$IsDraft
 
     HydeDocument([string]$kind, [string]$sourcePath, [string]$relativePath) : base($kind, $sourcePath, $relativePath) {
         # Documents accumulate front matter, body content, and rendered output as the pipeline runs.
@@ -39,10 +42,13 @@ class HydeDocument : HydeContentItem {
         $this.RawContent = ''
         $this.RenderedContent = ''
         $this.Title = ''
+        $this.Slug = ''
+        $this.PostDate = [datetime]::MinValue
         $this.Published = $true
         $this.WriteOutput = $true
         $this.RenderWithLiquid = $true
         $this.IsPrepared = $false
+        $this.IsDraft = $false
     }
 }
 

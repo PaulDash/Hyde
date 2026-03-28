@@ -204,6 +204,40 @@ function getHydeSourceItems {
     getHydeCollectionItems -Context $Context
 }
 
+function initializeHydePostDocument {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document
+    )
+
+    $normalizedRelativePath = $Document.RelativePath.Replace('\', '/')
+    if ($normalizedRelativePath.StartsWith('_drafts/', [System.StringComparison]::OrdinalIgnoreCase)) {
+        $Document.CollectionName = 'posts'
+        $Document.IsDraft = $true
+        $Document.Slug = convertToHydeSlug -Text $Document.BaseName
+        $Document.PostDate = (Get-Item -LiteralPath $Document.SourcePath).LastWriteTime
+        return
+    }
+
+    $postFileNameMatch = [System.Text.RegularExpressions.Regex]::Match(
+        $Document.BaseName,
+        '^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})-(?<slug>.+)$'
+    )
+
+    if (-not $postFileNameMatch.Success) {
+        throw "Post '$($Document.SourcePath)' must use the filename format 'YEAR-MONTH-DAY-title.EXT'."
+    }
+
+    try {
+        $Document.PostDate = Get-Date -Year ([int]$postFileNameMatch.Groups['year'].Value) -Month ([int]$postFileNameMatch.Groups['month'].Value) -Day ([int]$postFileNameMatch.Groups['day'].Value) -Hour 0 -Minute 0 -Second 0
+    } catch {
+        throw "Post '$($Document.SourcePath)' has an invalid date in its filename. $($_.Exception.Message)"
+    }
+
+    $Document.Slug = convertToHydeSlug -Text $postFileNameMatch.Groups['slug'].Value
+}
+
 function importHydeDataFiles {
     [CmdletBinding()]
     param(
@@ -286,6 +320,9 @@ function getHydeCollectionItems {
             $document = [HydeDocument]::new('CollectionDocument', $file.FullName, $relativeFilePath)
             $document.CollectionName = $definition.Label
             $document.WriteOutput = $definition.Output
+            if ($definition.Label -eq 'posts') {
+                initializeHydePostDocument -Document $document
+            }
             $document.OutputRelativePath = resolveHydeDocumentOutputPath -Document $document -Context $Context
             $document.Url = '/' + $document.OutputRelativePath.Replace('\', '/')
             $Context.AddDocument($document)
@@ -295,5 +332,44 @@ function getHydeCollectionItems {
             }
             Write-Verbose "Discovered collection document '$relativeFilePath' in '$($definition.Label)'."
         }
+    }
+
+    $showDrafts = $false
+    if ($Context.Settings.ContainsKey('show_drafts') -and $null -ne $Context.Settings.show_drafts) {
+        $showDrafts = [bool]$Context.Settings.show_drafts
+    }
+
+    if (-not $showDrafts) {
+        return
+    }
+
+    $draftsDirectoryPath = Join-Path -Path $Context.SourcePath -ChildPath '_drafts'
+    if (-not (Test-Path -LiteralPath $draftsDirectoryPath -PathType Container)) {
+        return
+    }
+
+    Write-Verbose "Scanning drafts in '$draftsDirectoryPath'."
+    foreach ($file in Get-ChildItem -LiteralPath $draftsDirectoryPath -File -Recurse) {
+        if ($contentExtensions -notcontains $file.Extension.ToLowerInvariant()) {
+            continue
+        }
+
+        $relativeFilePath = [System.IO.Path]::GetRelativePath($Context.SourcePath, $file.FullName).Replace('\', '/')
+        if (testHydeItemExclusion -Item $file -RelativePath $relativeFilePath -ExcludedState $excludedState) {
+            Write-Verbose "Excluding draft '$relativeFilePath'."
+            continue
+        }
+
+        $document = [HydeDocument]::new('CollectionDocument', $file.FullName, $relativeFilePath)
+        initializeHydePostDocument -Document $document
+        $document.WriteOutput = $true
+        $document.OutputRelativePath = resolveHydeDocumentOutputPath -Document $document -Context $Context
+        $document.Url = '/' + $document.OutputRelativePath.Replace('\', '/')
+        $Context.AddDocument($document)
+        invokeHydePluginHook -Context $Context -HookName 'AfterDiscoverDocument' -Arguments @{
+            Context  = $Context
+            Document = $document
+        }
+        Write-Verbose "Discovered draft '$relativeFilePath'."
     }
 }
