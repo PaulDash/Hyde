@@ -144,6 +144,8 @@ function initializeHydeBuildContext {
     $context.DestinationPath = $destinationPath
     $context.PluginRegistry = newHydePluginRegistry
     $context.LiquidRegistry = New-LiquidExtensionRegistry
+    Register-LiquidTrustedType -Registry $context.LiquidRegistry -TypeName HydeDocument
+    Register-LiquidTrustedType -Registry $context.LiquidRegistry -TypeName HydeStaticFile
 
     # These values are generated per invocation and do not come from configuration files.
     $context.Site['time'] = Get-Date
