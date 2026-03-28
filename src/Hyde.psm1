@@ -14,25 +14,13 @@ $resolvedPowerLiquidManifestPath = if (Test-Path -LiteralPath $powerLiquidManife
     $null
 }
 
-$loadedPowerLiquidModule = if ($resolvedPowerLiquidManifestPath) {
-    Get-Module |
-        Where-Object {
-            $_.Path -and $_.Path.Equals($resolvedPowerLiquidManifestPath, [System.StringComparison]::OrdinalIgnoreCase)
-        } |
-        Select-Object -First 1
+if ($resolvedPowerLiquidManifestPath) {
+    # Importing without -Force reuses the existing module instance while still making its exports available in Hyde's module scope.
+    Import-Module $resolvedPowerLiquidManifestPath
+} elseif (Get-Module -ListAvailable -Name 'PowerLiquid') {
+    Import-Module 'PowerLiquid'
 } else {
-    Get-Module -Name 'PowerLiquid' | Select-Object -First 1
-}
-
-if (-not $loadedPowerLiquidModule) {
-    if ($resolvedPowerLiquidManifestPath) {
-        # Prefer the sibling PowerLiquid repo during development so Hyde and PowerLiquid can evolve independently.
-        Import-Module $resolvedPowerLiquidManifestPath
-    } elseif (Get-Module -ListAvailable -Name 'PowerLiquid') {
-        Import-Module 'PowerLiquid'
-    } else {
-        throw "Could not load the PowerLiquid module. Install PowerLiquid or place the sibling repo at '$powerLiquidManifestPath'."
-    }
+    throw "Could not load the PowerLiquid module. Install PowerLiquid or place the sibling repo at '$powerLiquidManifestPath'."
 }
 
 # Load PowerShell classes first so the remaining scripts can reference them.
