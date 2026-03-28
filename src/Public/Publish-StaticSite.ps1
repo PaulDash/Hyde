@@ -1,5 +1,5 @@
 function Publish-StaticSite {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [string]$Source,
         [string]$Destination,
@@ -54,8 +54,12 @@ function Publish-StaticSite {
 
     try {
         if (-not (Test-Path -LiteralPath $context.DestinationPath -PathType Container)) {
-            Write-Verbose "Creating destination directory '$($context.DestinationPath)'."
-            [void](New-Item -Path $context.DestinationPath -ItemType Directory -Force)
+            if ($PSCmdlet.ShouldProcess($context.DestinationPath, 'Create destination directory')) {
+                Write-Verbose "Creating destination directory '$($context.DestinationPath)'."
+                [void](New-Item -Path $context.DestinationPath -ItemType Directory -Force)
+            } else {
+                Write-Verbose "Skipping creation of destination directory '$($context.DestinationPath)' because ShouldProcess declined it."
+            }
         } else {
             Write-Verbose "Destination directory '$($context.DestinationPath)' already exists."
         }
@@ -108,10 +112,15 @@ function Publish-StaticSite {
                 continue
             }
 
-            Write-Verbose "Writing document '$($document.RelativePath)' to '$($document.OutputRelativePath)'."
-            writeHydeDocument -Document $document -Context $context
-            $publishedDocumentCount++
-            Write-Verbose "Finished document '$($document.RelativePath)'."
+            $documentTargetPath = Join-Path -Path $context.DestinationPath -ChildPath $document.OutputRelativePath
+            if ($PSCmdlet.ShouldProcess($documentTargetPath, "Write document '$($document.RelativePath)'")) {
+                Write-Verbose "Writing document '$($document.RelativePath)' to '$($document.OutputRelativePath)'."
+                writeHydeDocument -Document $document -Context $context
+                $publishedDocumentCount++
+                Write-Verbose "Finished document '$($document.RelativePath)'."
+            } else {
+                Write-Verbose "Skipping write of document '$($document.RelativePath)' because ShouldProcess declined it."
+            }
         } catch {
             throw "Build failed while processing document '$($document.SourcePath)'. $($_.Exception.Message)"
         }
@@ -123,9 +132,14 @@ function Publish-StaticSite {
     foreach ($staticFile in $context.StaticFiles) {
         $staticFileIndex++
         try {
-            Write-Verbose "Copying static file $staticFileIndex of $($context.StaticFiles.Count): '$($staticFile.RelativePath)' to '$($staticFile.OutputRelativePath)'."
-            copyHydeStaticFile -StaticFile $staticFile -Context $context
-            Write-Verbose "Finished static file '$($staticFile.RelativePath)'."
+            $staticFileTargetPath = Join-Path -Path $context.DestinationPath -ChildPath $staticFile.OutputRelativePath
+            if ($PSCmdlet.ShouldProcess($staticFileTargetPath, "Copy static file '$($staticFile.RelativePath)'")) {
+                Write-Verbose "Copying static file $staticFileIndex of $($context.StaticFiles.Count): '$($staticFile.RelativePath)' to '$($staticFile.OutputRelativePath)'."
+                copyHydeStaticFile -StaticFile $staticFile -Context $context
+                Write-Verbose "Finished static file '$($staticFile.RelativePath)'."
+            } else {
+                Write-Verbose "Skipping copy of static file '$($staticFile.RelativePath)' because ShouldProcess declined it."
+            }
         } catch {
             throw "Build failed while copying static file '$($staticFile.SourcePath)'. $($_.Exception.Message)"
         }

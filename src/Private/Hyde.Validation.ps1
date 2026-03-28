@@ -85,12 +85,6 @@ function testHydeDocumentForIssues {
         $Report
     )
 
-    # Doctor validates front matter and layout references without rendering the document body.
-    $strictFrontMatter = $false
-    if ($Context.Settings.ContainsKey('strict_front_matter')) {
-        $strictFrontMatter = [bool]$Context.Settings.strict_front_matter
-    }
-
     try {
         initializeHydeDocument -Document $Document -Context $Context
     } catch {

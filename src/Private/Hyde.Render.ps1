@@ -1,5 +1,6 @@
 function convertToHydePublishedState {
     [CmdletBinding()]
+    [OutputType([bool])]
     param(
         $InputObject
     )
@@ -25,6 +26,7 @@ function convertToHydePublishedState {
 
 function convertToHydeBooleanFrontMatterValue {
     [CmdletBinding()]
+    [OutputType([bool])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$SettingName,
@@ -55,6 +57,7 @@ function convertToHydeBooleanFrontMatterValue {
 
 function convertToHydeSlug {
     [CmdletBinding()]
+    [OutputType([string])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$Text
@@ -69,6 +72,7 @@ function convertToHydeSlug {
 
 function convertToHydeDateTime {
     [CmdletBinding()]
+    [OutputType([datetime])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$SettingName,
@@ -103,6 +107,7 @@ function testHydePostDocument {
 
 function getHydeDocumentCategories {
     [CmdletBinding()]
+    [OutputType([object[]])]
     param(
         [Parameter(Mandatory = $true)]
         [HydeDocument]$Document
@@ -128,6 +133,7 @@ function getHydeDocumentCategories {
 
 function getHydeDocumentPermalinkPattern {
     [CmdletBinding()]
+    [OutputType([string])]
     param(
         [Parameter(Mandatory = $true)]
         [HydeDocument]$Document,
@@ -168,6 +174,7 @@ function getHydeDocumentPermalinkPattern {
 
 function resolveHydePermalink {
     [CmdletBinding()]
+    [OutputType([hashtable])]
     param(
         [Parameter(Mandatory = $true)]
         [HydeDocument]$Document,
@@ -342,6 +349,7 @@ function getHydeLayoutDocument {
 
 function getHydeLayoutChain {
     [CmdletBinding()]
+    [OutputType([object[]])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$LayoutName,
@@ -391,6 +399,7 @@ function resolveHydeIncludesPath {
 
 function newHydePageVariables {
     [CmdletBinding()]
+    [OutputType([hashtable])]
     param(
         [Parameter(Mandatory = $true)]
         [HydeDocument]$Document
@@ -626,6 +635,7 @@ function initializeHydeDocument {
 
 function convertHydeInlineMarkdown {
     [CmdletBinding()]
+    [OutputType([string])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$Text
@@ -696,7 +706,7 @@ function convertHydeMarkdown {
     $inCodeFence = $false
 
     # Buffer-based helpers let the parser convert markdown one block at a time.
-    function Flush-HydeParagraph {
+    function completeHydeParagraphBuffer {
         if ($paragraphLines.Count -eq 0) {
             return
         }
@@ -706,7 +716,7 @@ function convertHydeMarkdown {
         $paragraphLines.Clear()
     }
 
-    function Flush-HydeList {
+    function completeHydeListBuffer {
         if ($listItems.Count -eq 0) {
             return
         }
@@ -719,7 +729,7 @@ function convertHydeMarkdown {
         $listItems.Clear()
     }
 
-    function Flush-HydeCodeFence {
+    function completeHydeCodeFenceBuffer {
         if ($codeLines.Count -eq 0) {
             [void]$blocks.Add('<pre><code></code></pre>')
             return
@@ -733,11 +743,11 @@ function convertHydeMarkdown {
     foreach ($line in $lines) {
         if ($line -match '^\s*```') {
             if ($inCodeFence) {
-                Flush-HydeCodeFence
+                completeHydeCodeFenceBuffer
                 $inCodeFence = $false
             } else {
-                Flush-HydeParagraph
-                Flush-HydeList
+                completeHydeParagraphBuffer
+                completeHydeListBuffer
                 $codeLines.Clear()
                 $inCodeFence = $true
             }
@@ -751,14 +761,14 @@ function convertHydeMarkdown {
         }
 
         if ([string]::IsNullOrWhiteSpace($line)) {
-            Flush-HydeParagraph
-            Flush-HydeList
+            completeHydeParagraphBuffer
+            completeHydeListBuffer
             continue
         }
 
         if ($line -match '^(#{1,6})\s+(.*)$') {
-            Flush-HydeParagraph
-            Flush-HydeList
+            completeHydeParagraphBuffer
+            completeHydeListBuffer
             $level = $Matches[1].Length
             $headingText = convertHydeInlineMarkdown -Text $Matches[2].Trim()
             [void]$blocks.Add("<h$level>$headingText</h$level>")
@@ -766,15 +776,15 @@ function convertHydeMarkdown {
         }
 
         if ($line -match '^\s*[-*+]\s+(.*)$') {
-            Flush-HydeParagraph
+            completeHydeParagraphBuffer
             [void]$listItems.Add($Matches[1].Trim())
             continue
         }
 
         # Raw HTML blocks pass straight through instead of being escaped as markdown paragraphs.
         if ($line.TrimStart().StartsWith('<')) {
-            Flush-HydeParagraph
-            Flush-HydeList
+            completeHydeParagraphBuffer
+            completeHydeListBuffer
             [void]$blocks.Add($line)
             continue
         }
@@ -783,10 +793,10 @@ function convertHydeMarkdown {
     }
 
     if ($inCodeFence) {
-        Flush-HydeCodeFence
+        completeHydeCodeFenceBuffer
     } else {
-        Flush-HydeParagraph
-        Flush-HydeList
+        completeHydeParagraphBuffer
+        completeHydeListBuffer
     }
 
     return ($blocks.ToArray() -join [Environment]::NewLine)

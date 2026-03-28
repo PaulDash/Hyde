@@ -1,5 +1,6 @@
 function convertToHydeHashtable {
     [CmdletBinding()]
+    [OutputType([hashtable], [object[]], [object])]
     param(
         [Parameter(ValueFromPipeline = $true)]
         $InputObject
@@ -44,6 +45,7 @@ function convertToHydeHashtable {
 
 function copyHydeValue {
     [CmdletBinding()]
+    [OutputType([hashtable], [object[]], [object])]
     param(
         $InputObject
     )
@@ -76,6 +78,7 @@ function copyHydeValue {
 
 function getHydeMarkdownExtensions {
     [CmdletBinding()]
+    [OutputType([object[]])]
     param(
         [Parameter(Mandatory = $true)]
         [hashtable]$Settings

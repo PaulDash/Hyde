@@ -1,5 +1,6 @@
 function newHydePluginRegistry {
     [CmdletBinding()]
+    [OutputType([hashtable])]
     param()
 
     # Hyde plugins can hook build stages or participate in output path calculation.
@@ -38,6 +39,7 @@ function resolveHydePluginDirectory {
 
 function getHydePluginConfigurationNames {
     [CmdletBinding()]
+    [OutputType([object[]])]
     param(
         [Parameter(Mandatory = $true)]
         [HydeBuildContext]$Context
@@ -63,6 +65,7 @@ function getHydePluginConfigurationNames {
 
 function getHydePluginCandidateNames {
     [CmdletBinding()]
+    [OutputType([object[]])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$PluginName
@@ -85,6 +88,7 @@ function getHydePluginCandidateNames {
 
 function getHydeWhitelistedPluginNames {
     [CmdletBinding()]
+    [OutputType([object[]])]
     param(
         [Parameter(Mandatory = $true)]
         [HydeBuildContext]$Context
@@ -99,6 +103,7 @@ function getHydeWhitelistedPluginNames {
 
 function resolveHydePluginFiles {
     [CmdletBinding()]
+    [OutputType([object[]])]
     param(
         [Parameter(Mandatory = $true)]
         [HydeBuildContext]$Context
@@ -161,6 +166,7 @@ function resolveHydePluginFiles {
 
 function testHydePluginAllowed {
     [CmdletBinding()]
+    [OutputType([bool])]
     param(
         [Parameter(Mandatory = $true)]
         [HydeBuildContext]$Context,

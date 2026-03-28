@@ -1,6 +1,7 @@
 param($Context)
 
 # This built-in plugin provides a small Hyde equivalent of the Jekyll SEO Tag plugin.
+$null = $Context
 @{
     Name = 'seo-tag'
     Liquid = @{

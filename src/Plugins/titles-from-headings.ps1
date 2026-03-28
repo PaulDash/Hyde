@@ -1,6 +1,7 @@
 param($Context)
 
 # This built-in plugin fills missing page titles from the first Markdown H1 heading.
+$null = $Context
 @{
     Name = 'titles-from-headings'
     Hooks = @{

@@ -1,5 +1,5 @@
 function Clear-StaticSite {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
         [string]$Destination,
         [switch]$Quiet,
@@ -46,8 +46,12 @@ function Clear-StaticSite {
     # Clean each generated target independently so missing paths do not block the rest.
     foreach ($target in $targets) {
         try {
-            Write-Verbose "Removing $($target.Kind) at '$($target.Path)'."
-            removeHydeGeneratedPath -Path $target.Path -SourcePath $context.SourcePath -Kind $target.Kind
+            if ($PSCmdlet.ShouldProcess($target.Path, "Remove $($target.Kind)")) {
+                Write-Verbose "Removing $($target.Kind) at '$($target.Path)'."
+                removeHydeGeneratedPath -Path $target.Path -SourcePath $context.SourcePath -Kind $target.Kind
+            } else {
+                Write-Verbose "Skipping removal of $($target.Kind) at '$($target.Path)' because ShouldProcess declined it."
+            }
         } catch {
             throw "Clean failed while removing $($target.Kind) '$($target.Path)'. $($_.Exception.Message)"
         }

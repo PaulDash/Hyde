@@ -24,6 +24,7 @@ function mergeHydeConfig {
 
 function readHydeConfigFile {
     [CmdletBinding()]
+    [OutputType([hashtable])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$Path
@@ -163,6 +164,7 @@ function initializeHydeBuildContext {
 
 function getHydeCollectionDefinitions {
     [CmdletBinding()]
+    [OutputType([object[]])]
     param(
         [Parameter(Mandatory = $true)]
         [HydeBuildContext]$Context
@@ -271,6 +273,7 @@ function syncHydePosts {
 
 function getHydeFrontMatterDefaults {
     [CmdletBinding()]
+    [OutputType([object[]])]
     param(
         [Parameter(Mandatory = $true)]
         [HydeBuildContext]$Context
@@ -309,6 +312,7 @@ function getHydeFrontMatterDefaults {
 
 function getHydeDefaultScopePathSpecificity {
     [CmdletBinding()]
+    [OutputType([int])]
     param(
         [string]$ScopePath
     )
@@ -322,6 +326,7 @@ function getHydeDefaultScopePathSpecificity {
 
 function testHydeDefaultScopePath {
     [CmdletBinding()]
+    [OutputType([bool])]
     param(
         [string]$ScopePath,
 
@@ -348,6 +353,7 @@ function testHydeDefaultScopePath {
 
 function testHydeDefaultScopeType {
     [CmdletBinding()]
+    [OutputType([bool])]
     param(
         [string]$ScopeType,
         [string]$ItemType
@@ -362,6 +368,7 @@ function testHydeDefaultScopeType {
 
 function getHydeItemDefaultType {
     [CmdletBinding()]
+    [OutputType([string])]
     param(
         [Parameter(Mandatory = $true)]
         [HydeContentItem]$Item
@@ -376,6 +383,7 @@ function getHydeItemDefaultType {
 
 function getHydeMatchingDefaults {
     [CmdletBinding()]
+    [OutputType([object[]])]
     param(
         [Parameter(Mandatory = $true)]
         [HydeBuildContext]$Context,
@@ -423,6 +431,7 @@ function mergeHydeFrontMatterDefaults {
 
 function getHydeCleanTargets {
     [CmdletBinding()]
+    [OutputType([System.Collections.ArrayList])]
     param(
         [Parameter(Mandatory = $true)]
         [HydeBuildContext]$Context
@@ -476,7 +485,6 @@ function removeHydeGeneratedPath {
     )
 
     # Resolve paths first so the safety checks operate on normalized absolute paths.
-    $resolvedSourcePath = [System.IO.Path]::GetFullPath($SourcePath)
     $resolvedTargetPath = [System.IO.Path]::GetFullPath($Path)
 
     # Clean must never remove an actual site source directory, even if the destination points at it.

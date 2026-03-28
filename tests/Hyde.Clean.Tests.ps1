@@ -90,6 +90,27 @@ title: Test Site
         $verboseText | Should -Contain "Removing destination folder at '$destinationRoot'."
     }
 
+    It 'supports WhatIf without removing generated output' {
+        $siteRoot = New-TestSiteDirectory -Name 'whatif-clean-site'
+        $destinationRoot = Join-Path -Path $siteRoot -ChildPath '_site'
+
+        [void](New-Item -Path $destinationRoot -ItemType Directory -Force)
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+        Set-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Encoding UTF8 -Value '<h1>Hello</h1>'
+
+        Push-Location -LiteralPath $siteRoot
+        try {
+            Clear-StaticSite -ScriptPath $entryScriptPath -WhatIf | Out-Null
+        } finally {
+            Pop-Location
+        }
+
+        Test-Path -LiteralPath $destinationRoot | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') | Should -BeTrue
+    }
+
     It 'refuses to remove a destination that is itself a site source directory' {
         $siteRoot = New-TestSiteDirectory -Name 'site'
         $generatedDirectory = Join-Path -Path $siteRoot -ChildPath '_site'

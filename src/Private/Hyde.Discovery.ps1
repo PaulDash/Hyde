@@ -1,5 +1,6 @@
 function getHydeExcludedState {
     [CmdletBinding()]
+    [OutputType([hashtable])]
     param(
         [Parameter(Mandatory = $true)]
         [HydeBuildContext]$Context
@@ -81,6 +82,7 @@ function getHydeExcludedState {
 
 function testHydeItemExclusion {
     [CmdletBinding()]
+    [OutputType([bool])]
     param(
         [Parameter(Mandatory = $true)]
         [System.IO.FileSystemInfo]$Item,

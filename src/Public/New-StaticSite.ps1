@@ -1,5 +1,6 @@
 function New-StaticSite {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true)]
+    [OutputType([System.IO.DirectoryInfo])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$Destination,
@@ -24,10 +25,15 @@ function New-StaticSite {
             throw "Could not create a new site at '$destinationPath' because the destination already exists and is not empty."
         }
     } else {
-        [void](New-Item -Path $destinationPath -ItemType Directory -Force)
+        if ($PSCmdlet.ShouldProcess($destinationPath, 'Create destination directory')) {
+            [void](New-Item -Path $destinationPath -ItemType Directory -Force)
+        }
     }
 
     Write-Information "Creating a new Hyde site at '$destinationPath'."
+    if (-not $PSCmdlet.ShouldProcess($destinationPath, 'Create Hyde site scaffolding')) {
+        return (Get-Item -LiteralPath $destinationPath)
+    }
 
     # Every new site starts with a configuration file that points Hyde at the current directory.
     Set-Content -LiteralPath (Join-Path -Path $destinationPath -ChildPath '_config.yml') -Encoding UTF8 -Value @'

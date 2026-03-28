@@ -137,6 +137,27 @@ title: Home
         $verboseText | Should -Contain "Copying static file 1 of 1: 'assets/site.css' to 'assets/site.css'."
     }
 
+    It 'supports WhatIf without writing generated output' {
+        $siteRoot = New-TestSiteDirectory -Name 'build-whatif-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'build-whatif-output'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+# Hello
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath -WhatIf
+
+        $context.Documents.Count | Should -Be 1
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') | Should -BeFalse
+    }
+
     It 'renders Liquid in document content by default' {
         $siteRoot = New-TestSiteDirectory -Name 'content-liquid-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'content-liquid-output'
