@@ -2,7 +2,7 @@
 #Requires -Modules powershell-yaml
 
 <#PSScriptInfo
-.VERSION 0.3.0
+.VERSION 0.4.0
 .GUID abebebd5-6f8f-4d36-b3c1-e6313b9eac6f
 .AUTHOR Paul Wojcicki-Jarocki
 .COPYRIGHT © 2026 Paul Dash
@@ -10,7 +10,7 @@
 .PROJECTURI https://github.com/PaulDash/Hyde
 .ICONURI https://github.com/PaulDash/Hyde/raw/main/res/Icon_32x32.png
 .TAGS PowerShell static-site-generator jekyll markdown yaml
-.RELEASENOTES Added the Hyde New scaffolding command, exported New-StaticSite, moved command help onto the module surface, and continued the module-first command workflow.
+.RELEASENOTES Extracted the Liquid engine into the standalone PowerLiquid module, updated Hyde to import it as an external dependency, and kept the Liquid extension registry flow available for Hyde plugins.
 #>
 
 [CmdletBinding()]

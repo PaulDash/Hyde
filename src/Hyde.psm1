@@ -7,15 +7,32 @@ $script:HydeModuleRoot = $moduleRoot
 $script:HydeManifestPath = Join-Path -Path $moduleRoot -ChildPath 'Hyde.psd1'
 $script:HydeVersion = (Test-ModuleManifest -Path $script:HydeManifestPath).Version.ToString()
 
-$liquidModulePath = Join-Path -Path (Split-Path -Parent $PSCommandPath) -ChildPath 'Liquid\Hyde.Liquid.psm1'
-$loadedLiquidModule = Get-Module |
-    Where-Object {
-        $_.Path -and $_.Path.Equals($liquidModulePath, [System.StringComparison]::OrdinalIgnoreCase)
-    } |
-    Select-Object -First 1
+$powerLiquidManifestPath = Join-Path -Path $moduleRoot -ChildPath '..\..\PowerLiquid\PowerLiquid.psd1'
+$resolvedPowerLiquidManifestPath = if (Test-Path -LiteralPath $powerLiquidManifestPath -PathType Leaf) {
+    (Resolve-Path -LiteralPath $powerLiquidManifestPath).Path
+} else {
+    $null
+}
 
-if (-not $loadedLiquidModule) {
-    Import-Module $liquidModulePath
+$loadedPowerLiquidModule = if ($resolvedPowerLiquidManifestPath) {
+    Get-Module |
+        Where-Object {
+            $_.Path -and $_.Path.Equals($resolvedPowerLiquidManifestPath, [System.StringComparison]::OrdinalIgnoreCase)
+        } |
+        Select-Object -First 1
+} else {
+    Get-Module -Name 'PowerLiquid' | Select-Object -First 1
+}
+
+if (-not $loadedPowerLiquidModule) {
+    if ($resolvedPowerLiquidManifestPath) {
+        # Prefer the sibling PowerLiquid repo during development so Hyde and PowerLiquid can evolve independently.
+        Import-Module $resolvedPowerLiquidManifestPath
+    } elseif (Get-Module -ListAvailable -Name 'PowerLiquid') {
+        Import-Module 'PowerLiquid'
+    } else {
+        throw "Could not load the PowerLiquid module. Install PowerLiquid or place the sibling repo at '$powerLiquidManifestPath'."
+    }
 }
 
 # Load PowerShell classes first so the remaining scripts can reference them.

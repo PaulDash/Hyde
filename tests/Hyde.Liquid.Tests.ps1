@@ -1,8 +1,14 @@
 Describe 'Hyde Liquid module' {
     BeforeAll {
         $projectRoot = Split-Path -Parent $PSScriptRoot
-        $liquidModulePath = Join-Path -Path $projectRoot -ChildPath 'src\Liquid\Hyde.Liquid.psm1'
-        Import-Module $liquidModulePath
+        $workspaceRoot = Split-Path -Parent $projectRoot
+        $powerLiquidManifestPath = Join-Path -Path $workspaceRoot -ChildPath 'PowerLiquid\PowerLiquid.psd1'
+
+        if (Test-Path -LiteralPath $powerLiquidManifestPath -PathType Leaf) {
+            Import-Module $powerLiquidManifestPath
+        } else {
+            Import-Module PowerLiquid -ErrorAction Stop
+        }
     }
 
     It 'renders basic objects and filters' {
