@@ -3,6 +3,7 @@
 Hyde plugins are PowerShell scripts that return a descriptor hashtable.
 
 They can:
+
 - register Hyde lifecycle hooks
 - register Liquid tags and filters through PowerLiquid's extension registry
 - influence output paths
@@ -60,6 +61,7 @@ param($Context)
 The top-level `param($Context)` receives the active `HydeBuildContext`.
 
 Use it to inspect:
+
 - site settings
 - source and destination paths
 - the Hyde version
@@ -111,6 +113,7 @@ For document-centric hooks, you should expect `Document` to be a `HydeDocument` 
 Hyde plugins do not ask PowerLiquid to load plugins directly.
 
 Instead, Hyde:
+
 1. discovers plugin scripts
 2. reads their descriptor
 3. registers any declared Liquid tags and filters into the current PowerLiquid registry
@@ -129,7 +132,7 @@ param($Context)
         Tags = @{
             hello = {
                 param($Invocation)
-                return 'Hello from Liquid'
+                return 'Hello from Paul'
             }
         }
     }
@@ -141,6 +144,8 @@ Usage:
 ```liquid
 {% hello %}
 ```
+
+Should return `Hello from Paul`
 
 ### Simple Custom Filter
 
@@ -166,6 +171,8 @@ Usage:
 {{ page.title | shout }}
 ```
 
+Running against a page with title 'Hello' should return `HELLO!`
+
 ## Built-In Plugin Examples
 
 Use these as reference implementations:
@@ -173,17 +180,14 @@ Use these as reference implementations:
 - [src/Plugins/seo-tag.ps1](../src/Plugins/seo-tag.ps1)
 - [src/Plugins/titles-from-headings.ps1](../src/Plugins/titles-from-headings.ps1)
 
-`seo-tag` shows a custom Liquid tag.
+`seo-tag` shows a custom Liquid tag
 
-`titles-from-headings` shows a document lifecycle hook that enriches semantic document metadata.
+`titles-from-headings` shows a document lifecycle hook that enriches semantic document metadata
 
 ## Plugin Discovery Rules
 
-Configured plugin names come from:
-- `plugins`
-- `gems`
-
 If a configured name starts with `jekyll-`, Hyde also tries:
+
 - the original name
 - the name with `jekyll-` removed
 - the stripped name prefixed with `hyde-`
@@ -196,7 +200,7 @@ When `safe: true` is enabled, only plugins listed in `whitelist` are allowed.
 
 ## Recommendations
 
-- Prefer mutating semantic document properties such as `Document.Title` instead of only changing rendered HTML.
+- Prefer mutating semantic document properties such as `document.title` instead of only changing rendered HTML.
 - Keep hooks narrowly scoped and idempotent.
 - Use Liquid tags and filters for presentation behavior.
 - Use Hyde hooks for discovery, metadata enrichment, or output-path changes.
@@ -205,6 +209,7 @@ When `safe: true` is enabled, only plugins listed in `whitelist` are allowed.
 ## Future Opportunities
 
 Likely future plugin surfaces include:
+
 - post-processing generated HTML
 - richer collection registration
 - command-level extensions
