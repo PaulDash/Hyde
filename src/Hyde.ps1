@@ -2,7 +2,7 @@
 #Requires -Modules powershell-yaml
 
 <#PSScriptInfo
-.VERSION 0.4.6
+.VERSION 0.4.7
 .GUID abebebd5-6f8f-4d36-b3c1-e6313b9eac6f
 .AUTHOR Paul Wojcicki-Jarocki
 .COPYRIGHT © 2026 Paul Dash
@@ -10,7 +10,7 @@
 .PROJECTURI https://github.com/PaulDash/Hyde
 .ICONURI https://github.com/PaulDash/Hyde/raw/main/res/Icon_32x32.png
 .TAGS PowerShell static-site-generator jekyll markdown yaml
-.RELEASENOTES Hyde now prefers a sibling PowerLiquid repo during development, then falls back to an installed PowerLiquid module and can install it from PowerShell Gallery for the current user if it is missing.
+.RELEASENOTES Hyde now supports Jekyll-style include_relative for post content, limited to files within the matching _posts directory tree.
 #>
 
 [CmdletBinding()]

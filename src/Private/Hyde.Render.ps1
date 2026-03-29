@@ -461,6 +461,32 @@ function resolveHydeIncludesPath {
     return (Join-Path -Path $Context.SourcePath -ChildPath $includesDirectoryName)
 }
 
+function resolveHydeRelativeIncludeRoot {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document,
+
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    # Hyde intentionally limits include_relative to post source files beneath the matching _posts tree.
+    if (-not (testHydePostDocument -Document $Document)) {
+        return ''
+    }
+
+    $relativeSegments = @($Document.RelativePath.Replace('\', '/') -split '/')
+    $postsIndex = [array]::IndexOf($relativeSegments, '_posts')
+    if ($postsIndex -lt 0) {
+        return ''
+    }
+
+    $postsRootRelativePath = ($relativeSegments[0..$postsIndex] -join [System.IO.Path]::DirectorySeparatorChar)
+    return (Join-Path -Path $Context.SourcePath -ChildPath $postsRootRelativePath)
+}
+
 function newHydePageVariables {
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -522,7 +548,7 @@ function invokeHydeDocumentLiquid {
         }
     }
 
-    $Document.RawContent = Invoke-LiquidTemplate -Template $Document.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (resolveHydeIncludesPath -Context $Context) -Registry $Context.LiquidRegistry
+    $Document.RawContent = Invoke-LiquidTemplate -Template $Document.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (resolveHydeIncludesPath -Context $Context) -CurrentFilePath $Document.SourcePath -RelativeIncludeRoot (resolveHydeRelativeIncludeRoot -Document $Document -Context $Context) -Registry $Context.LiquidRegistry
     Write-Verbose "Rendered Liquid content for '$($Document.RelativePath)'."
 }
 
@@ -562,7 +588,7 @@ function invokeHydeLayout {
             }
         }
 
-        $renderedContent = Invoke-LiquidTemplate -Template $layoutDocument.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (resolveHydeIncludesPath -Context $Context) -Registry $Context.LiquidRegistry
+        $renderedContent = Invoke-LiquidTemplate -Template $layoutDocument.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (resolveHydeIncludesPath -Context $Context) -CurrentFilePath $layoutDocument.SourcePath -Registry $Context.LiquidRegistry
     }
 
     $Document.RenderedContent = $renderedContent

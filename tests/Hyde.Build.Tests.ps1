@@ -698,6 +698,83 @@ title: Home
         $indexOutput | Should -Match '<aside>Hello / Home</aside>'
     }
 
+    It 'renders include_relative from within a post and keeps it inside the matching _posts tree' {
+        $siteRoot = New-TestSiteDirectory -Name 'include-relative-post-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'include-relative-post-output'
+        $postsDirectory = Join-Path -Path $siteRoot -ChildPath 'guides\_posts'
+        $snippetDirectory = Join-Path -Path $postsDirectory -ChildPath 'snippets'
+
+        [void](New-Item -Path $snippetDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $postsDirectory -ChildPath '2026-03-29-include-relative.md') -Encoding UTF8 -Value @'
+---
+title: Include Relative Post
+---
+Before
+{% include_relative snippets/card.md %}
+After
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $snippetDirectory -ChildPath 'card.md') -Encoding UTF8 -Value @'
+Included snippet
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $postDocument = $context.Documents | Where-Object { $_.RelativePath -eq 'guides/_posts/2026-03-29-include-relative.md' }
+        $postOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath $postDocument.OutputRelativePath.Replace('/', '\')) -Raw
+
+        $postOutput | Should -Match '<p>Before Included snippet</p>\s*<p>After</p>'
+    }
+
+    It 'rejects include_relative paths that resolve outside the post _posts tree' {
+        $siteRoot = New-TestSiteDirectory -Name 'include-relative-escape-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'include-relative-escape-output'
+        $postsDirectory = Join-Path -Path $siteRoot -ChildPath '_posts'
+
+        [void](New-Item -Path $postsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'outside.md') -Encoding UTF8 -Value 'Outside'
+        Set-Content -LiteralPath (Join-Path -Path $postsDirectory -ChildPath '2026-03-29-escape.md') -Encoding UTF8 -Value @'
+---
+title: Escape Post
+---
+{% include_relative ../outside.md %}
+'@
+
+        {
+            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        } | Should -Throw -ExpectedMessage '*include_relative*outside the allowed relative include root*'
+    }
+
+    It 'rejects include_relative from non-post documents' {
+        $siteRoot = New-TestSiteDirectory -Name 'include-relative-page-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'include-relative-page-output'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'snippet.md') -Encoding UTF8 -Value 'Snippet'
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+{% include_relative snippet.md %}
+'@
+
+        {
+            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        } | Should -Throw -ExpectedMessage '*include_relative*no relative include root is configured*'
+    }
+
     It 'loads the built-in seo plugin and renders title description and canonical tags' {
         $siteRoot = New-TestSiteDirectory -Name 'plugin-seo-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'plugin-seo-output'

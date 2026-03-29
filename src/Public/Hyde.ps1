@@ -16,6 +16,7 @@ The current implementation supports:
 - rendering Markdown documents to HTML
 - rendering single-level layouts through the Liquid module
 - rendering plugin-provided Liquid tags and filters
+- rendering Jekyll-style `include_relative` from post content under `_posts`
 - collections
 - permalinks
 - cleaning generated output and cache directories

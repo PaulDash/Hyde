@@ -4,6 +4,15 @@ All notable changes to Hyde will be documented in this file.
 
 The format is loosely based on Keep a Changelog, but entries are kept short and practical for this project.
 
+## [0.4.7] - 2026-03-29
+
+### Added
+- Added Jekyll-style `include_relative` support for post content.
+
+### Changed
+- Limited `include_relative` resolution to files within the matching `_posts` directory or one of its subdirectories.
+- Added error handling for unsupported `include_relative` usage outside post content and for paths that resolve outside the allowed post root.
+
 ## [0.4.6] - 2026-03-29
 
 ### Changed

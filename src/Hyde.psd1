@@ -1,6 +1,6 @@
 @{
     RootModule        = 'Hyde.psm1'
-    ModuleVersion     = '0.4.6'
+    ModuleVersion     = '0.4.7'
     GUID              = '42b2840d-8661-47ad-b051-9c3d868fc3d5'
     Author            = 'Paul Wojcicki-Jarocki'
     CompanyName       = 'Paul Dash'

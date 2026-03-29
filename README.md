@@ -11,6 +11,7 @@ No infringment is meant on the wonderful project that is Jekyll and on the great
 Hyde is usable today, but it is not trying to become a complete Jekyll clone.
 
 Deliberate non-goals:
+
 - `Serve` command
 - file watching / auto-regeneration
 - gem-based themes
@@ -28,6 +29,7 @@ Deliberate non-goals:
 - Liquid rendering through the standalone `PowerLiquid` module
 - Markdown rendering
 - `_data`, `_includes`, and `_layouts` support with layout inheritance
+- Jekyll-style `include_relative` for post content, limited to files under the matching `_posts` directory
 - Posts from `_posts` with draft and future-post handling
 - Front matter and collection permalinks
 - Jekyll-style post tags and categories exposed through `page.*`, `site.tags`, and `site.categories`

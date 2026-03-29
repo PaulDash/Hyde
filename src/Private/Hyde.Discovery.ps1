@@ -240,6 +240,25 @@ function initializeHydePostDocument {
     $Document.Slug = convertToHydeSlug -Text $postFileNameMatch.Groups['slug'].Value
 }
 
+function testHydePostFileName {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document
+    )
+
+    $normalizedRelativePath = $Document.RelativePath.Replace('\', '/')
+    if ($normalizedRelativePath.StartsWith('_drafts/', [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $true
+    }
+
+    return [System.Text.RegularExpressions.Regex]::IsMatch(
+        $Document.BaseName,
+        '^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})-(?<slug>.+)$'
+    )
+}
+
 function importHydeDataFiles {
     [CmdletBinding()]
     param(
@@ -337,6 +356,11 @@ function getHydeCollectionItems {
             $document.CollectionName = $definition.Label
             $document.WriteOutput = $definition.Output
             if ($definition.Label -eq 'posts') {
+                if (-not (testHydePostFileName -Document $document)) {
+                    Write-Verbose "Ignoring non-post content '$relativeFilePath' inside a _posts directory."
+                    continue
+                }
+
                 initializeHydePostDocument -Document $document
             }
             $document.OutputRelativePath = resolveHydeDocumentOutputPath -Document $document -Context $Context
