@@ -23,15 +23,16 @@ Deliberate non-goals:
 - Generated-file cleanup with `Hyde Clean`
 - Site validation with `Hyde Doctor`
 - `_config.yml` loading and merge with built-in defaults
-- Pages and static file discovery
+- Pages, posts, collections, and static file discovery
 - YAML Front Matter with defaults
 - Liquid rendering through the standalone `PowerLiquid` module
 - Markdown rendering
-- `_data` YAML loading, `_layouts` support with inheritance
-- Posts from `_posts`, Permalinks
-- Collections
+- `_data`, `_includes`, and `_layouts` support with layout inheritance
+- Posts from `_posts` with draft and future-post handling
+- Front matter and collection permalinks
+- Tags and categories exposed through `page.*`, `site.tags`, and `site.categories`
 - Draft support from `_drafts` when enabled
-- Plugin loading from `_plugins` and built-in Hyde plugins
+- Plugin loading from `_plugins` and built-in Hyde plugins such as `seo-tag` and `titles-from-headings`
 
 ### Current Gaps
 
@@ -41,6 +42,10 @@ Deliberate non-goals:
 - JSON / CSV / TSV data files
 - `_config.toml`
 - broader Jekyll variable coverage
+
+## Changelog
+
+Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Quick Start
 
