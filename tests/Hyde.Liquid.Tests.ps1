@@ -83,14 +83,17 @@ Describe 'Hyde Liquid module' {
         $result | Should -Be '[empty]'
     }
 
-    It 'rejects include in the plain Liquid dialect' {
+    It 'warns and ignores include in the plain Liquid dialect' {
         $includeRoot = Join-Path -Path $TestDrive -ChildPath 'includes'
         [void](New-Item -Path $includeRoot -ItemType Directory -Force)
         Set-Content -LiteralPath (Join-Path -Path $includeRoot -ChildPath 'card.html') -Encoding UTF8 -Value 'Card'
 
-        {
-            Invoke-LiquidTemplate -Template '{% include card.html %}' -Context @{} -IncludeRoot $includeRoot
-        } | Should -Throw -ExpectedMessage "*Liquid tag 'include' is not supported in the 'Liquid' dialect.*"
+        $stream = & {
+            Invoke-LiquidTemplate -Template '{% include card.html %}X' -Context @{} -IncludeRoot $includeRoot
+        } 3>&1
+
+        ($stream | Where-Object { $_ -is [System.Management.Automation.WarningRecord] }).Count | Should -Be 1
+        ($stream | Where-Object { $_ -is [string] } | Select-Object -Last 1) | Should -Be 'X'
     }
 
     It 'supports Jekyll-specific URL and serialization filters in the JekyllLiquid dialect' {
