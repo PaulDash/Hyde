@@ -46,12 +46,12 @@ Deliberate non-goals:
 
 ### Current Gaps
 
-- Themes
-- Sass conversion
 - broader Jekyll [variable](https://jekyllrb.com/docs/variables/) coverage
-- Syntax highlighting
+- Sass conversion
+- Themes
 - Pagination
-- lacks many Plugins,like [these](https://pages.github.com/versions.json) used by GitHub Pages
+- Syntax highlighting
+- lack of many Plugins,like [these](https://pages.github.com/versions.json) used by GitHub Pages
 
 ## Quick Start
 
