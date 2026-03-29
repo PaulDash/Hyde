@@ -293,6 +293,9 @@ function importHydeDataFiles {
         switch ($dataFile.Extension.ToLowerInvariant()) {
             '.yml' { }
             '.yaml' { }
+            '.json' { }
+            '.csv' { }
+            '.tsv' { }
             default {
                 Write-Verbose "Skipping unsupported data file '$($dataFile.Name)'."
                 continue
@@ -304,7 +307,7 @@ function importHydeDataFiles {
             $relativeDataPath = [System.IO.Path]::GetRelativePath($dataDirectoryPath, $dataFile.FullName).Replace('\', '/')
             $pathWithoutExtension = [System.Text.RegularExpressions.Regex]::Replace($relativeDataPath, '\.[^./\\]+$', '')
             $dataPathSegments = @($pathWithoutExtension -split '/' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-            $dataContent = readHydeConfigFile -Path $dataFile.FullName
+            $dataContent = importHydeDataFile -Path $dataFile.FullName
             setHydeDataValue -Root $Context.Site.data -PathSegments $dataPathSegments -Value $dataContent -SourcePath $relativeDataPath
             Write-Verbose "Imported data file '$relativeDataPath' to 'site.data.$($pathWithoutExtension.Replace('/', '.'))'."
         } catch {
@@ -362,6 +365,59 @@ function setHydeDataValue {
     }
 
     $currentNode[$leafSegment] = $Value
+}
+
+function importHydeDataFile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "Could not validate location of data file '$Path'."
+    }
+
+    $extension = [System.IO.Path]::GetExtension($Path).ToLowerInvariant()
+
+    try {
+        # Read the whole file once so each parser gets the original structure.
+        $content = Get-Content -LiteralPath $Path -Raw
+    } catch {
+        throw "Could not read data file '$Path'. $($_.Exception.Message)"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($content)) {
+        switch ($extension) {
+            '.csv' { return @() }
+            '.tsv' { return @() }
+            default { return @{} }
+        }
+    }
+
+    try {
+        switch ($extension) {
+            '.yml' { return (readHydeConfigFile -Path $Path) }
+            '.yaml' { return (readHydeConfigFile -Path $Path) }
+            '.json' {
+                $parsed = ConvertFrom-Json -InputObject $content
+                return (convertToHydeHashtable -InputObject $parsed)
+            }
+            '.csv' {
+                $parsed = ConvertFrom-Csv -InputObject $content
+                return (convertToHydeHashtable -InputObject $parsed)
+            }
+            '.tsv' {
+                $parsed = ConvertFrom-Csv -InputObject $content -Delimiter "`t"
+                return (convertToHydeHashtable -InputObject $parsed)
+            }
+            default {
+                throw "Unsupported data file extension '$extension'."
+            }
+        }
+    } catch {
+        throw "Could not parse data file '$Path'. $($_.Exception.Message)"
+    }
 }
 
 function getHydeCollectionItems {

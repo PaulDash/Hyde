@@ -2,7 +2,7 @@
 #Requires -Modules powershell-yaml
 
 <#PSScriptInfo
-.VERSION 0.4.10
+.VERSION 0.4.11
 .GUID abebebd5-6f8f-4d36-b3c1-e6313b9eac6f
 .AUTHOR Paul Wojcicki-Jarocki
 .COPYRIGHT © 2026 Paul Dash
@@ -10,7 +10,7 @@
 .PROJECTURI https://github.com/PaulDash/Hyde
 .ICONURI https://github.com/PaulDash/Hyde/raw/main/res/Icon_32x32.png
 .TAGS PowerShell static-site-generator jekyll markdown yaml
-.RELEASENOTES Hyde now provides recursive YAML _data loading with nested site.data paths, collision handling, and clearer file-specific error reporting for _data import failures.
+.RELEASENOTES Hyde now supports YAML, JSON, CSV, and TSV _data files with nested site.data paths, collision handling, and clearer file-specific import errors.
 #>
 
 [CmdletBinding()]

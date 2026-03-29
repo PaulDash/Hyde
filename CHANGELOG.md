@@ -4,6 +4,17 @@ All notable changes to Hyde will be documented in this file.
 
 The format is loosely based on Keep a Changelog, but entries are kept short and practical for this project.
 
+## [0.4.11] - 2026-03-29
+
+### Added
+- Added recursive YAML `_data` loading.
+- Added nested `site.data` paths for `_data` subfolders, such as `_data/team/people.yml -> site.data.team.people`.
+- Added JSON, CSV, and TSV support for `_data` files.
+
+### Changed
+- Added collision handling for conflicting `_data` keys and namespaces.
+- Improved `_data` error handling for directory enumeration and invalid YAML with clearer file-specific messages.
+
 ## [0.4.10] - 2026-03-29
 
 ### Added

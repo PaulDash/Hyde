@@ -11,7 +11,7 @@ The current implementation supports:
 - loading site and built-in plugins
 - discovering documents and static files
 - copying HTML and static files to the destination site
-- loading recursive YAML files from `_data` into nested `site.data` paths with collision and parse error reporting
+- loading recursive YAML, JSON, CSV, and TSV files from `_data` into nested `site.data` paths with collision and parse error reporting
 - parsing YAML front matter
 - rendering Markdown documents to HTML
 - rendering single-level layouts through the Liquid module

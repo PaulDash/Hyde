@@ -1095,6 +1095,52 @@ First: {{ site.data.team.people.first.name }}
         $indexOutput | Should -Match 'First: Jane'
     }
 
+    It 'loads JSON CSV and TSV data files into site.data' {
+        $siteRoot = New-TestSiteDirectory -Name 'multi-format-data-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'multi-format-data-output'
+        $dataDirectory = Join-Path -Path $siteRoot -ChildPath '_data'
+
+        [void](New-Item -Path $dataDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $dataDirectory -ChildPath 'profile.json') -Encoding UTF8 -Value @'
+{
+  "name": "Jane",
+  "role": "Writer"
+}
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $dataDirectory -ChildPath 'authors.csv') -Encoding UTF8 -Value @'
+name,role
+Jane,Writer
+John,Editor
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $dataDirectory -ChildPath 'topics.tsv') -Encoding UTF8 -Value "name`tlevel`nPowerShell`tAdvanced`nLiquid`tIntermediate`n"
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+JSON: {{ site.data.profile.name }} / {{ site.data.profile.role }}
+CSV: {{ site.data.authors.first.name }} / {{ site.data.authors.last.role }}
+TSV: {{ site.data.topics.first.name }} / {{ site.data.topics.last.level }}
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+
+        $context.Site.data.profile.name | Should -Be 'Jane'
+        $context.Site.data.authors.Count | Should -Be 2
+        $context.Site.data.topics.Count | Should -Be 2
+        $indexOutput | Should -Match 'JSON: Jane / Writer'
+        $indexOutput | Should -Match 'CSV: Jane / Editor'
+        $indexOutput | Should -Match 'TSV: PowerShell / Intermediate'
+    }
+
     It 'reports collisions between nested _data namespaces and existing data keys' {
         $siteRoot = New-TestSiteDirectory -Name 'data-collision-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'data-collision-output'
@@ -1137,6 +1183,26 @@ items: [broken
         {
             Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
         } | Should -Throw -ExpectedMessage '*Could not import data file*broken.yml*'
+    }
+
+    It 'reports invalid JSON in _data files with the failing file path' {
+        $siteRoot = New-TestSiteDirectory -Name 'invalid-json-data-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'invalid-json-data-output'
+        $dataDirectory = Join-Path -Path $siteRoot -ChildPath '_data'
+
+        [void](New-Item -Path $dataDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $dataDirectory -ChildPath 'broken.json') -Encoding UTF8 -Value @'
+{ "name": "Jane"
+'@
+
+        {
+            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        } | Should -Throw -ExpectedMessage '*Could not import data file*broken.json*'
     }
 
     It 'applies front matter defaults by path and page type while allowing explicit front matter to win' {

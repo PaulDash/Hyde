@@ -35,7 +35,7 @@ Deliberate non-goals:
 - YAML Front Matter with defaults
 - Liquid rendering through the standalone `PowerLiquid` module
 - Markdown rendering
-- Recursive YAML `_data` loading with nested `site.data` paths and clear collision/parse error reporting, plus `_includes` and `_layouts` support with layout inheritance
+- Recursive YAML, JSON, CSV, and TSV `_data` loading with nested `site.data` paths and clear collision/parse error reporting, plus `_includes` and `_layouts` support with layout inheritance
 - `include_relative` for post content, limited to files under the matching `_posts` directory
 - Posts from `_posts` with draft and future-post handling
 - Permalinks for pages, collections, and posts, including built-in post styles such as `date`, `pretty`, `ordinal`, `weekdate`, and `none`
@@ -48,7 +48,6 @@ Deliberate non-goals:
 
 - Themes
 - Sass conversion
-- JSON / CSV / TSV data files
 - broader Jekyll [variable](https://jekyllrb.com/docs/variables/) coverage
 - Syntax highlighting
 - Pagination
