@@ -1063,6 +1063,82 @@ title: Home
         $indexOutput | Should -Match '<li>2 About</li>'
     }
 
+    It 'loads recursive _data folders into nested site.data paths' {
+        $siteRoot = New-TestSiteDirectory -Name 'nested-data-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'nested-data-output'
+        $nestedDataDirectory = Join-Path -Path $siteRoot -ChildPath '_data\team'
+
+        [void](New-Item -Path $nestedDataDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $nestedDataDirectory -ChildPath 'people.yml') -Encoding UTF8 -Value @'
+- name: Jane
+- name: John
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+Count: {{ site.data.team.people.size }}
+First: {{ site.data.team.people.first.name }}
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+
+        $context.Site.data.team.people.Count | Should -Be 2
+        $indexOutput | Should -Match 'Count: 2'
+        $indexOutput | Should -Match 'First: Jane'
+    }
+
+    It 'reports collisions between nested _data namespaces and existing data keys' {
+        $siteRoot = New-TestSiteDirectory -Name 'data-collision-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'data-collision-output'
+        $nestedDataDirectory = Join-Path -Path $siteRoot -ChildPath '_data\team'
+
+        [void](New-Item -Path $nestedDataDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_data\team.yml') -Encoding UTF8 -Value @'
+Jane
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $nestedDataDirectory -ChildPath 'people.yml') -Encoding UTF8 -Value @'
+- name: Jane
+'@
+
+        {
+            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        } | Should -Throw -ExpectedMessage '*conflicts with existing site.data entry*'
+    }
+
+    It 'reports invalid YAML in _data files with the failing file path' {
+        $siteRoot = New-TestSiteDirectory -Name 'invalid-data-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'invalid-data-output'
+        $dataDirectory = Join-Path -Path $siteRoot -ChildPath '_data'
+
+        [void](New-Item -Path $dataDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $dataDirectory -ChildPath 'broken.yml') -Encoding UTF8 -Value @'
+items: [broken
+'@
+
+        {
+            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        } | Should -Throw -ExpectedMessage '*Could not import data file*broken.yml*'
+    }
+
     It 'applies front matter defaults by path and page type while allowing explicit front matter to win' {
         $siteRoot = New-TestSiteDirectory -Name 'defaults-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'defaults-output'

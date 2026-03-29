@@ -283,17 +283,85 @@ function importHydeDataFiles {
         return
     }
 
-    foreach ($dataFile in Get-ChildItem -LiteralPath $dataDirectoryPath -File) {
+    try {
+        $dataFiles = @(Get-ChildItem -LiteralPath $dataDirectoryPath -File -Recurse | Sort-Object -Property FullName)
+    } catch {
+        throw "Could not enumerate data files in '$dataDirectoryPath'. $($_.Exception.Message)"
+    }
+
+    foreach ($dataFile in $dataFiles) {
         switch ($dataFile.Extension.ToLowerInvariant()) {
             '.yml' { }
             '.yaml' { }
-            default { continue }
+            default {
+                Write-Verbose "Skipping unsupported data file '$($dataFile.Name)'."
+                continue
+            }
         }
 
-        $dataContent = readHydeConfigFile -Path $dataFile.FullName
-        $Context.Site.data[$dataFile.BaseName] = $dataContent
-        Write-Verbose "Imported data file '$($dataFile.Name)'."
+        try {
+            # Data files map to nested site.data keys based on their path under _data.
+            $relativeDataPath = [System.IO.Path]::GetRelativePath($dataDirectoryPath, $dataFile.FullName).Replace('\', '/')
+            $pathWithoutExtension = [System.Text.RegularExpressions.Regex]::Replace($relativeDataPath, '\.[^./\\]+$', '')
+            $dataPathSegments = @($pathWithoutExtension -split '/' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            $dataContent = readHydeConfigFile -Path $dataFile.FullName
+            setHydeDataValue -Root $Context.Site.data -PathSegments $dataPathSegments -Value $dataContent -SourcePath $relativeDataPath
+            Write-Verbose "Imported data file '$relativeDataPath' to 'site.data.$($pathWithoutExtension.Replace('/', '.'))'."
+        } catch {
+            throw "Could not import data file '$($dataFile.FullName)'. $($_.Exception.Message)"
+        }
     }
+}
+
+function setHydeDataValue {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Root,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$PathSegments,
+
+        [Parameter(Mandatory = $true)]
+        $Value,
+
+        [Parameter(Mandatory = $true)]
+        [string]$SourcePath
+    )
+
+    if ($PathSegments.Count -eq 0) {
+        throw "Data file '$SourcePath' does not resolve to a valid site.data key."
+    }
+
+    $currentNode = $Root
+    for ($index = 0; $index -lt ($PathSegments.Count - 1); $index++) {
+        $segment = $PathSegments[$index]
+        if ([string]::IsNullOrWhiteSpace($segment)) {
+            throw "Data file '$SourcePath' does not resolve to a valid site.data key."
+        }
+
+        if (-not $currentNode.ContainsKey($segment)) {
+            # Create intermediate namespace containers for nested _data folders.
+            $currentNode[$segment] = @{}
+        } elseif ($currentNode[$segment] -isnot [hashtable]) {
+            $existingPath = ($PathSegments[0..$index] -join '.')
+            throw "Data file '$SourcePath' conflicts with existing site.data entry '$existingPath'."
+        }
+
+        $currentNode = $currentNode[$segment]
+    }
+
+    $leafSegment = $PathSegments[-1]
+    if ([string]::IsNullOrWhiteSpace($leafSegment)) {
+        throw "Data file '$SourcePath' does not resolve to a valid site.data key."
+    }
+
+    if ($currentNode.ContainsKey($leafSegment)) {
+        $existingPath = ($PathSegments -join '.')
+        throw "Data file '$SourcePath' conflicts with existing site.data entry '$existingPath'."
+    }
+
+    $currentNode[$leafSegment] = $Value
 }
 
 function getHydeCollectionItems {
