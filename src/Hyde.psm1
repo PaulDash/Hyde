@@ -7,21 +7,49 @@ $script:HydeModuleRoot = $moduleRoot
 $script:HydeManifestPath = Join-Path -Path $moduleRoot -ChildPath 'Hyde.psd1'
 $script:HydeVersion = (Test-ModuleManifest -Path $script:HydeManifestPath).Version.ToString()
 
-$powerLiquidManifestPath = Join-Path -Path $moduleRoot -ChildPath '..\..\PowerLiquid\PowerLiquid.psd1'
-$resolvedPowerLiquidManifestPath = if (Test-Path -LiteralPath $powerLiquidManifestPath -PathType Leaf) {
-    (Resolve-Path -LiteralPath $powerLiquidManifestPath).Path
-} else {
-    $null
+function importHydePowerLiquidDependency {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ModuleRoot
+    )
+
+    $powerLiquidManifestPath = Join-Path -Path $ModuleRoot -ChildPath '..\..\PowerLiquid\PowerLiquid.psd1'
+    $resolvedPowerLiquidManifestPath = if (Test-Path -LiteralPath $powerLiquidManifestPath -PathType Leaf) {
+        (Resolve-Path -LiteralPath $powerLiquidManifestPath).Path
+    } else {
+        $null
+    }
+
+    if ($resolvedPowerLiquidManifestPath) {
+        # Prefer the sibling repo during local development.
+        Import-Module $resolvedPowerLiquidManifestPath
+        return
+    }
+
+    if (Get-Module -ListAvailable -Name 'PowerLiquid') {
+        Import-Module 'PowerLiquid'
+        return
+    }
+
+    $installModuleCommand = Get-Command -Name 'Install-Module' -ErrorAction SilentlyContinue
+    if ($null -eq $installModuleCommand) {
+        throw "Could not load the PowerLiquid module. Install PowerLiquid from PowerShell Gallery or place the sibling repo at '$powerLiquidManifestPath'."
+    }
+
+    Write-Verbose "PowerLiquid is not installed locally. Trying to install it from PowerShell Gallery for the current user."
+
+    try {
+        Install-Module -Name 'PowerLiquid' -Repository 'PSGallery' -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+    } catch {
+        Write-Verbose "Stable PowerLiquid install did not succeed. Trying the prerelease package."
+        Install-Module -Name 'PowerLiquid' -Repository 'PSGallery' -Scope CurrentUser -Force -AllowClobber -AllowPrerelease -ErrorAction Stop
+    }
+
+    Import-Module 'PowerLiquid' -ErrorAction Stop
 }
 
-if ($resolvedPowerLiquidManifestPath) {
-    # Importing without -Force reuses the existing module instance while still making its exports available in Hyde's module scope.
-    Import-Module $resolvedPowerLiquidManifestPath
-} elseif (Get-Module -ListAvailable -Name 'PowerLiquid') {
-    Import-Module 'PowerLiquid'
-} else {
-    throw "Could not load the PowerLiquid module. Install PowerLiquid or place the sibling repo at '$powerLiquidManifestPath'."
-}
+importHydePowerLiquidDependency -ModuleRoot $moduleRoot
 
 # Load PowerShell classes first so the remaining scripts can reference them.
 . (Join-Path -Path $moduleRoot -ChildPath 'Private\HydeTypes.ps1')

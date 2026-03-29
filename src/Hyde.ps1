@@ -2,7 +2,7 @@
 #Requires -Modules powershell-yaml
 
 <#PSScriptInfo
-.VERSION 0.4.3
+.VERSION 0.4.4
 .GUID abebebd5-6f8f-4d36-b3c1-e6313b9eac6f
 .AUTHOR Paul Wojcicki-Jarocki
 .COPYRIGHT © 2026 Paul Dash
@@ -10,7 +10,7 @@
 .PROJECTURI https://github.com/PaulDash/Hyde
 .ICONURI https://github.com/PaulDash/Hyde/raw/main/res/Icon_32x32.png
 .TAGS PowerShell static-site-generator jekyll markdown yaml
-.RELEASENOTES Added Clean support for -SourcePath so Hyde can inspect a site's configuration to discover the generated destination while still allowing -Destination to override it.
+.RELEASENOTES Hyde now prefers a sibling PowerLiquid repo during development, then falls back to an installed PowerLiquid module and can install it from PowerShell Gallery for the current user if it is missing.
 #>
 
 [CmdletBinding()]
