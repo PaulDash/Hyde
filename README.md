@@ -13,9 +13,11 @@ Hyde is usable today, but it is not trying to become a complete Jekyll clone.
 Deliberate non-goals:
 
 - `Serve` command
-- file watching / auto-regeneration
-- gem-based themes
+- File watching / auto-regeneration
+- Gem-based themes
 - Ruby plugin compatibility
+- CoffeeScript conversion
+- TOML config files
 
 ### Implemented Features
 
@@ -29,22 +31,26 @@ Deliberate non-goals:
 - Liquid rendering through the standalone `PowerLiquid` module
 - Markdown rendering
 - `_data`, `_includes`, and `_layouts` support with layout inheritance
-- Jekyll-style `include_relative` for post content, limited to files under the matching `_posts` directory
+- `include_relative` for post content, limited to files under the matching `_posts` directory
 - Posts from `_posts` with draft and future-post handling
-- permalinks for pages, collections, and posts, including built-in post styles such as `date`, `pretty`, `ordinal`, `weekdate`, and `none`
-- Jekyll-style post tags and categories exposed through `page.*`, `site.tags`, and `site.categories`
+- Permalinks for pages, collections, and posts, including built-in post styles such as `date`, `pretty`, `ordinal`, `weekdate`, and `none`
+- Post tags and categories exposed through `page.*`, `site.tags`, and `site.categories`
 - Post categories derived from directories above `_posts`, plus front matter `tag` / `tags` and `category` / `categories`
 - Draft support from `_drafts` when enabled
 - Plugin loading from `_plugins` and built-in Hyde plugins such as `seo-tag` and `titles-from-headings`
 
 ### Current Gaps
 
-- richer post features such as excerpts, archives, and generated tag/category archive pages
-- Pagination
+- Themes
 - Sass conversion
 - JSON / CSV / TSV data files
-- `_config.toml`
-- broader Jekyll variable coverage
+- No recursive _data subfolder support.
+- No namespaced nested paths like Jekyll’s _data/team/people.yml -> site.data.team.people.
+- No special collision handling if two files share the same basename.
+- broader Jekyll [variable](https://jekyllrb.com/docs/variables/) coverage
+- Syntax highlighting
+- Pagination
+- lacks many Plugins,like [these](https://pages.github.com/versions.json) used by GitHub Pages
 
 ## Changelog
 
@@ -61,16 +67,35 @@ Import-Module .\src\Hyde.psd1
 Hyde New .\mysite
 ```
 
+Create a new site with the cmdlet directly:
+
+```powershell
+Import-Module .\src\Hyde.psd1
+New-StaticSite -Destination .\mysite
+```
+
 Build a site:
 
 ```powershell
 Hyde Build -Source .\mysite -Destination .\mysite\_site
 ```
 
+Build a site with the cmdlet directly:
+
+```powershell
+Publish-StaticSite -Source .\mysite -Destination .\mysite\_site -Environment development
+```
+
 Clean generated output using the current site's config:
 
 ```powershell
 Hyde Clean -SourcePath .\mysite
+```
+
+Clean generated output with the cmdlet directly:
+
+```powershell
+Clear-StaticSite -SourcePath .\mysite
 ```
 
 ### Basic Site Structure
@@ -83,7 +108,6 @@ site/
   _data/
   _posts/
   _drafts/
-  _plugins/
   index.md
 ```
 
@@ -95,7 +119,6 @@ description: Demo site built with Hyde
 url: https://example.com
 baseurl: ""
 destination: _site
-markdown: kramdown
 
 collections:
   notes:
@@ -128,4 +151,4 @@ Run the Hyde test suite with:
 
 ## Related Projects
 
-- Hyde uses the standalone `PowerLiquid` module to parse and render Liquid templates.
+- Hyde uses the standalone [PowerLiquid](https://github.com/PaulDash/PowerLiquid) module to parse and render Liquid templates.
