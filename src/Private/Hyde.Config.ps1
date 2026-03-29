@@ -153,6 +153,8 @@ function initializeHydeBuildContext {
     $context.Site['posts'] = New-Object System.Collections.ArrayList
     $context.Site['static_files'] = New-Object System.Collections.ArrayList
     $context.Site['collections'] = @{}
+    $context.Site['tags'] = @{}
+    $context.Site['categories'] = @{}
 
     initializeHydeCollections -Context $context
 
@@ -270,6 +272,47 @@ function syncHydePosts {
     foreach ($post in $eligiblePosts) {
         [void]$Context.Site.posts.Add($post)
         [void]$Context.Site.collections.posts.docs.Add($post)
+    }
+}
+
+function syncHydeTaxonomies {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    $Context.Site.tags = @{}
+    $Context.Site.categories = @{}
+
+    foreach ($document in $Context.Documents) {
+        if (-not $document.Published) {
+            continue
+        }
+
+        foreach ($tag in @($document.Tags)) {
+            if ([string]::IsNullOrWhiteSpace($tag)) {
+                continue
+            }
+
+            if (-not $Context.Site.tags.ContainsKey($tag)) {
+                $Context.Site.tags[$tag] = New-Object System.Collections.ArrayList
+            }
+
+            [void]$Context.Site.tags[$tag].Add($document)
+        }
+
+        foreach ($category in @($document.Categories)) {
+            if ([string]::IsNullOrWhiteSpace($category)) {
+                continue
+            }
+
+            if (-not $Context.Site.categories.ContainsKey($category)) {
+                $Context.Site.categories[$category] = New-Object System.Collections.ArrayList
+            }
+
+            [void]$Context.Site.categories[$category].Add($document)
+        }
     }
 }
 

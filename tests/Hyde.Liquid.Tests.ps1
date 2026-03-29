@@ -149,6 +149,6 @@ Describe 'Hyde Liquid module' {
     It 'reports unsupported dialect values' {
         {
             Invoke-LiquidTemplate -Template 'Hello' -Context @{} -Dialect 'Liquid-Next'
-        } | Should -Throw -ExpectedMessage "*Liquid dialect 'Liquid-Next' is not supported yet.*"
+        } | Should -Throw -ExpectedMessage "*does not belong to the set*Liquid,JekyllLiquid*"
     }
 }

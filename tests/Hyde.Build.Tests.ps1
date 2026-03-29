@@ -621,6 +621,53 @@ title: Preview Draft
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath $draftDocument.OutputRelativePath.Replace('/', '\')) | Should -BeTrue
     }
 
+    It 'exposes tags and categories through semantic document properties and site taxonomy buckets' {
+        $siteRoot = New-TestSiteDirectory -Name 'taxonomy-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'taxonomy-output'
+        $postsDirectory = Join-Path -Path $siteRoot -ChildPath '_posts'
+
+        [void](New-Item -Path $postsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+Tags: {{ site.tags.powershell.size }}
+Categories: {{ site.categories.guides.size }}
+{% for post in site.tags.powershell %}{{ post.title }}{% endfor %}
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $postsDirectory -ChildPath '2026-03-28-liquid-taxonomies.md') -Encoding UTF8 -Value @'
+---
+title: Liquid Taxonomies
+tags:
+  - powershell
+  - liquid
+categories:
+  - guides
+---
+# Taxonomies
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $postDocument = $context.Documents | Where-Object { $_.BaseName -eq '2026-03-28-liquid-taxonomies' }
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+
+        $postDocument.Tags | Should -Contain 'powershell'
+        $postDocument.Tags | Should -Contain 'liquid'
+        $postDocument.Categories | Should -Contain 'guides'
+        $context.Site.tags.powershell.Count | Should -Be 1
+        $context.Site.categories.guides.Count | Should -Be 1
+        $context.Site.tags.powershell[0].Title | Should -Be 'Liquid Taxonomies'
+        $indexOutput | Should -Match 'Tags: 1'
+        $indexOutput | Should -Match 'Categories: 1'
+        $indexOutput | Should -Match 'Liquid Taxonomies'
+    }
+
     It 'renders Jekyll includes from the includes directory' {
         $siteRoot = New-TestSiteDirectory -Name 'include-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'include-output'

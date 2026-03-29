@@ -28,6 +28,8 @@ class HydeDocument : HydeContentItem {
     [string]$RenderedContent
     [string]$Title
     [string]$Slug
+    [string[]]$Tags
+    [string[]]$Categories
     [datetime]$PostDate
     [bool]$Published
     [bool]$WriteOutput
@@ -43,6 +45,8 @@ class HydeDocument : HydeContentItem {
         $this.RenderedContent = ''
         $this.Title = ''
         $this.Slug = ''
+        $this.Tags = @()
+        $this.Categories = @()
         $this.PostDate = [datetime]::MinValue
         $this.Published = $true
         $this.WriteOutput = $true

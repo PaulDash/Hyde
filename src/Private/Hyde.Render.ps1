@@ -113,22 +113,47 @@ function getHydeDocumentCategories {
         [HydeDocument]$Document
     )
 
-    $categories = @()
-    if ($Document.FrontMatter.ContainsKey('categories')) {
-        $categoriesValue = $Document.FrontMatter.categories
-    } elseif ($Document.FrontMatter.ContainsKey('category')) {
-        $categoriesValue = $Document.FrontMatter.category
-    } else {
-        $categoriesValue = $null
+    # Categories are normalized during document preparation so permalink resolution can reuse them directly.
+    return @($Document.Categories | ForEach-Object { convertToHydeSlug -Text $_ })
+}
+
+function getHydeDocumentTerms {
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document,
+
+        [Parameter(Mandatory = $true)]
+        [string[]]$Keys
+    )
+
+    foreach ($key in $Keys) {
+        if (-not $Document.FrontMatter.ContainsKey($key)) {
+            continue
+        }
+
+        $termsValue = $Document.FrontMatter[$key]
+        if ($null -eq $termsValue) {
+            continue
+        }
+
+        if ($termsValue -is [System.Collections.IEnumerable] -and $termsValue -isnot [string]) {
+            return @(
+                $termsValue |
+                    ForEach-Object { [string]$_ } |
+                    Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+            )
+        }
+
+        if ($termsValue -is [string]) {
+            return @($termsValue -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        }
+
+        return @([string]$termsValue)
     }
 
-    if ($categoriesValue -is [System.Collections.IEnumerable] -and $categoriesValue -isnot [string]) {
-        $categories = @($categoriesValue | ForEach-Object { [string]$_ })
-    } elseif ($categoriesValue -is [string]) {
-        $categories = @($categoriesValue -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    }
-
-    return @($categories | ForEach-Object { convertToHydeSlug -Text $_ })
+    return @()
 }
 
 function getHydeDocumentPermalinkPattern {
@@ -423,6 +448,8 @@ function newHydePageVariables {
     $page['basename'] = $Document.BaseName
     $page['extname'] = $Document.Extension
     $page['slug'] = $Document.Slug
+    $page['tags'] = @($Document.Tags)
+    $page['categories'] = @($Document.Categories)
     $page['draft'] = $Document.IsDraft
 
     if ($Document.PostDate -ne [datetime]::MinValue) {
@@ -568,6 +595,10 @@ function readHydeFrontMatter {
     } else {
         $Document.Title = ''
     }
+
+    # Store tags and categories semantically so templates and future features can consume them consistently.
+    $Document.Tags = @(getHydeDocumentTerms -Document $Document -Keys @('tags', 'tag'))
+    $Document.Categories = @(getHydeDocumentTerms -Document $Document -Keys @('categories', 'category'))
 
     if ($Document.FrontMatter.ContainsKey('render_with_liquid')) {
         $Document.RenderWithLiquid = convertToHydeBooleanFrontMatterValue -SettingName 'render_with_liquid' -InputObject $Document.FrontMatter.render_with_liquid -DefaultValue $true

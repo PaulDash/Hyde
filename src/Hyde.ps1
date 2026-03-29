@@ -2,7 +2,7 @@
 #Requires -Modules powershell-yaml
 
 <#PSScriptInfo
-.VERSION 0.4.4
+.VERSION 0.4.5
 .GUID abebebd5-6f8f-4d36-b3c1-e6313b9eac6f
 .AUTHOR Paul Wojcicki-Jarocki
 .COPYRIGHT © 2026 Paul Dash
