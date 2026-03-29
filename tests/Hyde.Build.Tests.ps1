@@ -314,6 +314,61 @@ permalink: /welcome/
         $indexOutput | Should -Match '<p>/welcome/</p>'
     }
 
+    It 'applies the global permalink pattern to pages while ignoring unavailable placeholders' {
+        $siteRoot = New-TestSiteDirectory -Name 'global-page-permalink-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'global-page-permalink-output'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+permalink: /:categories/:year/:month/:day/:title:output_ext
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'about-me.md') -Encoding UTF8 -Value @'
+---
+title: About Me
+---
+{{ page.url }}
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $document = $context.Documents | Where-Object { $_.RelativePath -eq 'about-me.md' }
+        $pageOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'about-me.html') -Raw
+
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'about-me.html') | Should -BeTrue
+        $document.Url | Should -Be '/about-me.html'
+        $pageOutput | Should -Match '<p>/about-me\.html</p>'
+    }
+
+    It 'ignores page permalink values supplied through front matter defaults' {
+        $siteRoot = New-TestSiteDirectory -Name 'page-default-permalink-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'page-default-permalink-output'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+defaults:
+  - scope:
+      path: ""
+      type: pages
+    values:
+      permalink: /ignored-by-defaults/
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+{{ page.url }}
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $document = $context.Documents | Where-Object { $_.RelativePath -eq 'index.md' }
+        $pageOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'ignored-by-defaults\index.html') | Should -BeFalse
+        $document.Url | Should -Be '/index.html'
+        $pageOutput | Should -Match '<p>/index\.html</p>'
+    }
+
     It 'can populate document titles from the first markdown heading through the titles-from-headings plugin' {
         $siteRoot = New-TestSiteDirectory -Name 'titles-from-headings-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'titles-from-headings-output'
@@ -383,7 +438,7 @@ Staff count: {{ site.staff.size }} / {{ site.collections.staff.docs.size }}
 
         $collectionDocument.Kind | Should -Be 'CollectionDocument'
         $collectionDocument.WriteOutput | Should -BeTrue
-        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'staff\jane.html') | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'jane.html') | Should -BeTrue
         $context.Site.collections.staff.docs.Count | Should -Be 1
         $context.Site.staff.Count | Should -Be 1
         $indexOutput | Should -Match 'Staff count: 1 / 1'
@@ -487,7 +542,7 @@ title: Notes Index
         Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'notes-index.html') -Raw
 
-        $indexOutput | Should -Match '<li><a href="/notes/welcome\.html">Welcome Note</a></li>'
+        $indexOutput | Should -Match '<li><a href="/welcome\.html">Welcome Note</a></li>'
     }
 
     It 'writes collection documents to a collection permalink that uses the semantic title slug' {
@@ -565,6 +620,95 @@ title: Newer Post
         $postUrls[1] | Should -Be '/2026/03/27/older-post.html'
         $indexOutput | Should -Match 'Newer Post\|/2026/03/28/newer-post\.html'
         $indexOutput | Should -Match 'Older Post\|/2026/03/27/older-post\.html'
+    }
+
+    It 'supports Jekyll built-in post permalink styles ordinal weekdate and none' {
+        $siteRoot = New-TestSiteDirectory -Name 'post-permalink-styles-site'
+        $ordinalDestinationRoot = Join-Path -Path $TestDrive -ChildPath 'post-permalink-ordinal-output'
+        $weekdateDestinationRoot = Join-Path -Path $TestDrive -ChildPath 'post-permalink-weekdate-output'
+        $noneDestinationRoot = Join-Path -Path $TestDrive -ChildPath 'post-permalink-none-output'
+        $postsDirectory = Join-Path -Path $siteRoot -ChildPath '_posts'
+
+        [void](New-Item -Path $postsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $postsDirectory -ChildPath '2026-03-29-style-post.md') -Encoding UTF8 -Value @'
+---
+title: Style Post
+---
+# Style Post
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+permalink: ordinal
+'@
+        $ordinalContext = Publish-StaticSite -Source $siteRoot -Destination $ordinalDestinationRoot -Environment development -ScriptPath $entryScriptPath
+        ($ordinalContext.Site.posts[0].Url) | Should -Be '/2026/088/style-post.html'
+        Test-Path -LiteralPath (Join-Path -Path $ordinalDestinationRoot -ChildPath '2026\088\style-post.html') | Should -BeTrue
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+permalink: weekdate
+'@
+        $weekdateContext = Publish-StaticSite -Source $siteRoot -Destination $weekdateDestinationRoot -Environment development -ScriptPath $entryScriptPath
+        ($weekdateContext.Site.posts[0].Url) | Should -Be '/2026/W13/Sun/style-post.html'
+        Test-Path -LiteralPath (Join-Path -Path $weekdateDestinationRoot -ChildPath '2026\W13\Sun\style-post.html') | Should -BeTrue
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+permalink: none
+'@
+        $noneContext = Publish-StaticSite -Source $siteRoot -Destination $noneDestinationRoot -Environment development -ScriptPath $entryScriptPath
+        ($noneContext.Site.posts[0].Url) | Should -Be '/style-post.html'
+        Test-Path -LiteralPath (Join-Path -Path $noneDestinationRoot -ChildPath 'style-post.html') | Should -BeTrue
+    }
+
+    It 'supports expanded Jekyll permalink placeholders for posts and collections' {
+        $siteRoot = New-TestSiteDirectory -Name 'expanded-permalink-placeholders-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'expanded-permalink-placeholders-output'
+        $postsDirectory = Join-Path -Path $siteRoot -ChildPath 'Work 2 Progress\_posts'
+        $collectionDirectory = Join-Path -Path $siteRoot -ChildPath '_notes\deep'
+
+        [void](New-Item -Path $postsDirectory -ItemType Directory -Force)
+        [void](New-Item -Path $collectionDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+future: true
+collections:
+  notes:
+    output: true
+    permalink: /:collection/:path/:basename/:name/:title/:slug:output_ext
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $postsDirectory -ChildPath '2026-03-29-Mixed Case.md') -Encoding UTF8 -Value @'
+---
+title: Permalink Tokens
+slug: Custom Slug
+date: 2026-03-29 14:05:06
+categories:
+  - Alpha Beta
+permalink: /:slugified_categories/:short_year/:short_month/:long_month/:day/:i_day/:y_day/:w_year/:week/:w_day/:short_day/:long_day/:hour/:minute/:second/:title/:slug:output_ext
+---
+# Tokens
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $collectionDirectory -ChildPath 'Deep Note.md') -Encoding UTF8 -Value @'
+---
+slug: Custom Note
+---
+# Deep Note
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $postDocument = $context.Site.posts[0]
+        $noteDocument = $context.Documents | Where-Object { $_.RelativePath -eq '_notes/deep/Deep Note.md' }
+
+        $postDocument.Url | Should -Be '/work-2-progress/alpha-beta/26/Mar/March/29/29/088/2026/13/7/Sun/Sunday/14/05/06/Custom-Slug/custom-slug.html'
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'work-2-progress\alpha-beta\26\Mar\March\29\29\088\2026\13\7\Sun\Sunday\14\05\06\Custom-Slug\custom-slug.html') | Should -BeTrue
+
+        $noteDocument.Url | Should -Be '/notes/deep/Deep Note/Deep Note/deep-note/Custom-Note/custom-note.html'
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'notes\deep\Deep Note\Deep Note\deep-note\Custom-Note\custom-note.html') | Should -BeTrue
     }
 
     It 'filters future posts unless future is enabled' {
@@ -964,8 +1108,8 @@ render_with_liquid: true
 '@
 
         $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
-        $guideOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'docs\guide.html') -Raw
-        $overrideOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'docs\override.html') -Raw
+        $guideOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'guide.html') -Raw
+        $overrideOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'override.html') -Raw
         $guideDocument = $context.Documents | Where-Object { $_.BaseName -eq 'guide' }
         $overrideDocument = $context.Documents | Where-Object { $_.BaseName -eq 'override' }
 

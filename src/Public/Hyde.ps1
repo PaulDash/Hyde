@@ -18,7 +18,7 @@ The current implementation supports:
 - rendering plugin-provided Liquid tags and filters
 - rendering Jekyll-style `include_relative` from post content under `_posts`
 - collections
-- permalinks
+- Jekyll-style permalinks for pages, collections, and posts
 - cleaning generated output and cache directories
 - basic doctor-style site validation
 

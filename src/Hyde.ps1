@@ -2,7 +2,7 @@
 #Requires -Modules powershell-yaml
 
 <#PSScriptInfo
-.VERSION 0.4.7
+.VERSION 0.4.8
 .GUID abebebd5-6f8f-4d36-b3c1-e6313b9eac6f
 .AUTHOR Paul Wojcicki-Jarocki
 .COPYRIGHT © 2026 Paul Dash
@@ -10,7 +10,7 @@
 .PROJECTURI https://github.com/PaulDash/Hyde
 .ICONURI https://github.com/PaulDash/Hyde/raw/main/res/Icon_32x32.png
 .TAGS PowerShell static-site-generator jekyll markdown yaml
-.RELEASENOTES Hyde now supports Jekyll-style include_relative for post content, limited to files within the matching _posts directory tree.
+.RELEASENOTES Hyde now aligns more closely with current Jekyll permalink behavior, including the built-in post styles, expanded placeholder support, and page-default permalink handling.
 #>
 
 [CmdletBinding()]

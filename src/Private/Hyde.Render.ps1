@@ -117,6 +117,217 @@ function getHydeDocumentCategories {
     return @($Document.Categories | ForEach-Object { convertToHydeSlug -Text $_ })
 }
 
+function getHydeDocumentSlugOverride {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document
+    )
+
+    if ($Document.FrontMatter.ContainsKey('slug') -and -not [string]::IsNullOrWhiteSpace([string]$Document.FrontMatter.slug)) {
+        return [string]$Document.FrontMatter.slug
+    }
+
+    return ''
+}
+
+function getHydeDocumentBaseFileName {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document
+    )
+
+    if ((testHydePostDocument -Document $Document) -and -not $Document.IsDraft) {
+        $postFileNameMatch = [System.Text.RegularExpressions.Regex]::Match(
+            $Document.BaseName,
+            '^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})-(?<slug>.+)$'
+        )
+
+        if ($postFileNameMatch.Success) {
+            return [string]$postFileNameMatch.Groups['slug'].Value
+        }
+    }
+
+    return $Document.BaseName
+}
+
+function getHydePrettySlug {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Text
+    )
+
+    $normalizedText = [System.Text.RegularExpressions.Regex]::Replace($Text.Trim(), '[^0-9A-Za-z]+', '-')
+    return $normalizedText.Trim('-')
+}
+
+function getHydePermalinkTitleValue {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document
+    )
+
+    $slugOverride = getHydeDocumentSlugOverride -Document $Document
+    if (-not [string]::IsNullOrWhiteSpace($slugOverride)) {
+        return (getHydePrettySlug -Text $slugOverride)
+    }
+
+    return (getHydePrettySlug -Text (getHydeDocumentBaseFileName -Document $Document))
+}
+
+function getHydePermalinkSlugValue {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document
+    )
+
+    $slugOverride = getHydeDocumentSlugOverride -Document $Document
+    if (-not [string]::IsNullOrWhiteSpace($slugOverride)) {
+        return (convertToHydeSlug -Text $slugOverride)
+    }
+
+    return (convertToHydeSlug -Text (getHydeDocumentBaseFileName -Document $Document))
+}
+
+function getHydePermalinkPathValue {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document
+    )
+
+    $normalizedRelativePath = $Document.RelativePath.Replace('\', '/')
+    $relativePathWithoutExtension = [System.Text.RegularExpressions.Regex]::Replace($normalizedRelativePath, '\.[^./\\]+$', '')
+
+    if ($Document.Kind -eq 'CollectionDocument' -and -not [string]::IsNullOrWhiteSpace($Document.CollectionName)) {
+        $collectionSegment = "_$($Document.CollectionName)/"
+        $collectionIndex = $relativePathWithoutExtension.IndexOf($collectionSegment, [System.StringComparison]::OrdinalIgnoreCase)
+        if ($collectionIndex -ge 0) {
+            return $relativePathWithoutExtension.Substring($collectionIndex + $collectionSegment.Length)
+        }
+    }
+
+    return $relativePathWithoutExtension
+}
+
+function getHydePermalinkNameValue {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document
+    )
+
+    return (convertToHydeSlug -Text (getHydeDocumentBaseFileName -Document $Document))
+}
+
+function getHydePermalinkBaseNameValue {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document
+    )
+
+    return (getHydeDocumentBaseFileName -Document $Document)
+}
+
+function getHydeWeekDatePart {
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [datetime]$Date
+    )
+
+    $isoWeek = [System.Globalization.ISOWeek]::GetWeekOfYear($Date)
+    $isoYear = [System.Globalization.ISOWeek]::GetYear($Date)
+    $isoDay = [int]$Date.DayOfWeek
+    if ($isoDay -eq 0) {
+        $isoDay = 7
+    }
+
+    return @{
+        Week = $isoWeek
+        Year = $isoYear
+        Day  = $isoDay
+    }
+}
+
+function getHydeDocumentPermalinkTokenValues {
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DefaultOutputPath
+    )
+
+    $isPostDocument = (testHydePostDocument -Document $Document)
+    $postDate = if ($isPostDocument -and $Document.PostDate -ne [datetime]::MinValue) { $Document.PostDate } else { $null }
+    $weekDatePart = if ($null -ne $postDate) { getHydeWeekDatePart -Date $postDate } else { @{} }
+    $dateCulture = [System.Globalization.CultureInfo]::InvariantCulture
+
+    return @{
+        collection            = $Document.CollectionName
+        title                 = getHydePermalinkTitleValue -Document $Document
+        slug                  = getHydePermalinkSlugValue -Document $Document
+        name                  = getHydePermalinkNameValue -Document $Document
+        basename              = getHydePermalinkBaseNameValue -Document $Document
+        path                  = getHydePermalinkPathValue -Document $Document
+        categories            = if ($isPostDocument) { ((@($Document.Categories) -join '/').Replace('\', '/')) } else { '' }
+        slugified_categories  = if ($isPostDocument) { ((getHydeDocumentCategories -Document $Document) -join '/') } else { '' }
+        year                  = if ($null -ne $postDate) { $postDate.ToString('yyyy', $dateCulture) } else { '' }
+        short_year            = if ($null -ne $postDate) { $postDate.ToString('yy', $dateCulture) } else { '' }
+        month                 = if ($null -ne $postDate) { $postDate.ToString('MM', $dateCulture) } else { '' }
+        i_month               = if ($null -ne $postDate) { [string]$postDate.Month } else { '' }
+        short_month           = if ($null -ne $postDate) { $postDate.ToString('MMM', $dateCulture) } else { '' }
+        long_month            = if ($null -ne $postDate) { $postDate.ToString('MMMM', $dateCulture) } else { '' }
+        day                   = if ($null -ne $postDate) { $postDate.ToString('dd', $dateCulture) } else { '' }
+        i_day                 = if ($null -ne $postDate) { [string]$postDate.Day } else { '' }
+        y_day                 = if ($null -ne $postDate) { $postDate.DayOfYear.ToString('000', $dateCulture) } else { '' }
+        w_year                = if ($null -ne $postDate) { [string]$weekDatePart.Year } else { '' }
+        week                  = if ($null -ne $postDate) { ([int]$weekDatePart.Week).ToString('00', $dateCulture) } else { '' }
+        w_day                 = if ($null -ne $postDate) { [string]$weekDatePart.Day } else { '' }
+        short_day             = if ($null -ne $postDate) { $postDate.ToString('ddd', $dateCulture) } else { '' }
+        long_day              = if ($null -ne $postDate) { $postDate.ToString('dddd', $dateCulture) } else { '' }
+        hour                  = if ($null -ne $postDate) { $postDate.ToString('HH', $dateCulture) } else { '' }
+        minute                = if ($null -ne $postDate) { $postDate.ToString('mm', $dateCulture) } else { '' }
+        second                = if ($null -ne $postDate) { $postDate.ToString('ss', $dateCulture) } else { '' }
+        output_ext            = [System.IO.Path]::GetExtension($DefaultOutputPath)
+    }
+}
+
+function getHydePostPermalinkPattern {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ConfiguredPermalink
+    )
+
+    switch ($ConfiguredPermalink.Trim().ToLowerInvariant()) {
+        'date' { return '/:categories/:year/:month/:day/:title:output_ext' }
+        'pretty' { return '/:categories/:year/:month/:day/:title/' }
+        'ordinal' { return '/:categories/:year/:y_day/:title:output_ext' }
+        'weekdate' { return '/:categories/:year/W:week/:short_day/:title:output_ext' }
+        'none' { return '/:categories/:title:output_ext' }
+        default { return $ConfiguredPermalink }
+    }
+}
+
 function getHydeDocumentTerms {
     [CmdletBinding()]
     [OutputType([string[]])]
@@ -206,7 +417,12 @@ function getHydeDocumentPermalinkPattern {
         [HydeBuildContext]$Context
     )
 
-    if ($Document.FrontMatter.ContainsKey('permalink') -and -not [string]::IsNullOrWhiteSpace([string]$Document.FrontMatter.permalink)) {
+    if ($Document.FrontMatter.ContainsKey('permalink') -and
+        -not [string]::IsNullOrWhiteSpace([string]$Document.FrontMatter.permalink) -and
+        (
+            $Document.Kind -ne 'Page' -or
+            ($Document.ExplicitFrontMatterKeys -contains 'permalink')
+        )) {
         return [string]$Document.FrontMatter.permalink
     }
 
@@ -215,22 +431,17 @@ function getHydeDocumentPermalinkPattern {
         if ($null -ne $collectionDefinition -and
             $collectionDefinition.Settings.ContainsKey('permalink') -and
             -not [string]::IsNullOrWhiteSpace([string]$collectionDefinition.Settings.permalink)) {
-            return [string]$collectionDefinition.Settings.permalink
+            return (getHydePostPermalinkPattern -ConfiguredPermalink ([string]$collectionDefinition.Settings.permalink))
         }
     }
 
-    if (testHydePostDocument -Document $Document) {
-        $configuredPermalink = if ($Context.Settings.ContainsKey('permalink') -and -not [string]::IsNullOrWhiteSpace([string]$Context.Settings.permalink)) {
-            [string]$Context.Settings.permalink
-        } else {
-            'date'
-        }
+    if ($Context.Settings.ContainsKey('permalink') -and -not [string]::IsNullOrWhiteSpace([string]$Context.Settings.permalink)) {
+        $configuredPermalink = [string]$Context.Settings.permalink
+        return (getHydePostPermalinkPattern -ConfiguredPermalink $configuredPermalink)
+    }
 
-        switch ($configuredPermalink.Trim().ToLowerInvariant()) {
-            'date' { return '/:categories/:year/:month/:day/:title:output_ext' }
-            'pretty' { return '/:categories/:year/:month/:day/:title/' }
-            default { return $configuredPermalink }
-        }
+    if (testHydePostDocument -Document $Document) {
+        return (getHydePostPermalinkPattern -ConfiguredPermalink 'date')
     }
 
     return ''
@@ -258,37 +469,15 @@ function resolveHydePermalink {
         }
     }
 
-    $titleValue = if (-not [string]::IsNullOrWhiteSpace($Document.Title)) {
-        $Document.Title
-    } elseif ((testHydePostDocument -Document $Document) -and -not [string]::IsNullOrWhiteSpace($Document.Slug)) {
-        $Document.Slug
-    } elseif ($Document.FrontMatter.ContainsKey('title') -and -not [string]::IsNullOrWhiteSpace([string]$Document.FrontMatter.title)) {
-        [string]$Document.FrontMatter.title
-    } else {
-        $Document.BaseName
-    }
-
-    $postDate = if ($Document.PostDate -ne [datetime]::MinValue) { $Document.PostDate } else { Get-Date }
-
-    $tokenValues = @{
-        collection = $Document.CollectionName
-        title      = convertToHydeSlug -Text $titleValue
-        slug       = if (-not [string]::IsNullOrWhiteSpace($Document.Slug)) { $Document.Slug } else { convertToHydeSlug -Text $titleValue }
-        name       = $Document.BaseName
-        categories = ((getHydeDocumentCategories -Document $Document) -join '/')
-        year       = $postDate.ToString('yyyy')
-        month      = $postDate.ToString('MM')
-        i_month    = $postDate.Month
-        day        = $postDate.ToString('dd')
-        i_day      = $postDate.Day
-        output_ext = [System.IO.Path]::GetExtension($DefaultOutputPath)
-    }
+    $tokenValues = getHydeDocumentPermalinkTokenValues -Document $Document -DefaultOutputPath $DefaultOutputPath
 
     $resolvedPermalink = $permalinkPattern.Replace('\', '/').Trim()
-    foreach ($tokenName in $tokenValues.Keys) {
+    foreach ($tokenName in @($tokenValues.Keys | Sort-Object { $_.Length } -Descending)) {
         $resolvedPermalink = $resolvedPermalink.Replace(":$tokenName", [string]$tokenValues[$tokenName])
     }
 
+    # Pages and collections ignore unavailable date and taxonomy placeholders rather than failing.
+    $resolvedPermalink = [System.Text.RegularExpressions.Regex]::Replace($resolvedPermalink, ':[A-Za-z_]+', '')
     $resolvedPermalink = [System.Text.RegularExpressions.Regex]::Replace($resolvedPermalink, '/+', '/')
     if (-not $resolvedPermalink.StartsWith('/')) {
         $resolvedPermalink = '/' + $resolvedPermalink
@@ -309,6 +498,31 @@ function resolveHydePermalink {
         OutputRelativePath = $outputRelativePath.Replace('\', '/')
         Url                = $resolvedPermalink
     }
+}
+
+function convertHydeOutputPathToUrl {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$OutputRelativePath
+    )
+
+    $normalizedPath = $OutputRelativePath.Replace('\', '/').TrimStart('/')
+    if ([string]::IsNullOrWhiteSpace($normalizedPath)) {
+        return '/'
+    }
+
+    if ($normalizedPath.EndsWith('/index.html', [System.StringComparison]::OrdinalIgnoreCase)) {
+        $urlPath = $normalizedPath.Substring(0, $normalizedPath.Length - 'index.html'.Length)
+        if (-not $urlPath.StartsWith('/')) {
+            $urlPath = '/' + $urlPath
+        }
+
+        return $urlPath
+    }
+
+    return '/' + $normalizedPath
 }
 
 function resolveHydeLayoutPath {
@@ -626,6 +840,7 @@ function readHydeFrontMatter {
         if (-not [string]::IsNullOrWhiteSpace($yamlText)) {
             try {
                 $Document.FrontMatter = convertToHydeHashtable -InputObject (ConvertFrom-Yaml -Yaml $yamlText)
+                $Document.ExplicitFrontMatterKeys = @($Document.FrontMatter.Keys | ForEach-Object { [string]$_ })
             } catch {
                 throw "Could not parse front matter in '$($Document.SourcePath)'. $($_.Exception.Message)"
             }
@@ -730,8 +945,13 @@ function initializeHydeDocument {
 
     # Resolve permalink-based output after front matter and plugin-derived metadata are available.
     $resolvedPermalink = resolveHydePermalink -Document $Document -Context $Context -DefaultOutputPath $Document.OutputRelativePath
-    $document.OutputRelativePath = [string]$resolvedPermalink.OutputRelativePath
-    $document.Url = [string]$resolvedPermalink.Url
+    $resolvedOutputPath = resolveHydePluginValue -Context $Context -HookName 'ResolveDocumentOutputPath' -CurrentValue ([string]$resolvedPermalink.OutputRelativePath) -Arguments @{
+        Context  = $Context
+        Document = $Document
+    }
+
+    $document.OutputRelativePath = [string]$resolvedOutputPath
+    $document.Url = convertHydeOutputPathToUrl -OutputRelativePath $document.OutputRelativePath
 
     $Document.IsPrepared = $true
 }
@@ -982,10 +1202,7 @@ function resolveHydeDocumentOutputPath {
         $outputPath = $sourceRelativePath.Replace('\', '/')
     }
 
-    return (resolveHydePluginValue -Context $Context -HookName 'ResolveDocumentOutputPath' -CurrentValue $outputPath -Arguments @{
-            Context  = $Context
-            Document = $Document
-        })
+    return $outputPath
 }
 
 function resolveHydeStaticFileOutputPath {

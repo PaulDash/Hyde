@@ -4,6 +4,15 @@ All notable changes to Hyde will be documented in this file.
 
 The format is loosely based on Keep a Changelog, but entries are kept short and practical for this project.
 
+## [0.4.8] - 2026-03-29
+
+### Changed
+- Revisited permalink handling to align Hyde more closely with current Jekyll behavior.
+- Added built-in post permalink styles `ordinal`, `weekdate`, and `none`.
+- Expanded permalink placeholder support for posts and collections, including week-based and date-name tokens.
+- Applied the global permalink setting to pages and collections while ignoring placeholders those content types do not support.
+- Ignored page `permalink` values supplied through front matter defaults, matching Jekyll behavior.
+
 ## [0.4.7] - 2026-03-29
 
 ### Added

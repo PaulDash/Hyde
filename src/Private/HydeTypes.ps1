@@ -24,6 +24,7 @@ class HydeContentItem {
 class HydeDocument : HydeContentItem {
     [string]$CollectionName
     [hashtable]$FrontMatter
+    [string[]]$ExplicitFrontMatterKeys
     [string]$RawContent
     [string]$RenderedContent
     [string]$Title
@@ -41,6 +42,7 @@ class HydeDocument : HydeContentItem {
         # Documents accumulate front matter, body content, and rendered output as the pipeline runs.
         $this.CollectionName = ''
         $this.FrontMatter = @{}
+        $this.ExplicitFrontMatterKeys = @()
         $this.RawContent = ''
         $this.RenderedContent = ''
         $this.Title = ''

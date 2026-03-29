@@ -31,7 +31,7 @@ Deliberate non-goals:
 - `_data`, `_includes`, and `_layouts` support with layout inheritance
 - Jekyll-style `include_relative` for post content, limited to files under the matching `_posts` directory
 - Posts from `_posts` with draft and future-post handling
-- Front matter and collection permalinks
+- permalinks for pages, collections, and posts, including built-in post styles such as `date`, `pretty`, `ordinal`, `weekdate`, and `none`
 - Jekyll-style post tags and categories exposed through `page.*`, `site.tags`, and `site.categories`
 - Post categories derived from directories above `_posts`, plus front matter `tag` / `tags` and `category` / `categories`
 - Draft support from `_drafts` when enabled
