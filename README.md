@@ -6,6 +6,11 @@ Hyde started as a teaching and personal-site project, but it now has enough func
 
 No infringment is meant on the wonderful project that is Jekyll and on the great team that develop and support it.
 
+## Dependancies
+
+- [powershell-yaml](https://github.com/cloudbase/powershell-yaml) module by cloudbase for YAML support
+- my [PowerLiquid](https://github.com/PaulDash/PowerLiquid) module to parse and render Liquid templates
+
 ## Status
 
 Hyde is usable today, but it is not trying to become a complete Jekyll clone.
@@ -48,10 +53,6 @@ Deliberate non-goals:
 - Syntax highlighting
 - Pagination
 - lacks many Plugins,like [these](https://pages.github.com/versions.json) used by GitHub Pages
-
-## Changelog
-
-Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Quick Start
 
@@ -146,6 +147,6 @@ Run the Hyde test suite with:
 .\tests\Invoke-HydeTests.ps1
 ```
 
-## Related Projects
+## Changelog
 
-- Hyde uses the standalone [PowerLiquid](https://github.com/PaulDash/PowerLiquid) module to parse and render Liquid templates.
+Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
