@@ -302,13 +302,27 @@ function getHydeCollectionItems {
     $contentExtensions = @('.htm', '.html') + $markdownExtensions
 
     foreach ($definition in $collectionDefinitions) {
-        $collectionDirectoryPath = Join-Path -Path $collectionsRootPath -ChildPath $definition.Directory
-        if (-not (Test-Path -LiteralPath $collectionDirectoryPath -PathType Container)) {
-            continue
+        $collectionDirectories = New-Object System.Collections.ArrayList
+        if ($definition.Label -eq 'posts') {
+            # Jekyll treats any directory above `_posts` as path-based categories, so posts may live in nested `_posts` folders.
+            foreach ($postsDirectory in Get-ChildItem -LiteralPath $Context.SourcePath -Directory -Recurse | Where-Object { $_.Name -eq '_posts' }) {
+                [void]$collectionDirectories.Add($postsDirectory.FullName)
+            }
+
+            $rootPostsDirectoryPath = Join-Path -Path $Context.SourcePath -ChildPath '_posts'
+            if ((Test-Path -LiteralPath $rootPostsDirectoryPath -PathType Container) -and ($collectionDirectories -notcontains $rootPostsDirectoryPath)) {
+                [void]$collectionDirectories.Add($rootPostsDirectoryPath)
+            }
+        } else {
+            $collectionDirectoryPath = Join-Path -Path $collectionsRootPath -ChildPath $definition.Directory
+            if (Test-Path -LiteralPath $collectionDirectoryPath -PathType Container) {
+                [void]$collectionDirectories.Add($collectionDirectoryPath)
+            }
         }
 
-        Write-Verbose "Scanning collection '$($definition.Label)' in '$collectionDirectoryPath'."
-        foreach ($file in Get-ChildItem -LiteralPath $collectionDirectoryPath -File -Recurse) {
+        foreach ($collectionDirectoryPath in $collectionDirectories) {
+            Write-Verbose "Scanning collection '$($definition.Label)' in '$collectionDirectoryPath'."
+            foreach ($file in Get-ChildItem -LiteralPath $collectionDirectoryPath -File -Recurse) {
             if ($contentExtensions -notcontains $file.Extension.ToLowerInvariant()) {
                 continue
             }
@@ -333,6 +347,7 @@ function getHydeCollectionItems {
                 Document = $document
             }
             Write-Verbose "Discovered collection document '$relativeFilePath' in '$($definition.Label)'."
+            }
         }
     }
 

@@ -30,13 +30,14 @@ Deliberate non-goals:
 - `_data`, `_includes`, and `_layouts` support with layout inheritance
 - Posts from `_posts` with draft and future-post handling
 - Front matter and collection permalinks
-- Tags and categories exposed through `page.*`, `site.tags`, and `site.categories`
+- Jekyll-style post tags and categories exposed through `page.*`, `site.tags`, and `site.categories`
+- Post categories derived from directories above `_posts`, plus front matter `tag` / `tags` and `category` / `categories`
 - Draft support from `_drafts` when enabled
 - Plugin loading from `_plugins` and built-in Hyde plugins such as `seo-tag` and `titles-from-headings`
 
 ### Current Gaps
 
-- richer post features such as excerpts, archives, and category pages
+- richer post features such as excerpts, archives, and generated tag/category archive pages
 - Pagination
 - Sass conversion
 - JSON / CSV / TSV data files

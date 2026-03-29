@@ -286,7 +286,7 @@ function syncHydeTaxonomies {
     $Context.Site.categories = @{}
 
     foreach ($document in $Context.Documents) {
-        if (-not $document.Published) {
+        if (-not $document.Published -or $document.CollectionName -ne 'posts') {
             continue
         }
 

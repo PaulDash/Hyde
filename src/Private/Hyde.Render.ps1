@@ -125,7 +125,9 @@ function getHydeDocumentTerms {
         [HydeDocument]$Document,
 
         [Parameter(Mandatory = $true)]
-        [string[]]$Keys
+        [string[]]$Keys,
+
+        [string[]]$SingularKeys = @()
     )
 
     foreach ($key in $Keys) {
@@ -147,6 +149,10 @@ function getHydeDocumentTerms {
         }
 
         if ($termsValue -is [string]) {
+            if ($SingularKeys -contains $key) {
+                return @([string]$termsValue.Trim())
+            }
+
             return @($termsValue -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
         }
 
@@ -154,6 +160,39 @@ function getHydeDocumentTerms {
     }
 
     return @()
+}
+
+function getHydePostPathCategories {
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document
+    )
+
+    if (-not (testHydePostDocument -Document $Document)) {
+        return @()
+    }
+
+    $relativeDirectory = Split-Path -Path $Document.RelativePath -Parent
+    if ([string]::IsNullOrWhiteSpace($relativeDirectory)) {
+        return @()
+    }
+
+    $segments = @($relativeDirectory.Replace('\', '/') -split '/')
+    $postsIndex = [array]::IndexOf($segments, '_posts')
+    if ($postsIndex -lt 0) {
+        return @()
+    }
+
+    if ($postsIndex -eq 0) {
+        return @()
+    }
+
+    return @(
+        $segments[0..($postsIndex - 1)] |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
 }
 
 function getHydeDocumentPermalinkPattern {
@@ -597,8 +636,15 @@ function readHydeFrontMatter {
     }
 
     # Store tags and categories semantically so templates and future features can consume them consistently.
-    $Document.Tags = @(getHydeDocumentTerms -Document $Document -Keys @('tags', 'tag'))
-    $Document.Categories = @(getHydeDocumentTerms -Document $Document -Keys @('categories', 'category'))
+    $Document.Tags = @(getHydeDocumentTerms -Document $Document -Keys @('tags', 'tag') -SingularKeys @('tag'))
+
+    $frontMatterCategories = @(getHydeDocumentTerms -Document $Document -Keys @('categories', 'category') -SingularKeys @('category'))
+    $pathCategories = @(getHydePostPathCategories -Document $Document)
+    $Document.Categories = @(
+        @($pathCategories + $frontMatterCategories) |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Select-Object -Unique
+    )
 
     if ($Document.FrontMatter.ContainsKey('render_with_liquid')) {
         $Document.RenderWithLiquid = convertToHydeBooleanFrontMatterValue -SettingName 'render_with_liquid' -InputObject $Document.FrontMatter.render_with_liquid -DefaultValue $true

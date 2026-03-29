@@ -4,6 +4,14 @@ All notable changes to Hyde will be documented in this file.
 
 The format is loosely based on Keep a Changelog, but entries are kept short and practical for this project.
 
+## [0.4.6] - 2026-03-29
+
+### Changed
+- Aligned Hyde's tag and category behavior more closely with current Jekyll behavior.
+- Limited `site.tags` and `site.categories` to published posts.
+- Added support for post categories derived from directories above `_posts`.
+- Matched Jekyll-style singular versus plural front matter behavior for `tag` / `tags` and `category` / `categories`.
+
 ## [0.4.5] - 2026-03-29
 
 ### Added

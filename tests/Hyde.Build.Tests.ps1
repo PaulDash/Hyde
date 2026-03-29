@@ -621,10 +621,10 @@ title: Preview Draft
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath $draftDocument.OutputRelativePath.Replace('/', '\')) | Should -BeTrue
     }
 
-    It 'exposes tags and categories through semantic document properties and site taxonomy buckets' {
+    It 'matches Jekyll-style tag and category behavior for posts' {
         $siteRoot = New-TestSiteDirectory -Name 'taxonomy-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'taxonomy-output'
-        $postsDirectory = Join-Path -Path $siteRoot -ChildPath '_posts'
+        $postsDirectory = Join-Path -Path $siteRoot -ChildPath 'guides\reference\_posts'
 
         [void](New-Item -Path $postsDirectory -ItemType Directory -Force)
 
@@ -644,11 +644,8 @@ Categories: {{ site.categories.guides.size }}
         Set-Content -LiteralPath (Join-Path -Path $postsDirectory -ChildPath '2026-03-28-liquid-taxonomies.md') -Encoding UTF8 -Value @'
 ---
 title: Liquid Taxonomies
-tags:
-  - powershell
-  - liquid
-categories:
-  - guides
+tag: powershell
+category: reference docs
 ---
 # Taxonomies
 '@
@@ -657,12 +654,17 @@ categories:
         $postDocument = $context.Documents | Where-Object { $_.BaseName -eq '2026-03-28-liquid-taxonomies' }
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
+        $postDocument.Tags.Count | Should -Be 1
         $postDocument.Tags | Should -Contain 'powershell'
-        $postDocument.Tags | Should -Contain 'liquid'
         $postDocument.Categories | Should -Contain 'guides'
+        $postDocument.Categories | Should -Contain 'reference'
+        $postDocument.Categories | Should -Contain 'reference docs'
         $context.Site.tags.powershell.Count | Should -Be 1
         $context.Site.categories.guides.Count | Should -Be 1
         $context.Site.tags.powershell[0].Title | Should -Be 'Liquid Taxonomies'
+        $context.Site.categories.reference.Count | Should -Be 1
+        $context.Site.tags.Keys | Should -Contain 'powershell'
+        $context.Site.categories.Keys | Should -Contain 'guides'
         $indexOutput | Should -Match 'Tags: 1'
         $indexOutput | Should -Match 'Categories: 1'
         $indexOutput | Should -Match 'Liquid Taxonomies'
