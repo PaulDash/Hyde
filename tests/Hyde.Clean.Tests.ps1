@@ -2,9 +2,8 @@ Describe 'Hyde clean pipeline' {
     BeforeAll {
         # Import the module once so each test can call the public entry points directly.
         $projectRoot = Split-Path -Parent $PSScriptRoot
-        $modulePath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.psm1'
-        $entryScriptPath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.ps1'
-        Import-Module $modulePath
+        $moduleManifestPath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.psd1'
+        Import-Module $moduleManifestPath -Force
 
         function New-TestSiteDirectory {
             param(
@@ -36,7 +35,7 @@ title: Test Site
         # Run the real clean command and verify that all generated artifacts disappear.
         Push-Location -LiteralPath $siteRoot
         try {
-            Clear-StaticSite -ScriptPath $entryScriptPath | Out-Null
+            Clear-StaticSite | Out-Null
         } finally {
             Pop-Location
         }
@@ -60,7 +59,7 @@ title: Test Site
 
         Push-Location -LiteralPath $siteRoot
         try {
-            Clear-StaticSite -Destination '.\public' -ScriptPath $entryScriptPath | Out-Null
+            Clear-StaticSite -Destination '.\public' | Out-Null
         } finally {
             Pop-Location
         }
@@ -82,7 +81,7 @@ destination: output
 
         Push-Location -LiteralPath $workingDirectory
         try {
-            Clear-StaticSite -SourcePath $siteRoot -ScriptPath $entryScriptPath | Out-Null
+            Clear-StaticSite -SourcePath $siteRoot | Out-Null
         } finally {
             Pop-Location
         }
@@ -107,7 +106,7 @@ destination: output
 
         Push-Location -LiteralPath $workingDirectory
         try {
-            Clear-StaticSite -SourcePath $siteRoot -Destination $overrideDestinationRoot -ScriptPath $entryScriptPath | Out-Null
+            Clear-StaticSite -SourcePath $siteRoot -Destination $overrideDestinationRoot | Out-Null
         } finally {
             Pop-Location
         }
@@ -128,7 +127,7 @@ title: Test Site
 
         Push-Location -LiteralPath $siteRoot
         try {
-            $verboseRecords = @(Clear-StaticSite -ScriptPath $entryScriptPath -Verbose 4>&1)
+            $verboseRecords = @(Clear-StaticSite -Verbose 4>&1)
         } finally {
             Pop-Location
         }
@@ -150,7 +149,7 @@ title: Test Site
 
         Push-Location -LiteralPath $siteRoot
         try {
-            Clear-StaticSite -ScriptPath $entryScriptPath -WhatIf | Out-Null
+            Clear-StaticSite -WhatIf | Out-Null
         } finally {
             Pop-Location
         }
@@ -171,7 +170,7 @@ title: Test Site
         Push-Location -LiteralPath $siteRoot
         try {
             {
-                Clear-StaticSite -Destination '.' -ScriptPath $entryScriptPath | Out-Null
+                Clear-StaticSite -Destination '.' | Out-Null
             } | Should -Throw -ExpectedMessage '*Clean failed while removing destination folder*source of a site*'
         } finally {
             Pop-Location

@@ -1,9 +1,8 @@
-Describe 'Hyde script command options' {
+Describe 'Hyde module command options' {
     BeforeAll {
-        # Use the script entry point so these tests exercise the command wrapper rather than the module functions.
         $projectRoot = Split-Path -Parent $PSScriptRoot
-        $entryScriptPath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.ps1'
         $moduleManifestPath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.psd1'
+        Import-Module $moduleManifestPath -Force
 
         function New-TestSiteDirectory {
             param(
@@ -17,7 +16,7 @@ Describe 'Hyde script command options' {
         }
     }
 
-    It 'allows Build to use source destination and environment' {
+    It 'allows Hyde Build to use source destination and environment' {
         $siteRoot = New-TestSiteDirectory -Name 'build-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'build-output'
 
@@ -32,8 +31,10 @@ title: Home
 '@
 
         {
-            & $entryScriptPath Build -Source $siteRoot -Destination $destinationRoot -Environment production -Quiet
+            Hyde Build -Source $siteRoot -Destination $destinationRoot -Environment production -Quiet
         } | Should -Not -Throw
+
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') | Should -BeTrue
     }
 
     It 'allows Hyde Build to be called from the imported module' {
@@ -50,8 +51,6 @@ title: Home
 # Hello
 '@
 
-        Import-Module $moduleManifestPath
-
         {
             Hyde Build -Source $siteRoot -Destination $destinationRoot -Environment production -Quiet
         } | Should -Not -Throw
@@ -61,8 +60,6 @@ title: Home
 
     It 'allows Hyde New to scaffold a site from the imported module' {
         $siteRoot = Join-Path -Path $TestDrive -ChildPath 'new-module-site'
-
-        Import-Module $moduleManifestPath
 
         {
             Hyde New $siteRoot -Quiet
@@ -91,14 +88,14 @@ title: Home
 # Hello
 '@
 
-        $verboseRecords = @(& $entryScriptPath Build -Source $siteRoot -Destination $destinationRoot -Verbose 4>&1)
+        $verboseRecords = @(Hyde Build -Source $siteRoot -Destination $destinationRoot -Verbose 4>&1)
         $verboseText = $verboseRecords | Where-Object { $_ -is [System.Management.Automation.VerboseRecord] } | ForEach-Object { $_.Message }
 
         $verboseText | Should -Contain "Initializing Hyde build context."
         $verboseText | Should -Contain "Starting document rendering phase."
     }
 
-    It 'can run the script build command twice in the same session' {
+    It 'can run the Hyde build command twice in the same session' {
         $siteRoot = New-TestSiteDirectory -Name 'repeat-build-site'
         $firstDestinationRoot = Join-Path -Path $TestDrive -ChildPath 'repeat-build-output-1'
         $secondDestinationRoot = Join-Path -Path $TestDrive -ChildPath 'repeat-build-output-2'
@@ -114,16 +111,16 @@ title: Home
 '@
 
         {
-            & $entryScriptPath Build -Source $siteRoot -Destination $firstDestinationRoot -Quiet
-            & $entryScriptPath Build -Source $siteRoot -Destination $secondDestinationRoot -Quiet
+            Hyde Build -Source $siteRoot -Destination $firstDestinationRoot -Quiet
+            Hyde Build -Source $siteRoot -Destination $secondDestinationRoot -Quiet
         } | Should -Not -Throw
     }
 
-    It 'allows the wrapper script to create a blank site scaffold' {
-        $siteRoot = Join-Path -Path $TestDrive -ChildPath 'new-wrapper-site'
+    It 'allows Hyde New to create a blank site scaffold' {
+        $siteRoot = Join-Path -Path $TestDrive -ChildPath 'new-blank-site'
 
         {
-            & $entryScriptPath New $siteRoot -Blank -Quiet
+            Hyde New $siteRoot -Blank -Quiet
         } | Should -Not -Throw
 
         Test-Path -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') | Should -BeTrue
@@ -131,10 +128,20 @@ title: Home
         Test-Path -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_layouts') | Should -BeFalse
     }
 
-    It 'rejects Source for Clean' {
+    It 'treats Source as SourcePath for Clean via PowerShell partial parameter matching' {
+        $siteRoot = New-TestSiteDirectory -Name 'clean-source-alias-site'
+        $destinationRoot = Join-Path -Path $siteRoot -ChildPath '_site'
+
+        [void](New-Item -Path $destinationRoot -ItemType Directory -Force)
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
         {
-            & $entryScriptPath Clean -Source '.'
-        } | Should -Throw -ExpectedMessage "*parameter name 'Source'*"
+            Hyde Clean -Source $siteRoot -Quiet
+        } | Should -Not -Throw
+
+        Test-Path -LiteralPath $destinationRoot | Should -BeFalse
     }
 
     It 'allows SourcePath for Clean' {
@@ -147,19 +154,19 @@ title: Test Site
 '@
 
         {
-            & $entryScriptPath Clean -SourcePath $siteRoot -Quiet
+            Hyde Clean -SourcePath $siteRoot -Quiet
         } | Should -Not -Throw
     }
 
     It 'rejects Environment for Clean' {
         {
-            & $entryScriptPath Clean -Environment production
+            Hyde Clean -Environment production
         } | Should -Throw -ExpectedMessage "*parameter name 'Environment'*"
     }
 
     It 'rejects Destination for Doctor' {
         {
-            & $entryScriptPath Doctor -Destination '.\_site'
+            Hyde Doctor -Destination '.\_site'
         } | Should -Throw -ExpectedMessage "*parameter name 'Destination'*"
     }
 }

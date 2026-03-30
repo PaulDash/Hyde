@@ -2,9 +2,8 @@ Describe 'Hyde doctor pipeline' {
     BeforeAll {
         # Import the module once so each test can call the public entry points directly.
         $projectRoot = Split-Path -Parent $PSScriptRoot
-        $modulePath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.psm1'
-        $entryScriptPath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.ps1'
-        Import-Module $modulePath
+        $moduleManifestPath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.psd1'
+        Import-Module $moduleManifestPath -Force
 
         function New-TestSiteDirectory {
             param(
@@ -40,7 +39,7 @@ layout: default
 # Hello
 '@
 
-        $report = Test-StaticSite -Source $siteRoot -Environment development -ScriptPath $entryScriptPath
+        $report = Test-StaticSite -Source $siteRoot -Environment development
 
         $report.Healthy | Should -BeTrue
         $report.Issues.Count | Should -Be 0
@@ -62,7 +61,7 @@ layout: missing
 
         Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.html') -Encoding UTF8 -Value '<h1>Collision</h1>'
 
-        $report = Test-StaticSite -Source $siteRoot -Environment development -ScriptPath $entryScriptPath
+        $report = Test-StaticSite -Source $siteRoot -Environment development
 
         $report.Healthy | Should -BeFalse
         ($report.Issues.Code -contains 'MissingLayout') | Should -BeTrue
@@ -95,7 +94,7 @@ layout: notes
 # Hello
 '@
 
-        $report = Test-StaticSite -Source $siteRoot -Environment development -ScriptPath $entryScriptPath
+        $report = Test-StaticSite -Source $siteRoot -Environment development
 
         $report.Healthy | Should -BeTrue
         $report.Issues.Count | Should -Be 0
@@ -115,7 +114,7 @@ title: [unterminated
 # Broken
 '@
 
-        $report = Test-StaticSite -Source $siteRoot -Environment development -ScriptPath $entryScriptPath
+        $report = Test-StaticSite -Source $siteRoot -Environment development
 
         $report.Healthy | Should -BeFalse
         $report.Issues.Count | Should -Be 1

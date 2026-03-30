@@ -7,12 +7,37 @@ function Publish-StaticSite {
         [string]$Environment,
         [switch]$Quiet,
         [string]$ScriptPath,
-        [string]$ModuleRoot = $script:HydeModuleRoot,
-        [string]$Version = $script:HydeVersion
+        [string]$ModuleRoot,
+        [string]$Version
     )
 
     Set-StrictMode -Version Latest
     $ErrorActionPreference = 'Stop'
+    $commandInfo = Get-Command -Name $MyInvocation.MyCommand.Name -ErrorAction SilentlyContinue
+
+    if ([string]::IsNullOrWhiteSpace($ModuleRoot)) {
+        $ModuleRoot = $ExecutionContext.SessionState.Module.ModuleBase
+    }
+
+    if ([string]::IsNullOrWhiteSpace($ModuleRoot) -and $commandInfo -and $commandInfo.Module) {
+        $ModuleRoot = $commandInfo.Module.ModuleBase
+    }
+
+    if ([string]::IsNullOrWhiteSpace($ModuleRoot)) {
+        $ModuleRoot = Split-Path -Parent $PSScriptRoot
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Version) -and $ExecutionContext.SessionState.Module.Version) {
+        $Version = $ExecutionContext.SessionState.Module.Version.ToString()
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Version) -and $commandInfo -and $commandInfo.Module -and $commandInfo.Module.Version) {
+        $Version = $commandInfo.Module.Version.ToString()
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Version) -and -not [string]::IsNullOrWhiteSpace($ModuleRoot)) {
+        $Version = (Test-ModuleManifest -Path (Join-Path -Path $ModuleRoot -ChildPath 'Hyde.psd1')).Version.ToString()
+    }
 
     # Build emits informational progress unless the caller explicitly asks for quiet mode.
     if (-not $Quiet) {

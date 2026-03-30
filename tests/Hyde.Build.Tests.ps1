@@ -2,9 +2,8 @@ Describe 'Hyde build pipeline' {
     BeforeAll {
         # Import the module once so each test can call the public entry points directly.
         $projectRoot = Split-Path -Parent $PSScriptRoot
-        $modulePath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.psm1'
-        $entryScriptPath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.ps1'
-        Import-Module $modulePath
+        $moduleManifestPath = Join-Path -Path $projectRoot -ChildPath 'src\Hyde.psd1'
+        Import-Module $moduleManifestPath -Force
 
         function New-TestSiteDirectory {
             param(
@@ -56,7 +55,7 @@ title: About
         Set-Content -LiteralPath (Join-Path -Path $assetsDirectory -ChildPath 'site.css') -Encoding UTF8 -Value 'body { color: black; }'
 
         # Run the real build command so the test exercises the full public pipeline.
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
 
         # Assert both on-disk output and the in-memory context the build returns.
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') | Should -BeTrue
@@ -100,7 +99,7 @@ published: false
 # Hidden
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $draftDocument = $context.Documents | Where-Object { $_.BaseName -eq 'draft' }
 
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') | Should -BeTrue
@@ -129,7 +128,7 @@ title: Home
         Set-Content -LiteralPath (Join-Path -Path $assetsDirectory -ChildPath 'site.css') -Encoding UTF8 -Value 'body { color: black; }'
 
         # Capture the verbose stream to verify that Hyde reports the main build phases.
-        $verboseRecords = @(Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath -Verbose 4>&1)
+        $verboseRecords = @(Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -Verbose 4>&1)
         $verboseText = $verboseRecords | Where-Object { $_ -is [System.Management.Automation.VerboseRecord] } | ForEach-Object { $_.Message }
 
         $verboseText | Should -Contain "Building site from '$siteRoot' to '$destinationRoot'."
@@ -152,7 +151,7 @@ title: Home
 # Hello
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath -WhatIf
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -WhatIf
 
         $context.Documents.Count | Should -Be 1
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') | Should -BeFalse
@@ -173,7 +172,7 @@ title: Home
 # {{ page.title | upcase }}
 '@
 
-        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
         $indexOutput | Should -Match '<h1>HOME</h1>'
@@ -203,7 +202,7 @@ render_with_liquid: false
 # {{ page.title | upcase }}
 '@
 
-        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
         $indexOutput | Should -Match '<main><h1>\{\{ page.title \| upcase \}\}</h1></main>'
@@ -242,7 +241,7 @@ layout: default
 # Hello
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
         $indexOutput | Should -Match '<title>HOME</title>'
@@ -283,7 +282,7 @@ layout: notes
 # Hello
 '@
 
-        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
         $indexOutput | Should -Match '<div class="base"><section><h1>Notes</h1><h1>Hello</h1></section>\s*</div>'
@@ -305,7 +304,7 @@ permalink: /welcome/
 {{ page.url }}
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $document = $context.Documents | Where-Object { $_.RelativePath -eq 'index.md' }
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'welcome\index.html') -Raw
 
@@ -330,7 +329,7 @@ title: About Me
 {{ page.url }}
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $document = $context.Documents | Where-Object { $_.RelativePath -eq 'about-me.md' }
         $pageOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'about-me.html') -Raw
 
@@ -360,7 +359,7 @@ title: Home
 {{ page.url }}
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $document = $context.Documents | Where-Object { $_.RelativePath -eq 'index.md' }
         $pageOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
@@ -398,7 +397,7 @@ layout: default
 Body text.
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $document = $context.Documents | Where-Object { $_.RelativePath -eq 'index.md' }
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
@@ -432,7 +431,7 @@ title: Jane
 Staff count: {{ site.staff.size }} / {{ site.collections.staff.docs.size }}
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $collectionDocument = $context.Documents | Where-Object { $_.CollectionName -eq 'staff' }
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
@@ -465,7 +464,7 @@ title: Toast
 # Toast
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $collectionDocument = $context.Documents | Where-Object { $_.CollectionName -eq 'recipes' }
 
         $collectionDocument.WriteOutput | Should -BeFalse
@@ -498,7 +497,7 @@ collections:
 # Internal Notes
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
 
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'notes\\README.html') | Should -BeFalse
         ($context.Documents | Where-Object { $_.RelativePath -eq '_notes/README.md' }).Count | Should -Be 0
@@ -539,7 +538,7 @@ title: Notes Index
 # Welcome Note
 '@
 
-        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'notes-index.html') -Raw
 
         $indexOutput | Should -Match '<li><a href="/welcome\.html">Welcome Note</a></li>'
@@ -568,7 +567,7 @@ collections:
 # DNS Client
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $document = $context.Documents | Where-Object { $_.RelativePath -eq '_notes/dns-client.md' }
 
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'notes\dns-client\index.html') | Should -BeTrue
@@ -610,7 +609,7 @@ title: Newer Post
 # Newer
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
         $postUrls = @($context.Site.posts | ForEach-Object { $_.Url })
 
@@ -642,7 +641,7 @@ title: Style Post
 title: Test Site
 permalink: ordinal
 '@
-        $ordinalContext = Publish-StaticSite -Source $siteRoot -Destination $ordinalDestinationRoot -Environment development -ScriptPath $entryScriptPath
+        $ordinalContext = Publish-StaticSite -Source $siteRoot -Destination $ordinalDestinationRoot -Environment development
         ($ordinalContext.Site.posts[0].Url) | Should -Be '/2026/088/style-post.html'
         Test-Path -LiteralPath (Join-Path -Path $ordinalDestinationRoot -ChildPath '2026\088\style-post.html') | Should -BeTrue
 
@@ -650,7 +649,7 @@ permalink: ordinal
 title: Test Site
 permalink: weekdate
 '@
-        $weekdateContext = Publish-StaticSite -Source $siteRoot -Destination $weekdateDestinationRoot -Environment development -ScriptPath $entryScriptPath
+        $weekdateContext = Publish-StaticSite -Source $siteRoot -Destination $weekdateDestinationRoot -Environment development
         ($weekdateContext.Site.posts[0].Url) | Should -Be '/2026/W13/Sun/style-post.html'
         Test-Path -LiteralPath (Join-Path -Path $weekdateDestinationRoot -ChildPath '2026\W13\Sun\style-post.html') | Should -BeTrue
 
@@ -658,7 +657,7 @@ permalink: weekdate
 title: Test Site
 permalink: none
 '@
-        $noneContext = Publish-StaticSite -Source $siteRoot -Destination $noneDestinationRoot -Environment development -ScriptPath $entryScriptPath
+        $noneContext = Publish-StaticSite -Source $siteRoot -Destination $noneDestinationRoot -Environment development
         ($noneContext.Site.posts[0].Url) | Should -Be '/style-post.html'
         Test-Path -LiteralPath (Join-Path -Path $noneDestinationRoot -ChildPath 'style-post.html') | Should -BeTrue
     }
@@ -700,7 +699,7 @@ slug: Custom Note
 # Deep Note
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $postDocument = $context.Site.posts[0]
         $noteDocument = $context.Documents | Where-Object { $_.RelativePath -eq '_notes/deep/Deep Note.md' }
 
@@ -730,7 +729,7 @@ title: Future Post
 # Future
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
 
         $context.Site.posts.Count | Should -Be 0
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath ('{0}\future-post.html' -f $futureDate.ToString('yyyy\\MM\\dd'))) | Should -BeFalse
@@ -755,7 +754,7 @@ title: Preview Draft
 # Preview
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $draftDocument = $context.Documents | Where-Object { $_.RelativePath -eq '_drafts/preview.md' }
 
         $draftDocument.IsDraft | Should -BeTrue
@@ -794,7 +793,7 @@ category: reference docs
 # Taxonomies
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $postDocument = $context.Documents | Where-Object { $_.BaseName -eq '2026-03-28-liquid-taxonomies' }
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
@@ -836,7 +835,7 @@ title: Home
 {% include notice.html message="Hello" %}
 '@
 
-        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
         $indexOutput | Should -Match '<aside>Hello / Home</aside>'
@@ -867,7 +866,7 @@ After
 Included snippet
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $postDocument = $context.Documents | Where-Object { $_.RelativePath -eq 'guides/_posts/2026-03-29-include-relative.md' }
         $postOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath $postDocument.OutputRelativePath.Replace('/', '\')) -Raw
 
@@ -894,7 +893,7 @@ title: Escape Post
 '@
 
         {
-            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         } | Should -Throw -ExpectedMessage '*include_relative*outside the allowed relative include root*'
     }
 
@@ -915,7 +914,7 @@ title: Home
 '@
 
         {
-            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         } | Should -Throw -ExpectedMessage '*include_relative*no relative include root is configured*'
     }
 
@@ -940,7 +939,7 @@ description: Page Description
 {% seo %}
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
         $indexOutput | Should -Match '<title>Home \| Test Site</title>'
@@ -983,7 +982,7 @@ title: Home
 # Hello
 '@
 
-        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         $expectedDateSegment = (Get-Item -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md')).LastWriteTimeUtc.ToString('yyyyMMdd')
         $outputPath = Join-Path -Path $destinationRoot -ChildPath "archive\$expectedDateSegment\index.html"
 
@@ -1025,7 +1024,7 @@ title: Home
 # Hello
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
 
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'translated\index.html') | Should -BeTrue
         $context.LoadedPlugins.Name | Should -Contain 'hyde-lastmod'
@@ -1056,7 +1055,7 @@ title: Home
 {% endfor %}
 '@
 
-        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
         $indexOutput | Should -Match '<li>1 Home</li>'
@@ -1087,7 +1086,7 @@ Count: {{ site.data.team.people.size }}
 First: {{ site.data.team.people.first.name }}
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
         $context.Site.data.team.people.Count | Should -Be 2
@@ -1130,7 +1129,7 @@ CSV: {{ site.data.authors.first.name }} / {{ site.data.authors.last.role }}
 TSV: {{ site.data.topics.first.name }} / {{ site.data.topics.last.level }}
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
         $context.Site.data.profile.name | Should -Be 'Jane'
@@ -1161,7 +1160,7 @@ Jane
 '@
 
         {
-            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         } | Should -Throw -ExpectedMessage '*conflicts with existing site.data entry*'
     }
 
@@ -1181,7 +1180,7 @@ items: [broken
 '@
 
         {
-            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         } | Should -Throw -ExpectedMessage '*Could not import data file*broken.yml*'
     }
 
@@ -1201,7 +1200,7 @@ title: Test Site
 '@
 
         {
-            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         } | Should -Throw -ExpectedMessage '*Could not import data file*broken.json*'
     }
 
@@ -1249,7 +1248,7 @@ render_with_liquid: true
 # {{ page.title }}
 '@
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $guideOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'guide.html') -Raw
         $overrideOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'override.html') -Raw
         $guideDocument = $context.Documents | Where-Object { $_.BaseName -eq 'guide' }
@@ -1286,7 +1285,7 @@ defaults:
 
         Set-Content -LiteralPath (Join-Path -Path $imageDirectory -ChildPath 'logo.txt') -Encoding UTF8 -Value 'logo'
 
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
         $staticFile = $context.StaticFiles | Where-Object { $_.BaseName -eq 'logo' }
 
         $staticFile.Metadata.image | Should -BeTrue
@@ -1302,7 +1301,7 @@ broken: [unterminated
 '@
 
         {
-            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         } | Should -Throw -ExpectedMessage '*Build failed while initializing site context*Could not parse configuration file*'
     }
 
@@ -1320,7 +1319,7 @@ title: [unterminated
 '@
 
         {
-            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         } | Should -Throw -ExpectedMessage '*Build failed while preparing document*broken.md*Could not parse front matter*'
     }
 
@@ -1339,7 +1338,7 @@ published: maybe
 '@
 
         {
-            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development -ScriptPath $entryScriptPath | Out-Null
+            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         } | Should -Throw -ExpectedMessage "*Build failed while preparing document*broken.md*Unsupported value for front matter setting 'published'*"
     }
 }
