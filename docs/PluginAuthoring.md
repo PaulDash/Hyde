@@ -196,7 +196,25 @@ That makes names like `jekyll-seo-tag` resolve cleanly to Hyde-friendly implemen
 
 ## Safe Mode
 
-When `safe: true` is enabled, only plugins listed in `whitelist` are allowed.
+When `safe: true` is enabled in site configuration, Hyde restricts plugin loading to the explicit `whitelist` set. This is useful for locked-down environments, CI builds, or untrusted content where arbitrary plugin execution is a risk.
+
+- `safe: true` means other plugin IDs are ignored, whether configured in `_config.yml` `plugins:` or present in `_plugins`/`src/Plugins`.
+- `whitelist` should be an array of identifiers that correspond to plugin `Name` values (e.g. `seo-tag`, `titles-from-headings`).
+- If `whitelist` is empty or missing, no plugins are loaded while safe mode is active.
+- Mixed-mode behavior: safe mode only affects plugin whitelist filtering; non-plugin features (e.g., core rendering and file discovery) still run.
+
+Example:
+
+```yaml
+safe: true
+plugins:
+  - seo-tag
+  - custom-plugin
+whitelist:
+  - seo-tag
+```
+
+In this config, `custom-plugin` is ignored because it is not whitelisted.
 
 ## Recommendations
 
@@ -205,12 +223,3 @@ When `safe: true` is enabled, only plugins listed in `whitelist` are allowed.
 - Use Liquid tags and filters for presentation behavior.
 - Use Hyde hooks for discovery, metadata enrichment, or output-path changes.
 - Avoid directly reading or writing arbitrary files unless the plugin truly owns that behavior.
-
-## Future Opportunities
-
-Likely future plugin surfaces include:
-
-- post-processing generated HTML
-- richer collection registration
-- command-level extensions
-- more Liquid dialect-specific extension points
