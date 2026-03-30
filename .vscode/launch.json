@@ -12,7 +12,7 @@
             "name": "Debug Hyde Build",
             "type": "PowerShell",
             "request": "launch",
-            "script": "${workspaceFolder}\\src\\hyde.ps1",
+            "script": "${workspaceFolder}\\Hyde.ps1",
             "cwd": "${workspaceFolder}",
             "args": ["${input:hydeArgs}"]
         }
