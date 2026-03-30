@@ -738,6 +738,253 @@ function newHydePageVariables {
     return $page
 }
 
+function testHydePaginationDocument {
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document
+    )
+
+    if ($Document.Kind -ne 'Page') {
+        return $false
+    }
+
+    if ($Document.Extension -ne '.html') {
+        return $false
+    }
+
+    return ($Document.Name -ieq 'index.html')
+}
+
+function resolveHydePaginationOutput {
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document,
+
+        [Parameter(Mandatory = $true)]
+        [int]$PageNumber,
+
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    $baseOutputRelativePath = resolveHydeDocumentOutputPath -Document $Document -Context $Context
+
+    if ($PageNumber -le 1) {
+        return @{
+            OutputRelativePath = $baseOutputRelativePath
+            Url                = convertHydeOutputPathToUrl -OutputRelativePath $baseOutputRelativePath
+        }
+    }
+
+    $paginatePath = if ($Context.Settings.ContainsKey('paginate_path') -and -not [string]::IsNullOrWhiteSpace([string]$Context.Settings.paginate_path)) {
+        [string]$Context.Settings.paginate_path
+    } else {
+        '/page:num/'
+    }
+
+    $resolvedPath = $paginatePath.Replace('\', '/').Replace(':num', [string]$PageNumber).Trim()
+    $resolvedPath = $resolvedPath.TrimStart('/')
+
+    $pageDirectory = Split-Path -Path $baseOutputRelativePath -Parent
+    if ($pageDirectory -and $pageDirectory -ne '.') {
+        $resolvedPath = [System.IO.Path]::Combine($pageDirectory, $resolvedPath).Replace('\', '/')
+    }
+
+    $resolvedPath = $resolvedPath.Replace('\', '/').TrimStart('/')
+    if ([string]::IsNullOrWhiteSpace($resolvedPath)) {
+        $resolvedPath = 'index.html'
+    } elseif ($resolvedPath.EndsWith('/')) {
+        $resolvedPath += 'index.html'
+    } elseif (-not [System.IO.Path]::GetExtension($resolvedPath)) {
+        $resolvedPath += '/index.html'
+    }
+
+    return @{
+        OutputRelativePath = $resolvedPath
+        Url                = convertHydeOutputPathToUrl -OutputRelativePath $resolvedPath
+    }
+}
+
+function newHydePaginator {
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]]$Posts,
+
+        [Parameter(Mandatory = $true)]
+        [int]$PageNumber,
+
+        [Parameter(Mandatory = $true)]
+        [int]$PerPage,
+
+        [Parameter(Mandatory = $true)]
+        [int]$TotalPosts,
+
+        [Parameter(Mandatory = $true)]
+        [int]$TotalPages,
+
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document,
+
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    $previousPage = $null
+    $previousPagePath = $null
+    if ($PageNumber -gt 1) {
+        $previousPage = $PageNumber - 1
+        $previousPagePath = (resolveHydePaginationOutput -Document $Document -PageNumber $previousPage -Context $Context).Url
+    }
+
+    $nextPage = $null
+    $nextPagePath = $null
+    if ($PageNumber -lt $TotalPages) {
+        $nextPage = $PageNumber + 1
+        $nextPagePath = (resolveHydePaginationOutput -Document $Document -PageNumber $nextPage -Context $Context).Url
+    }
+
+    return @{
+        page               = $PageNumber
+        per_page           = $PerPage
+        posts              = @($Posts)
+        total_posts        = $TotalPosts
+        total_pages        = $TotalPages
+        previous_page      = $previousPage
+        previous_page_path = $previousPagePath
+        next_page          = $nextPage
+        next_page_path     = $nextPagePath
+    }
+}
+
+function newHydePaginatedDocument {
+    [CmdletBinding()]
+    [OutputType([HydeDocument])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$SourceDocument,
+
+        [Parameter(Mandatory = $true)]
+        [int]$PageNumber,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Paginator,
+
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    $paginatedDocument = [HydeDocument]::new($SourceDocument.Kind, $SourceDocument.SourcePath, $SourceDocument.RelativePath)
+    $paginatedDocument.CollectionName = $SourceDocument.CollectionName
+    $paginatedDocument.FrontMatter = copyHydeValue -InputObject $SourceDocument.FrontMatter
+    $paginatedDocument.ExplicitFrontMatterKeys = @($SourceDocument.ExplicitFrontMatterKeys)
+    $paginatedDocument.LiquidData = @{ paginator = $Paginator }
+    $paginatedDocument.RawContent = $SourceDocument.RawContent
+    $paginatedDocument.Title = $SourceDocument.Title
+    $paginatedDocument.Slug = $SourceDocument.Slug
+    $paginatedDocument.Tags = @($SourceDocument.Tags)
+    $paginatedDocument.Categories = @($SourceDocument.Categories)
+    $paginatedDocument.PostDate = $SourceDocument.PostDate
+    $paginatedDocument.Published = $SourceDocument.Published
+    $paginatedDocument.WriteOutput = $SourceDocument.WriteOutput
+    $paginatedDocument.RenderWithLiquid = $SourceDocument.RenderWithLiquid
+    $paginatedDocument.IsPrepared = $true
+    $paginatedDocument.IsDraft = $SourceDocument.IsDraft
+
+    $resolvedPaginationOutput = resolveHydePaginationOutput -Document $SourceDocument -PageNumber $PageNumber -Context $Context
+    $paginatedDocument.OutputRelativePath = [string]$resolvedPaginationOutput.OutputRelativePath
+    $paginatedDocument.Url = [string]$resolvedPaginationOutput.Url
+
+    return $paginatedDocument
+}
+
+function initializeHydePagination {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    if (-not $Context.Settings.ContainsKey('paginate') -or -not $Context.Settings.paginate) {
+        return
+    }
+
+    $perPage = [int]$Context.Settings.paginate
+    if ($perPage -le 0) {
+        return
+    }
+
+    $allPosts = @($Context.Site.posts)
+    $totalPosts = $allPosts.Count
+    $totalPages = [Math]::Max(1, [int][Math]::Ceiling($totalPosts / [double]$perPage))
+
+    $paginatedDocuments = New-Object System.Collections.ArrayList
+    foreach ($document in @($Context.Documents)) {
+        if (-not (testHydePaginationDocument -Document $document)) {
+            continue
+        }
+
+        if ($document.ExplicitFrontMatterKeys -contains 'permalink') {
+            Write-Verbose "Skipping pagination for '$($document.RelativePath)' because paginated index pages must not define a permalink."
+            continue
+        }
+
+        $firstPagePosts = @($allPosts | Select-Object -First $perPage)
+        $firstPageOutput = resolveHydePaginationOutput -Document $document -PageNumber 1 -Context $Context
+        $document.OutputRelativePath = [string]$firstPageOutput.OutputRelativePath
+        $document.Url = [string]$firstPageOutput.Url
+        $document.LiquidData['paginator'] = newHydePaginator -Posts $firstPagePosts -PageNumber 1 -PerPage $perPage -TotalPosts $totalPosts -TotalPages $totalPages -Document $document -Context $Context
+
+        for ($pageNumber = 2; $pageNumber -le $totalPages; $pageNumber++) {
+            $pagePosts = @($allPosts | Select-Object -Skip (($pageNumber - 1) * $perPage) -First $perPage)
+            $paginator = newHydePaginator -Posts $pagePosts -PageNumber $pageNumber -PerPage $perPage -TotalPosts $totalPosts -TotalPages $totalPages -Document $document -Context $Context
+            [void]$paginatedDocuments.Add((newHydePaginatedDocument -SourceDocument $document -PageNumber $pageNumber -Paginator $paginator -Context $Context))
+        }
+    }
+
+    foreach ($paginatedDocument in $paginatedDocuments) {
+        $Context.AddDocument($paginatedDocument)
+    }
+}
+
+function newHydeLiquidContext {
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeDocument]$Document,
+
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context,
+
+        [hashtable]$AdditionalContext = @{}
+    )
+
+    $liquidContext = @{
+        page = newHydePageVariables -Document $Document
+        site = $Context.Site
+        hyde = @{
+            version     = $Context.Version
+            environment = $Context.Environment
+        }
+    }
+
+    foreach ($key in $Document.LiquidData.Keys) {
+        $liquidContext[$key] = $Document.LiquidData[$key]
+    }
+
+    foreach ($key in $AdditionalContext.Keys) {
+        $liquidContext[$key] = $AdditionalContext[$key]
+    }
+
+    return $liquidContext
+}
+
 function invokeHydeDocumentLiquid {
     [CmdletBinding()]
     param(
@@ -753,14 +1000,7 @@ function invokeHydeDocumentLiquid {
         return
     }
 
-    $liquidContext = @{
-        page  = newHydePageVariables -Document $Document
-        site  = $Context.Site
-        hyde  = @{
-            version     = $Context.Version
-            environment = $Context.Environment
-        }
-    }
+    $liquidContext = newHydeLiquidContext -Document $Document -Context $Context
 
     $Document.RawContent = Invoke-LiquidTemplate -Template $Document.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (resolveHydeIncludesPath -Context $Context) -CurrentFilePath $Document.SourcePath -RelativeIncludeRoot (resolveHydeRelativeIncludeRoot -Document $Document -Context $Context) -Registry $Context.LiquidRegistry
     Write-Verbose "Rendered Liquid content for '$($Document.RelativePath)'."
@@ -791,15 +1031,9 @@ function invokeHydeLayout {
 
     foreach ($layoutDocument in $layoutChain) {
         Write-Verbose "Applying layout '$([System.IO.Path]::GetFileName($layoutDocument.SourcePath))' to '$($Document.RelativePath)'."
-        $liquidContext = @{
+        $liquidContext = newHydeLiquidContext -Document $Document -Context $Context -AdditionalContext @{
             content = $renderedContent
-            page    = newHydePageVariables -Document $Document
-            site    = $Context.Site
             layout  = $layoutDocument.FrontMatter
-            hyde    = @{
-                version     = $Context.Version
-                environment = $Context.Environment
-            }
         }
 
         $renderedContent = Invoke-LiquidTemplate -Template $layoutDocument.RawContent -Context $liquidContext -Dialect 'JekyllLiquid' -IncludeRoot (resolveHydeIncludesPath -Context $Context) -CurrentFilePath $layoutDocument.SourcePath -Registry $Context.LiquidRegistry

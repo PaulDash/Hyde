@@ -117,6 +117,9 @@ function Publish-StaticSite {
     # Post loops should see the final published, sorted post set before any page starts rendering.
     syncHydePosts -Context $context
 
+    # Paginated listing pages are generated from the final site.posts set before rendering begins.
+    initializeHydePagination -Context $context
+
     # Tag and category loops should also see the final published document buckets before rendering starts.
     syncHydeTaxonomies -Context $context
 

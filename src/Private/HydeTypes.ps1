@@ -25,6 +25,7 @@ class HydeDocument : HydeContentItem {
     [string]$CollectionName
     [hashtable]$FrontMatter
     [string[]]$ExplicitFrontMatterKeys
+    [hashtable]$LiquidData
     [string]$RawContent
     [string]$RenderedContent
     [string]$Title
@@ -43,6 +44,7 @@ class HydeDocument : HydeContentItem {
         $this.CollectionName = ''
         $this.FrontMatter = @{}
         $this.ExplicitFrontMatterKeys = @()
+        $this.LiquidData = @{}
         $this.RawContent = ''
         $this.RenderedContent = ''
         $this.Title = ''

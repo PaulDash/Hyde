@@ -621,6 +621,149 @@ title: Newer Post
         $indexOutput | Should -Match 'Older Post\|/2026/03/27/older-post\.html'
     }
 
+    It 'paginates posts for an HTML index page and exposes the Jekyll paginator object' {
+        $siteRoot = New-TestSiteDirectory -Name 'paginated-posts-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'paginated-posts-output'
+        $postsDirectory = Join-Path -Path $siteRoot -ChildPath '_posts'
+
+        [void](New-Item -Path $postsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+paginate: 2
+paginate_path: /page:num/
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.html') -Encoding UTF8 -Value @'
+<section class="page">{{ paginator.page }}/{{ paginator.total_pages }}</section>
+<section class="counts">{{ paginator.per_page }}|{{ paginator.total_posts }}</section>
+<section class="prev">{% if paginator.previous_page %}{{ paginator.previous_page }}|{{ paginator.previous_page_path }}{% else %}none{% endif %}</section>
+<section class="next">{% if paginator.next_page %}{{ paginator.next_page }}|{{ paginator.next_page_path }}{% else %}none{% endif %}</section>
+{% for post in paginator.posts %}
+<article>{{ post.title }}</article>
+{% endfor %}
+'@
+
+        foreach ($postNumber in 1..5) {
+            $postDate = Get-Date '2026-03-20'
+            $postDate = $postDate.AddDays($postNumber)
+            Set-Content -LiteralPath (Join-Path -Path $postsDirectory -ChildPath ('{0}-post-{1}.md' -f $postDate.ToString('yyyy-MM-dd'), $postNumber)) -Encoding UTF8 -Value @"
+---
+title: Post $postNumber
+---
+# Post $postNumber
+"@
+        }
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
+        $pageOne = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+        $pageTwo = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'page2\index.html') -Raw
+        $pageThree = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'page3\index.html') -Raw
+        $paginatedDocuments = @($context.Documents | Where-Object { $_.RelativePath -eq 'index.html' })
+
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'page1\index.html') | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'page2\index.html') | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'page3\index.html') | Should -BeTrue
+        $pageOne | Should -Match '<section class="page">1/3</section>'
+        $pageOne | Should -Match '<section class="prev">none</section>'
+        $pageOne | Should -Match '<section class="next">2\|/page2/</section>'
+        $pageOne | Should -Match '<article>Post 5</article>'
+        $pageOne | Should -Match '<article>Post 4</article>'
+        $pageTwo | Should -Match '<section class="page">2/3</section>'
+        $pageTwo | Should -Match '<section class="prev">1\|/index\.html</section>'
+        $pageTwo | Should -Match '<section class="next">3\|/page3/</section>'
+        $pageTwo | Should -Match '<article>Post 3</article>'
+        $pageTwo | Should -Match '<article>Post 2</article>'
+        $pageThree | Should -Match '<section class="page">3/3</section>'
+        $pageThree | Should -Match '<section class="prev">2\|/page2/</section>'
+        $pageThree | Should -Match '<section class="next">none</section>'
+        $pageThree | Should -Match '<article>Post 1</article>'
+        $paginatedDocuments.Count | Should -Be 3
+        $paginatedDocuments[0].LiquidData.paginator.total_posts | Should -Be 5
+        $paginatedDocuments[1].OutputRelativePath | Should -Be 'page2/index.html'
+        $paginatedDocuments[2].OutputRelativePath | Should -Be 'page3/index.html'
+    }
+
+    It 'paginates a subdirectory index page by nesting paginate_path under that page path' {
+        $siteRoot = New-TestSiteDirectory -Name 'subdirectory-paginated-posts-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'subdirectory-paginated-posts-output'
+        $postsDirectory = Join-Path -Path $siteRoot -ChildPath '_posts'
+        $blogDirectory = Join-Path -Path $siteRoot -ChildPath 'blog'
+
+        [void](New-Item -Path $postsDirectory -ItemType Directory -Force)
+        [void](New-Item -Path $blogDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+paginate: 2
+paginate_path: /page:num/
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $blogDirectory -ChildPath 'index.html') -Encoding UTF8 -Value @'
+{{ paginator.page }}|{{ paginator.previous_page_path }}|{{ paginator.next_page_path }}
+{% for post in paginator.posts %}
+{{ post.title }}
+{% endfor %}
+'@
+
+        foreach ($postNumber in 1..3) {
+            $postDate = Get-Date '2026-03-10'
+            $postDate = $postDate.AddDays($postNumber)
+            Set-Content -LiteralPath (Join-Path -Path $postsDirectory -ChildPath ('{0}-entry-{1}.md' -f $postDate.ToString('yyyy-MM-dd'), $postNumber)) -Encoding UTF8 -Value @"
+---
+title: Entry $postNumber
+---
+# Entry $postNumber
+"@
+        }
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
+        $pageOne = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'blog\index.html') -Raw
+        $pageTwo = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'blog\page2\index.html') -Raw
+
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'blog\page2\index.html') | Should -BeTrue
+        ($context.Documents | Where-Object { $_.RelativePath -eq 'blog/index.html' }).Count | Should -Be 2
+        $pageOne | Should -Match '1\|\|/blog/page2/'
+        $pageTwo | Should -Match '2\|/blog/\|'
+    }
+
+    It 'does not paginate markdown index pages because pagination only applies to HTML index files' {
+        $siteRoot = New-TestSiteDirectory -Name 'markdown-pagination-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'markdown-pagination-output'
+        $postsDirectory = Join-Path -Path $siteRoot -ChildPath '_posts'
+
+        [void](New-Item -Path $postsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+paginate: 1
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+{{ paginator.page }}
+'@
+
+        foreach ($postNumber in 1..2) {
+            Set-Content -LiteralPath (Join-Path -Path $postsDirectory -ChildPath ('2026-03-2{0}-entry-{0}.md' -f $postNumber)) -Encoding UTF8 -Value @"
+---
+title: Entry $postNumber
+---
+# Entry $postNumber
+"@
+        }
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+        $indexDocument = $context.Documents | Where-Object { $_.RelativePath -eq 'index.md' }
+
+        Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'page2\index.html') | Should -BeFalse
+        $indexOutput.Trim() | Should -Be ''
+        $indexDocument.LiquidData.ContainsKey('paginator') | Should -BeFalse
+    }
+
     It 'supports Jekyll built-in post permalink styles ordinal weekdate and none' {
         $siteRoot = New-TestSiteDirectory -Name 'post-permalink-styles-site'
         $ordinalDestinationRoot = Join-Path -Path $TestDrive -ChildPath 'post-permalink-ordinal-output'
