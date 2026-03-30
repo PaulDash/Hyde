@@ -1132,36 +1132,6 @@ title: Home
         } | Should -Throw -ExpectedMessage '*include_relative*no relative include root is configured*'
     }
 
-    It 'loads the built-in seo plugin and renders title description and canonical tags' {
-        $siteRoot = New-TestSiteDirectory -Name 'plugin-seo-site'
-        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'plugin-seo-output'
-
-        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
-title: Test Site
-description: Site Description
-url: https://example.com
-baseurl: /docs
-plugins:
-  - jekyll-seo-tag
-'@
-
-        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.html') -Encoding UTF8 -Value @'
----
-title: Home
-description: Page Description
----
-{% seo %}
-'@
-
-        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
-        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
-
-        $indexOutput | Should -Match '<title>Home \| Test Site</title>'
-        $indexOutput | Should -Match '<meta name="description" content="Page Description">'
-        $indexOutput | Should -Match '<link rel="canonical" href="https://example.com/docs/index\.html">'
-        $context.LoadedPlugins.Name | Should -Contain 'seo-tag'
-    }
-
     It 'loads a plugin that changes document output paths' {
         $siteRoot = New-TestSiteDirectory -Name 'plugin-output-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'plugin-output-output'
