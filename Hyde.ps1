@@ -104,7 +104,7 @@ if ($PSBoundParameters.ContainsKey('SourcePath')) {
 
 if ($PSBoundParameters.ContainsKey('Destination')) {
     $commandParameters['Destination'] = $Destination
-} elseif ($Command -eq 'New' -and $ArgumentList.Count -gt 0) {
+} elseif ($Command -eq 'New' -and $ArgumentList -and $ArgumentList.Count -gt 0) {
     $commandParameters['Destination'] = [string]$ArgumentList[0]
 }
 

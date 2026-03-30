@@ -25,7 +25,6 @@
     FileList          = @(
         'Hyde.psd1',
         'Hyde.psm1',
-        'Hyde.ps1',
         'globalConfig.yaml'
     )
 }
