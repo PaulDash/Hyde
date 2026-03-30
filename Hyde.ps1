@@ -20,6 +20,47 @@ begin {
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Handle PowerLiquid module dependency
+$powerLiquidModule = Get-Module -Name 'PowerLiquid' -ErrorAction SilentlyContinue
+if (-not $powerLiquidModule) {
+    # Try to load from sibling repo first
+    $powerLiquidManifestPath = Join-Path -Path $PSScriptRoot -ChildPath '..\PowerLiquid\PowerLiquid.psd1'
+    $resolvedPowerLiquidManifestPath = if (Test-Path -LiteralPath $powerLiquidManifestPath -PathType Leaf) {
+        (Resolve-Path -LiteralPath $powerLiquidManifestPath).Path
+    } else {
+        $null
+    }
+
+    if ($resolvedPowerLiquidManifestPath) {
+        Import-Module $resolvedPowerLiquidManifestPath -ErrorAction Stop
+    } elseif (Get-Module -ListAvailable -Name 'PowerLiquid') {
+        Import-Module 'PowerLiquid' -ErrorAction Stop
+    } else {
+        $installModuleCommand = Get-Command -Name 'Install-Module' -ErrorAction SilentlyContinue
+        if ($null -eq $installModuleCommand) {
+            throw "Could not load the PowerLiquid module. Install PowerLiquid from PowerShell Gallery or place the sibling repo at '$powerLiquidManifestPath'."
+        }
+
+        Write-Host "PowerLiquid is not installed locally. Installing from PowerShell Gallery..." -ForegroundColor Yellow
+
+        try {
+            Install-Module -Name 'PowerLiquid' -Repository 'PSGallery' -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+        } catch {
+            Write-Host "Stable PowerLiquid install did not succeed. Trying prerelease package..." -ForegroundColor Yellow
+            Install-Module -Name 'PowerLiquid' -Repository 'PSGallery' -Scope CurrentUser -Force -AllowClobber -AllowPrerelease -ErrorAction Stop
+        }
+
+        Import-Module 'PowerLiquid' -ErrorAction Stop
+    }
+}
+
+# Get PowerLiquid module info
+$powerLiquidModule = Get-Module -Name 'PowerLiquid'
+$powerLiquidVersion = $powerLiquidModule.Version.ToString()
+$powerLiquidPath = $powerLiquidModule.Path
+
+Write-Host "PowerLiquid module loaded: Version $powerLiquidVersion from $powerLiquidPath" -ForegroundColor Green
+
 switch ($Command) {
     'Clean' {
         if ($PSBoundParameters.ContainsKey('Source')) {
