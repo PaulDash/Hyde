@@ -1,4 +1,4 @@
-# Hyde ![Hyde](https://raw.githubusercontent.com/PaulDash/Hyde/main/res/Icon_32x32.png)
+# Hyde ![Hyde](https://raw.githubusercontent.com/PaulDash/Hyde/main/res/Icon_85x85.png)
 
 PowerShell static site generator. The ugly Mr. Hyde to the popular [Jekyll](https://jekyllrb.com/).
 
@@ -34,7 +34,7 @@ Deliberate non-goals:
 - Pages, posts, collections, and static file discovery
 - YAML Front Matter with defaults
 - Liquid rendering through the standalone `PowerLiquid` module
-- Markdown rendering
+- Markdown rendering using built-in logic
 - Recursive YAML, JSON, CSV, and TSV `_data` loading with nested `site.data` paths and clear collision/parse error reporting, plus `_includes` and `_layouts` support with layout inheritance
 - `include_relative` for post content, limited to files under the matching `_posts` directory
 - Posts from `_posts` with draft and future-post handling
@@ -49,7 +49,6 @@ Deliberate non-goals:
 - broader Jekyll [variable](https://jekyllrb.com/docs/variables/) coverage
 - Sass conversion
 - Themes
-- Pagination
 - Syntax highlighting
 - lack of many Plugins,like [these](https://pages.github.com/versions.json) used by GitHub Pages
 

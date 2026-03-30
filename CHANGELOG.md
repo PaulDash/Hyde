@@ -4,6 +4,25 @@ All notable changes to Hyde will be documented in this file.
 
 The format is loosely based on Keep a Changelog, but entries are kept short and practical for this project.
 
+## [0.4.14] - 2026-03-30
+
+### Added
+
+- Added Jekyll-style pagination for HTML `index.html` pages, including the Liquid `paginator` object and `paginate_path` support.
+- Added dedicated manifest and configuration Pester coverage, plus build tests for pagination scenarios.
+
+### Changed
+
+- Updated Hyde to rely on the module-first entry point after moving the wrapper script out of the main execution path.
+- Reordered the Pester suite to fail faster, running manifest and configuration checks before broader integration tests.
+- Reduced Liquid integration tests so Hyde only verifies dependency loading and a minimal render call against the external PowerLiquid module.
+- Updated project metadata, including package icon metadata.
+
+### Fixed
+
+- Fixed module manifest and command metadata resolution after the wrapper restructuring.
+- Fixed Hyde public commands and tests so they no longer depend on the old wrapper script location.
+
 ## [0.4.11] - 2026-03-29
 
 ### Added
