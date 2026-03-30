@@ -35,6 +35,7 @@ Deliberate non-goals:
 - YAML Front Matter with defaults
 - Liquid rendering through the standalone `PowerLiquid` module
 - Markdown rendering using built-in logic
+- Jekyll-style Liquid global variables in scope: `site`, `page`, `page.previous`, `page.next`, `paginator`, and `site.data` (with recursive `_data` folder support)
 - Recursive YAML, JSON, CSV, and TSV `_data` loading with nested `site.data` paths and clear collision/parse error reporting, plus `_includes` and `_layouts` support with layout inheritance
 - `include_relative` for post content, limited to files under the matching `_posts` directory
 - Posts from `_posts` with draft and future-post handling
@@ -46,7 +47,6 @@ Deliberate non-goals:
 
 ### Current Gaps
 
-- broader Jekyll [variable](https://jekyllrb.com/docs/variables/) coverage
 - Sass conversion
 - Themes
 - Syntax highlighting

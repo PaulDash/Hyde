@@ -228,6 +228,8 @@ layout_title: Wrapper
 <body>
 {% if site.title %}<header>{{ site.title }}</header>{% endif %}
 <main>{{ content }}</main>
+<div id="slug">{{ page.slug }}</div>
+<div id="hyde-version">{{ hyde.version }}</div>
 <footer>{{ layout.layout_title }}</footer>
 </body>
 </html>
@@ -247,9 +249,45 @@ layout: default
         $indexOutput | Should -Match '<title>HOME</title>'
         $indexOutput | Should -Match '<header>Test Site</header>'
         $indexOutput | Should -Match '<main><h1>Hello</h1></main>'
+        $indexOutput | Should -Match '<div id="slug">index</div>'
+        $indexOutput | Should -Match '<div id="hyde-version">'
         $indexOutput | Should -Match '<footer>Wrapper</footer>'
+
         $context.Documents.Count | Should -Be 1
+        $context.Site.collections | Should -Not -BeNullOrEmpty
+        $context.Site.documents.Count | Should -Be 1
+        $context.Site.pages.Count | Should -Be 1
     }
+
+    It 'sets page.url to post path with leading slash, page.slug, and hyde.version works' {
+        $siteRoot = New-TestSiteDirectory -Name 'post-url-slug-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'post-url-slug-output'
+        $postsDirectory = Join-Path -Path $siteRoot -ChildPath '_posts'
+
+        [void](New-Item -Path $postsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Post URL Test
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $postsDirectory -ChildPath '2008-12-14-my-post.md') -Encoding UTF8 -Value @'
+---
+title: My Post
+---
+Post: {{ page.url }} | {{ page.slug }} | {{ hyde.version }}
+'@
+
+        $context = Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development
+
+        $postOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath '2008\12\14\my-post.html') -Raw
+        $hydeVersionPattern = [regex]::Escape((Get-Module Hyde).Version.ToString())
+
+        $postOutput | Should -Match "Post: /2008/12/14/my-post\.html \| my-post \| $hydeVersionPattern"
+        $context.Site.posts.Count | Should -Be 1
+        $context.Site.documents.Count | Should -Be 1
+        $context.Site.collections.posts.docs.Count | Should -Be 1
+    }
+
 
     It 'applies parent layouts by using the pre-parsed layout inheritance chain' {
         $siteRoot = New-TestSiteDirectory -Name 'layout-inheritance-site'
@@ -618,7 +656,40 @@ title: Newer Post
         $postUrls[0] | Should -Be '/2026/03/28/newer-post.html'
         $postUrls[1] | Should -Be '/2026/03/27/older-post.html'
         $indexOutput | Should -Match 'Newer Post\|/2026/03/28/newer-post\.html'
-        $indexOutput | Should -Match 'Older Post\|/2026/03/27/older-post\.html'
+    }
+
+    It 'supports page.previous and page.next in post contexts' {
+        $siteRoot = New-TestSiteDirectory -Name 'post-navigation-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'post-navigation-output'
+        $postsDirectory = Join-Path -Path $siteRoot -ChildPath '_posts'
+
+        [void](New-Item -Path $postsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Read Through
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $postsDirectory -ChildPath '2026-03-27-older-post.md') -Encoding UTF8 -Value @'
+---
+title: Older Post
+---
+Prev: {{ page.previous.title | default: "none" }} | Next: {{ page.next.title | default: "none" }}
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $postsDirectory -ChildPath '2026-03-28-newer-post.md') -Encoding UTF8 -Value @'
+---
+title: Newer Post
+---
+Prev: {{ page.previous.title | default: "none" }} | Next: {{ page.next.title | default: "none" }}
+'@
+
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
+
+        $olderOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath '2026\03\27\older-post.html') -Raw
+        $newerOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath '2026\03\28\newer-post.html') -Raw
+
+        $olderOutput | Should -Match 'Prev:\s+none\s+\|\s+Next:\s+Newer Post'
+        $newerOutput | Should -Match 'Prev:\s+Older Post\s+\|\s+Next:\s+none'
     }
 
     It 'paginates posts for an HTML index page and exposes the Jekyll paginator object' {

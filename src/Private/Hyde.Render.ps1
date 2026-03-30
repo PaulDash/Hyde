@@ -706,36 +706,14 @@ function newHydePageVariables {
     [OutputType([hashtable])]
     param(
         [Parameter(Mandatory = $true)]
-        [HydeDocument]$Document
+        [HydeDocument]$Document,
+
+        [Parameter(Mandatory = $false)]
+        [HydeBuildContext]$Context
     )
 
-    $page = @{}
-    foreach ($key in $Document.FrontMatter.Keys) {
-        $page[$key] = $Document.FrontMatter[$key]
-    }
-
-    if (-not [string]::IsNullOrWhiteSpace($Document.Title)) {
-        # Document.Title gives plugins and future features a semantic title slot beyond raw front matter.
-        $page['title'] = $Document.Title
-    }
-
-    $page['content'] = $Document.RenderedContent
-    $page['collection'] = $Document.CollectionName
-    $page['url'] = $Document.Url
-    $page['path'] = $Document.RelativePath
-    $page['name'] = $Document.Name
-    $page['basename'] = $Document.BaseName
-    $page['extname'] = $Document.Extension
-    $page['slug'] = $Document.Slug
-    $page['tags'] = @($Document.Tags)
-    $page['categories'] = @($Document.Categories)
-    $page['draft'] = $Document.IsDraft
-
-    if ($Document.PostDate -ne [datetime]::MinValue) {
-        $page['date'] = $Document.PostDate
-    }
-
-    return $page
+    # Proxy to the dedicated variables module for easier maintenance and consistency.
+    return New-HydePageVariables -Document $Document -Context $Context
 }
 
 function testHydePaginationDocument {
@@ -966,7 +944,7 @@ function newHydeLiquidContext {
     )
 
     $liquidContext = @{
-        page = newHydePageVariables -Document $Document
+        page = newHydePageVariables -Document $Document -Context $Context
         site = $Context.Site
         hyde = @{
             version     = $Context.Version

@@ -98,6 +98,10 @@ class HydeBuildContext {
     [void] AddDocument([HydeDocument]$document) {
         # Keep the strongly-typed list and the site variable surface in sync.
         [void]$this.Documents.Add($document)
+        if ($this.Site.ContainsKey('documents')) {
+            [void]$this.Site.documents.Add($document)
+        }
+
         if ($document.Kind -eq 'Page') {
             [void]$this.Site.pages.Add($document)
             return

@@ -151,6 +151,7 @@ function initializeHydeBuildContext {
     $context.Site['time'] = Get-Date
     $context.Site['pages'] = New-Object System.Collections.ArrayList
     $context.Site['posts'] = New-Object System.Collections.ArrayList
+    $context.Site['documents'] = New-Object System.Collections.ArrayList
     $context.Site['static_files'] = New-Object System.Collections.ArrayList
     $context.Site['collections'] = @{}
     $context.Site['tags'] = @{}

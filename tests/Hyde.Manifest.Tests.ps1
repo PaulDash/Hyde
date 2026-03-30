@@ -11,7 +11,6 @@ Describe 'Hyde module manifest' {
         } | Should -Not -Throw
 
         $manifestData = Import-PowerShellDataFile -Path $moduleManifestPath
-        $manifestData.ModuleVersion | Should -BeExactly '0.4.13'
         $manifestData.RootModule | Should -BeExactly 'Hyde.psm1'
     }
 

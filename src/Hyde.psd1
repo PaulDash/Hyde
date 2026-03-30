@@ -35,6 +35,7 @@
         'Private\Hyde.Discovery.ps1',
         'Private\Hyde.Plugins.ps1',
         'Private\Hyde.Render.ps1',
+        'Private\Hyde.Variables.ps1',
         'Private\Hyde.Utility.ps1',
         'Private\Hyde.Validation.ps1',
         'Private\HydeTypes.ps1',
