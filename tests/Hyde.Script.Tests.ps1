@@ -16,6 +16,12 @@ Describe 'Hyde module command options' {
         }
     }
 
+    It 'shows module help through Hyde Help' {
+        $helpText = @(Hyde Help | Out-String)
+
+        $helpText | Should -Match 'PowerShell static site generator'
+    }
+
     It 'allows Hyde Build to use source destination and environment' {
         $siteRoot = New-TestSiteDirectory -Name 'build-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'build-output'
