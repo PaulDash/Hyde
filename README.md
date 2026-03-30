@@ -23,6 +23,8 @@ Hyde is usable today, but it is not trying to become a complete Jekyll clone.
 - Generated-file cleanup with `Hyde Clean`
 - Site validation with `Hyde Doctor`
 
+All functionality is also exposed as PowerShell-friendly Verb-Noun syntax!
+
 ### Implemented Features
 
 #### Configuration & Content Discovery
@@ -57,6 +59,7 @@ Hyde is usable today, but it is not trying to become a complete Jekyll clone.
 ### Under Consideration
 
 - Sass conversion
+- Core command `Hyde New-Theme`
 - Themes
 - Syntax highlighting
 - Plugins: sitemap, relative-links, optional-front-matter, gallery-generator, redirect-from, responsive-image, remote-theme, minifier, github-metadata, readme-index
