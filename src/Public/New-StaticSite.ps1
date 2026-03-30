@@ -48,7 +48,7 @@ baseurl: ""
 ---
 title: Home
 ---
-# Hello World
+# Welcome to Hyde
 '@
     } else {
         $layoutsPath = Join-Path -Path $destinationPath -ChildPath '_layouts'
@@ -82,7 +82,8 @@ layout: default
 ---
 # Welcome to Hyde
 
-Your new PowerShell static site is ready.
+Your new PowerShell-generate static site is ready!
+Check out the [Hyde documentation](https://github.com/PaulDash/Hyde/) to learn how to customize your site and add new content.
 '@
 
         Set-Content -LiteralPath (Join-Path -Path $destinationPath -ChildPath 'about.md') -Encoding UTF8 -Value @'
