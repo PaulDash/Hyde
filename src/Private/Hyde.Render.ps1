@@ -1,3 +1,4 @@
+# Convert a published front matter value into a boolean.
 function convertToHydePublishedState {
     [CmdletBinding()]
     [OutputType([bool])]
@@ -24,6 +25,7 @@ function convertToHydePublishedState {
     return [bool]$InputObject
 }
 
+# Parse a boolean front matter value with a configurable default.
 function convertToHydeBooleanFrontMatterValue {
     [CmdletBinding()]
     [OutputType([bool])]
@@ -55,6 +57,7 @@ function convertToHydeBooleanFrontMatterValue {
     return [bool]$InputObject
 }
 
+# Slugify text for URLs and identifiers.
 function convertToHydeSlug {
     [CmdletBinding()]
     [OutputType([string])]
@@ -70,6 +73,7 @@ function convertToHydeSlug {
     return $normalizedText
 }
 
+# Parse a date/time value from front matter input.
 function convertToHydeDateTime {
     [CmdletBinding()]
     [OutputType([datetime])]
@@ -95,6 +99,7 @@ function convertToHydeDateTime {
     }
 }
 
+# Determine whether a document represents a post.
 function testHydePostDocument {
     [CmdletBinding()]
     param(
@@ -105,6 +110,7 @@ function testHydePostDocument {
     return ($Document.CollectionName -eq 'posts')
 }
 
+# Return normalized categories for a document.
 function getHydeDocumentCategories {
     [CmdletBinding()]
     [OutputType([object[]])]
@@ -117,6 +123,7 @@ function getHydeDocumentCategories {
     return @($Document.Categories | ForEach-Object { convertToHydeSlug -Text $_ })
 }
 
+# Read a slug override from front matter.
 function getHydeDocumentSlugOverride {
     [CmdletBinding()]
     [OutputType([string])]
@@ -132,6 +139,7 @@ function getHydeDocumentSlugOverride {
     return ''
 }
 
+# Compute a base filename for a document, stripping post date prefixes.
 function getHydeDocumentBaseFileName {
     [CmdletBinding()]
     [OutputType([string])]
@@ -154,6 +162,7 @@ function getHydeDocumentBaseFileName {
     return $Document.BaseName
 }
 
+# Create a slug while preserving case for display purposes.
 function getHydePrettySlug {
     [CmdletBinding()]
     [OutputType([string])]
@@ -166,6 +175,7 @@ function getHydePrettySlug {
     return $normalizedText.Trim('-')
 }
 
+# Resolve the :title token for permalinks.
 function getHydePermalinkTitleValue {
     [CmdletBinding()]
     [OutputType([string])]
@@ -182,6 +192,7 @@ function getHydePermalinkTitleValue {
     return (getHydePrettySlug -Text (getHydeDocumentBaseFileName -Document $Document))
 }
 
+# Resolve the :slug token for permalinks.
 function getHydePermalinkSlugValue {
     [CmdletBinding()]
     [OutputType([string])]
@@ -198,6 +209,7 @@ function getHydePermalinkSlugValue {
     return (convertToHydeSlug -Text (getHydeDocumentBaseFileName -Document $Document))
 }
 
+# Resolve the :path token for permalinks.
 function getHydePermalinkPathValue {
     [CmdletBinding()]
     [OutputType([string])]
@@ -220,6 +232,7 @@ function getHydePermalinkPathValue {
     return $relativePathWithoutExtension
 }
 
+# Resolve the :name token for permalinks.
 function getHydePermalinkNameValue {
     [CmdletBinding()]
     [OutputType([string])]
@@ -231,6 +244,7 @@ function getHydePermalinkNameValue {
     return (convertToHydeSlug -Text (getHydeDocumentBaseFileName -Document $Document))
 }
 
+# Resolve the :basename token for permalinks.
 function getHydePermalinkBaseNameValue {
     [CmdletBinding()]
     [OutputType([string])]
@@ -242,6 +256,7 @@ function getHydePermalinkBaseNameValue {
     return (getHydeDocumentBaseFileName -Document $Document)
 }
 
+# Compute ISO week date parts for permalink tokens.
 function getHydeWeekDatePart {
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -264,6 +279,7 @@ function getHydeWeekDatePart {
     }
 }
 
+# Build the permalink token map for a document.
 function getHydeDocumentPermalinkTokenValues {
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -310,6 +326,7 @@ function getHydeDocumentPermalinkTokenValues {
     }
 }
 
+# Map a permalink style name to its pattern string.
 function getHydePostPermalinkPattern {
     [CmdletBinding()]
     [OutputType([string])]
@@ -328,6 +345,7 @@ function getHydePostPermalinkPattern {
     }
 }
 
+# Extract tag/category terms from front matter keys.
 function getHydeDocumentTerms {
     [CmdletBinding()]
     [OutputType([string[]])]
@@ -373,6 +391,7 @@ function getHydeDocumentTerms {
     return @()
 }
 
+# Derive post categories from the directory path above _posts.
 function getHydePostPathCategories {
     [CmdletBinding()]
     [OutputType([string[]])]
@@ -406,6 +425,7 @@ function getHydePostPathCategories {
     )
 }
 
+# Determine the permalink pattern to apply to a document.
 function getHydeDocumentPermalinkPattern {
     [CmdletBinding()]
     [OutputType([string])]
@@ -447,6 +467,7 @@ function getHydeDocumentPermalinkPattern {
     return ''
 }
 
+# Resolve a document’s permalink to output path and URL.
 function resolveHydePermalink {
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -500,6 +521,7 @@ function resolveHydePermalink {
     }
 }
 
+# Convert an output-relative path into a site URL.
 function convertHydeOutputPathToUrl {
     [CmdletBinding()]
     [OutputType([string])]
@@ -525,6 +547,7 @@ function convertHydeOutputPathToUrl {
     return '/' + $normalizedPath
 }
 
+# Locate a layout file on disk given a layout name.
 function resolveHydeLayoutPath {
     [CmdletBinding()]
     param(
@@ -557,6 +580,7 @@ function resolveHydeLayoutPath {
     throw "Could not find layout '$LayoutName' in '$layoutsDirectoryPath'."
 }
 
+# Pre-parse layout files and cache them in the context.
 function initializeHydeLayouts {
     [CmdletBinding()]
     param(
@@ -593,6 +617,7 @@ function initializeHydeLayouts {
     }
 }
 
+# Retrieve a cached layout document by name.
 function getHydeLayoutDocument {
     [CmdletBinding()]
     param(
@@ -625,6 +650,7 @@ function getHydeLayoutDocument {
     throw "Could not find layout '$LayoutName' in '$layoutsDirectoryPath'."
 }
 
+# Build the inheritance chain for a layout.
 function getHydeLayoutChain {
     [CmdletBinding()]
     [OutputType([object[]])]
@@ -658,6 +684,7 @@ function getHydeLayoutChain {
     return @($layoutChain.ToArray())
 }
 
+# Resolve the includes directory path for Liquid.
 function resolveHydeIncludesPath {
     [CmdletBinding()]
     param(
@@ -675,6 +702,7 @@ function resolveHydeIncludesPath {
     return (Join-Path -Path $Context.SourcePath -ChildPath $includesDirectoryName)
 }
 
+# Resolve the root folder for include_relative in post content.
 function resolveHydeRelativeIncludeRoot {
     [CmdletBinding()]
     [OutputType([string])]
@@ -701,6 +729,7 @@ function resolveHydeRelativeIncludeRoot {
     return (Join-Path -Path $Context.SourcePath -ChildPath $postsRootRelativePath)
 }
 
+# Delegate to the variables module for building Liquid page variables.
 function newHydePageVariables {
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -713,9 +742,10 @@ function newHydePageVariables {
     )
 
     # Proxy to the dedicated variables module for easier maintenance and consistency.
-    return New-HydePageVariables -Document $Document -Context $Context
+    return newHydePageVariables -Document $Document -Context $Context
 }
 
+# Decide whether a document is eligible for pagination.
 function testHydePaginationDocument {
     [CmdletBinding()]
     [OutputType([bool])]
@@ -735,6 +765,7 @@ function testHydePaginationDocument {
     return ($Document.Name -ieq 'index.html')
 }
 
+# Compute the output path and URL for a paginated page number.
 function resolveHydePaginationOutput {
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -787,6 +818,7 @@ function resolveHydePaginationOutput {
     }
 }
 
+# Build the paginator object exposed to Liquid templates.
 function newHydePaginator {
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -840,6 +872,7 @@ function newHydePaginator {
     }
 }
 
+# Clone a document for a paginated page instance.
 function newHydePaginatedDocument {
     [CmdletBinding()]
     [OutputType([HydeDocument])]
@@ -881,6 +914,7 @@ function newHydePaginatedDocument {
     return $paginatedDocument
 }
 
+# Generate paginated documents and attach paginator data.
 function initializeHydePagination {
     [CmdletBinding()]
     param(
@@ -930,6 +964,7 @@ function initializeHydePagination {
     }
 }
 
+# Construct the Liquid context for document or layout rendering.
 function newHydeLiquidContext {
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -963,6 +998,7 @@ function newHydeLiquidContext {
     return $liquidContext
 }
 
+# Render a document’s raw content through Liquid.
 function invokeHydeDocumentLiquid {
     [CmdletBinding()]
     param(
@@ -984,6 +1020,7 @@ function invokeHydeDocumentLiquid {
     Write-Verbose "Rendered Liquid content for '$($Document.RelativePath)'."
 }
 
+# Render and apply the layout chain for a document.
 function invokeHydeLayout {
     [CmdletBinding()]
     param(
@@ -1021,6 +1058,7 @@ function invokeHydeLayout {
     Write-Verbose "Rendered layout chain '$layoutName' for '$($Document.RelativePath)'."
 }
 
+# Parse front matter and apply defaults to a document.
 function readHydeFrontMatter {
     [CmdletBinding()]
     param(
@@ -1126,6 +1164,7 @@ function readHydeFrontMatter {
     Write-Verbose "Document '$($Document.RelativePath)' resolved with title='$($Document.Title)', published=$($Document.Published), and render_with_liquid=$($Document.RenderWithLiquid)."
 }
 
+# Prepare document metadata, hooks, and permalink resolution.
 function initializeHydeDocument {
     [CmdletBinding()]
     param(
@@ -1168,6 +1207,7 @@ function initializeHydeDocument {
     $Document.IsPrepared = $true
 }
 
+# Render a minimal inline-markdown subset for excerpts.
 function convertHydeInlineMarkdown {
     [CmdletBinding()]
     [OutputType([string])]
@@ -1224,6 +1264,7 @@ function convertHydeInlineMarkdown {
     return $encoded
 }
 
+# Convert Markdown content to HTML.
 function convertHydeMarkdown {
     [CmdletBinding()]
     param(
@@ -1337,6 +1378,7 @@ function convertHydeMarkdown {
     return ($blocks.ToArray() -join [Environment]::NewLine)
 }
 
+# Render a document’s content and apply layouts.
 function convertHydeDocument {
     [CmdletBinding()]
     param(
@@ -1379,6 +1421,7 @@ function convertHydeDocument {
     }
 }
 
+# Compute the default output-relative path for a document.
 function resolveHydeDocumentOutputPath {
     [CmdletBinding()]
     param(
@@ -1417,6 +1460,7 @@ function resolveHydeDocumentOutputPath {
     return $outputPath
 }
 
+# Compute the output-relative path for a static file.
 function resolveHydeStaticFileOutputPath {
     [CmdletBinding()]
     param(
@@ -1433,6 +1477,7 @@ function resolveHydeStaticFileOutputPath {
         })
 }
 
+# Write a rendered document to its destination path.
 function writeHydeDocument {
     [CmdletBinding()]
     param(
@@ -1473,6 +1518,7 @@ function writeHydeDocument {
     }
 }
 
+# Copy a static file to its destination path.
 function copyHydeStaticFile {
     [CmdletBinding()]
     param(

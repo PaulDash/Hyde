@@ -1,3 +1,4 @@
+# Build the exclusion and include rules for source discovery.
 function getHydeExcludedState {
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -80,6 +81,7 @@ function getHydeExcludedState {
     }
 }
 
+# Determine whether a file or directory should be excluded from the build.
 function testHydeItemExclusion {
     [CmdletBinding()]
     [OutputType([bool])]
@@ -130,6 +132,7 @@ function testHydeItemExclusion {
     return $false
 }
 
+# Scan the source tree and classify documents versus static files.
 function getHydeSourceItems {
     [CmdletBinding()]
     param(
@@ -206,6 +209,7 @@ function getHydeSourceItems {
     getHydeCollectionItems -Context $Context
 }
 
+# Initialize a post document’s metadata from its file name and location.
 function initializeHydePostDocument {
     [CmdletBinding()]
     param(
@@ -240,6 +244,7 @@ function initializeHydePostDocument {
     $Document.Slug = convertToHydeSlug -Text $postFileNameMatch.Groups['slug'].Value
 }
 
+# Validate whether a document name follows the post filename convention.
 function testHydePostFileName {
     [CmdletBinding()]
     [OutputType([bool])]
@@ -259,6 +264,7 @@ function testHydePostFileName {
     )
 }
 
+# Load supported _data files into site.data.
 function importHydeDataFiles {
     [CmdletBinding()]
     param(
@@ -316,6 +322,7 @@ function importHydeDataFiles {
     }
 }
 
+# Assign a parsed data file into the nested site.data map.
 function setHydeDataValue {
     [CmdletBinding()]
     param(
@@ -367,6 +374,7 @@ function setHydeDataValue {
     $currentNode[$leafSegment] = $Value
 }
 
+# Parse a single data file by extension into PowerShell objects.
 function importHydeDataFile {
     [CmdletBinding()]
     param(
@@ -420,6 +428,7 @@ function importHydeDataFile {
     }
 }
 
+# Discover collection documents (including posts and drafts).
 function getHydeCollectionItems {
     [CmdletBinding()]
     param(

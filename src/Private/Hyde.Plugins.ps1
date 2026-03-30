@@ -1,3 +1,4 @@
+# Create the in-memory registry used to track plugin hooks and metadata.
 function newHydePluginRegistry {
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -21,6 +22,7 @@ function newHydePluginRegistry {
     }
 }
 
+# Resolve the configured plugins directory path.
 function resolveHydePluginDirectory {
     [CmdletBinding()]
     param(
@@ -37,6 +39,7 @@ function resolveHydePluginDirectory {
     return (Join-Path -Path $Context.SourcePath -ChildPath $pluginsDirectoryName)
 }
 
+# Read plugin names from configuration settings.
 function getHydePluginConfigurationNames {
     [CmdletBinding()]
     [OutputType([object[]])]
@@ -63,6 +66,7 @@ function getHydePluginConfigurationNames {
     return @($configuredNames.ToArray())
 }
 
+# Normalize configured plugin names into lookup candidates.
 function getHydePluginCandidateNames {
     [CmdletBinding()]
     [OutputType([object[]])]
@@ -86,6 +90,7 @@ function getHydePluginCandidateNames {
     return @($candidates | Select-Object -Unique)
 }
 
+# Gather the whitelist of plugins permitted under safe mode.
 function getHydeWhitelistedPluginNames {
     [CmdletBinding()]
     [OutputType([object[]])]
@@ -101,6 +106,7 @@ function getHydeWhitelistedPluginNames {
     return @($Context.Settings.whitelist | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { [string]$_ })
 }
 
+# Resolve configured plugin names to actual script files on disk.
 function resolveHydePluginFiles {
     [CmdletBinding()]
     [OutputType([object[]])]
@@ -164,6 +170,7 @@ function resolveHydePluginFiles {
     return @($resolvedFiles.ToArray())
 }
 
+# Decide whether a plugin is allowed under current safety settings.
 function testHydePluginAllowed {
     [CmdletBinding()]
     [OutputType([bool])]
@@ -185,6 +192,7 @@ function testHydePluginAllowed {
     return ($whitelist -contains $PluginName)
 }
 
+# Register a plugin descriptor and hook handlers in the registry.
 function registerHydePluginDescriptor {
     [CmdletBinding()]
     param(
@@ -264,6 +272,7 @@ function registerHydePluginDescriptor {
     })
 }
 
+# Load plugin scripts, register hooks, and track loaded plugins.
 function importHydePlugins {
     [CmdletBinding()]
     param(
@@ -303,6 +312,7 @@ function importHydePlugins {
     }
 }
 
+# Execute a plugin hook for all loaded plugins with optional arguments.
 function invokeHydePluginHook {
     [CmdletBinding()]
     param(
@@ -328,6 +338,7 @@ function invokeHydePluginHook {
     }
 }
 
+# Resolve a value through plugins that implement a value override hook.
 function resolveHydePluginValue {
     [CmdletBinding()]
     param(

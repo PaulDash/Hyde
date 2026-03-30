@@ -1,3 +1,4 @@
+# Initialize a validation report structure for doctor checks.
 function newHydeValidationReport {
     [CmdletBinding()]
     param(
@@ -13,6 +14,7 @@ function newHydeValidationReport {
     }
 }
 
+# Add a validation issue to the report with context.
 function addHydeValidationIssue {
     [CmdletBinding()]
     param(
@@ -42,6 +44,7 @@ function addHydeValidationIssue {
     $Report.Healthy = $false
 }
 
+# Check a layout for missing parents or parse errors.
 function testHydeLayoutForIssues {
     [CmdletBinding()]
     param(
@@ -72,6 +75,7 @@ function testHydeLayoutForIssues {
     }
 }
 
+# Validate a document for front matter and rendering issues.
 function testHydeDocumentForIssues {
     [CmdletBinding()]
     param(
@@ -95,6 +99,7 @@ function testHydeDocumentForIssues {
     testHydeLayoutForIssues -Document $Document -Context $Context -Report $Report
 }
 
+# Detect duplicate output paths among documents.
 function testHydeOutputConflicts {
     [CmdletBinding()]
     param(
@@ -133,6 +138,7 @@ function testHydeOutputConflicts {
     }
 }
 
+# Run all validation checks across the site content.
 function testHydeSiteContent {
     [CmdletBinding()]
     param(

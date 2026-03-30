@@ -1,3 +1,4 @@
+# Recursively merge configuration hashtables so site values override defaults.
 function mergeHydeConfig {
     [CmdletBinding()]
     param(
@@ -22,6 +23,7 @@ function mergeHydeConfig {
     }
 }
 
+# Load a YAML configuration file and normalize it to a hashtable.
 function readHydeConfigFile {
     [CmdletBinding()]
     [OutputType([hashtable])]
@@ -48,6 +50,7 @@ function readHydeConfigFile {
     }
 }
 
+# Resolve a path relative to a base directory with optional non-existent targets.
 function resolveHydePath {
     [CmdletBinding()]
     param(
@@ -90,6 +93,7 @@ function resolveHydePath {
     throw "Could not resolve target path of '$Location'."
 }
 
+# Build the Hyde context from defaults, site config, plugins, and data files.
 function initializeHydeBuildContext {
     [CmdletBinding()]
     param(
@@ -167,6 +171,7 @@ function initializeHydeBuildContext {
     return $context
 }
 
+# Convert configured collections into a normalized definition list.
 function getHydeCollectionDefinitions {
     [CmdletBinding()]
     [OutputType([object[]])]
@@ -199,6 +204,7 @@ function getHydeCollectionDefinitions {
     return @($definitions.ToArray())
 }
 
+# Find a single collection definition by name.
 function getHydeCollectionDefinition {
     [CmdletBinding()]
     param(
@@ -218,6 +224,7 @@ function getHydeCollectionDefinition {
     return $null
 }
 
+# Initialize site collection bags on the build context.
 function initializeHydeCollections {
     [CmdletBinding()]
     param(
@@ -238,6 +245,7 @@ function initializeHydeCollections {
     }
 }
 
+# Refresh site.posts and collections.posts.docs from published post documents.
 function syncHydePosts {
     [CmdletBinding()]
     param(
@@ -276,6 +284,7 @@ function syncHydePosts {
     }
 }
 
+# Populate site.tags and site.categories from published posts.
 function syncHydeTaxonomies {
     [CmdletBinding()]
     param(
@@ -317,6 +326,7 @@ function syncHydeTaxonomies {
     }
 }
 
+# Normalize the defaults array from configuration for consistent matching.
 function getHydeFrontMatterDefaults {
     [CmdletBinding()]
     [OutputType([object[]])]
@@ -356,6 +366,7 @@ function getHydeFrontMatterDefaults {
     return @($defaults.ToArray())
 }
 
+# Score scope paths to prefer more specific defaults.
 function getHydeDefaultScopePathSpecificity {
     [CmdletBinding()]
     [OutputType([int])]
@@ -370,6 +381,7 @@ function getHydeDefaultScopePathSpecificity {
     return ($ScopePath -replace '\*', '').Length
 }
 
+# Check whether an item's relative path matches a default scope path.
 function testHydeDefaultScopePath {
     [CmdletBinding()]
     [OutputType([bool])]
@@ -397,6 +409,7 @@ function testHydeDefaultScopePath {
     )
 }
 
+# Check whether an item's type matches a default scope type.
 function testHydeDefaultScopeType {
     [CmdletBinding()]
     [OutputType([bool])]
@@ -412,6 +425,7 @@ function testHydeDefaultScopeType {
     return ($ScopeType -ieq $ItemType)
 }
 
+# Map a content item to its default scope type label.
 function getHydeItemDefaultType {
     [CmdletBinding()]
     [OutputType([string])]
@@ -427,6 +441,7 @@ function getHydeItemDefaultType {
     }
 }
 
+# Gather all front matter defaults that apply to the given item.
 function getHydeMatchingDefaults {
     [CmdletBinding()]
     [OutputType([object[]])]
@@ -457,6 +472,7 @@ function getHydeMatchingDefaults {
     return @($matchingDefaults)
 }
 
+# Apply missing default values to a front matter hashtable.
 function mergeHydeFrontMatterDefaults {
     [CmdletBinding()]
     param(
@@ -475,6 +491,7 @@ function mergeHydeFrontMatterDefaults {
     }
 }
 
+# Build the list of generated paths Hyde Clean should remove.
 function getHydeCleanTargets {
     [CmdletBinding()]
     [OutputType([System.Collections.ArrayList])]
@@ -506,6 +523,7 @@ function getHydeCleanTargets {
     return $targets
 }
 
+# Identify a Hyde site root by the presence of _config.yml.
 function testHydeSiteRootPath {
     [CmdletBinding()]
     param(
@@ -517,6 +535,7 @@ function testHydeSiteRootPath {
     return (Test-Path -LiteralPath (Join-Path -Path $Path -ChildPath '_config.yml') -PathType Leaf)
 }
 
+# Remove a generated file or folder with safety checks.
 function removeHydeGeneratedPath {
     [CmdletBinding()]
     param(

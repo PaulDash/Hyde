@@ -1,7 +1,8 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-function Get-HydeDocumentVariableSlug {
+# Build a slug string for page variables, falling back to a sanitized basename.
+function getHydeDocumentVariableSlug {
     [CmdletBinding()]
     [OutputType([string])]
     param(
@@ -22,7 +23,8 @@ function Get-HydeDocumentVariableSlug {
     return ''
 }
 
-function Get-HydePostNeighbors {
+# Locate the previous and next posts relative to the current post in site.posts.
+function getHydePostNeighbors {
     [CmdletBinding()]
     [OutputType([hashtable])]
     param(
@@ -58,7 +60,8 @@ function Get-HydePostNeighbors {
     return $neighbors
 }
 
-function New-HydePageVariables {
+# Construct the Liquid `page` variable map from document metadata and front matter.
+function newHydePageVariables {
     [CmdletBinding()]
     [OutputType([hashtable])]
     param(
@@ -86,7 +89,7 @@ function New-HydePageVariables {
     $page['name'] = $Document.Name
     $page['basename'] = $Document.BaseName
     $page['extname'] = $Document.Extension
-    $page['slug'] = Get-HydeDocumentVariableSlug -Document $Document
+    $page['slug'] = getHydeDocumentVariableSlug -Document $Document
     $page['tags'] = @($Document.Tags)
     $page['categories'] = @($Document.Categories)
     $page['draft'] = $Document.IsDraft
@@ -97,7 +100,7 @@ function New-HydePageVariables {
 
     # Add Jekyll-like relative post navigation when available.
     if ($Context -and $Document.CollectionName -eq 'posts') {
-        $neighbors = Get-HydePostNeighbors -Document $Document -Context $Context
+        $neighbors = getHydePostNeighbors -Document $Document -Context $Context
         $page['previous'] = $neighbors.previous
         $page['next'] = $neighbors.next
     }

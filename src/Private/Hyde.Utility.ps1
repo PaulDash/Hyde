@@ -1,3 +1,4 @@
+# Normalize YAML/JSON objects into PowerShell hashtables.
 function convertToHydeHashtable {
     [CmdletBinding()]
     [OutputType([hashtable], [object[]], [object])]
@@ -43,6 +44,7 @@ function convertToHydeHashtable {
     }
 }
 
+# Deep-copy arrays and hashtables for safe mutation.
 function copyHydeValue {
     [CmdletBinding()]
     [OutputType([hashtable], [object[]], [object])]
@@ -76,6 +78,7 @@ function copyHydeValue {
     return $InputObject
 }
 
+# Return the list of markdown extensions configured for Hyde.
 function getHydeMarkdownExtensions {
     [CmdletBinding()]
     [OutputType([object[]])]
