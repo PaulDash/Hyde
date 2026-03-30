@@ -1,5 +1,6 @@
-![Hyde](/res/Icon_85x85.png)
 # Hyde
+
+![Hyde](/res/Icon_85x85.png)
 
 PowerShell static site generator. The ugly Mr. Hyde to the popular [Jekyll](https://jekyllrb.com/).
 
@@ -58,6 +59,7 @@ All functionality is also exposed as PowerShell-friendly Verb-Noun syntax!
 
 ### Under Consideration
 
+- for Clean, handle when -Destination is root of drive
 - Sass conversion
 - Core command `Hyde New-Theme`
 - Themes
