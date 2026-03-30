@@ -1,4 +1,5 @@
-# Hyde ![Hyde](https://raw.githubusercontent.com/PaulDash/Hyde/main/res/Icon_85x85.png)
+![Hyde](/res/Icon_85x85.png)
+# Hyde
 
 PowerShell static site generator. The ugly Mr. Hyde to the popular [Jekyll](https://jekyllrb.com/).
 
@@ -15,42 +16,58 @@ No infringment is meant on the wonderful project that is Jekyll and on the great
 
 Hyde is usable today, but it is not trying to become a complete Jekyll clone.
 
-Deliberate non-goals:
-
-- `Serve` command
-- File watching / auto-regeneration
-- Gem-based themes
-- Ruby plugin compatibility
-- CoffeeScript conversion
-- TOML config files
-
-### Implemented Features
+### Core Commands
 
 - Site scaffolding with `Hyde New`
 - Site builds with `Hyde Build`
 - Generated-file cleanup with `Hyde Clean`
 - Site validation with `Hyde Doctor`
+
+### Implemented Features
+
+#### Configuration & Content Discovery
+
 - `_config.yml` loading and merge with built-in defaults
 - Pages, posts, collections, and static file discovery
 - YAML Front Matter with defaults
-- Liquid rendering through the standalone `PowerLiquid` module
-- Markdown rendering using built-in logic
-- Jekyll-style Liquid global variables in scope: `site`, `page`, `page.previous`, `page.next`, `paginator`, and `site.data` (with recursive `_data` folder support)
-- Recursive YAML, JSON, CSV, and TSV `_data` loading with nested `site.data` paths and clear collision/parse error reporting, plus `_includes` and `_layouts` support with layout inheritance
-- `include_relative` for post content, limited to files under the matching `_posts` directory
-- Posts from `_posts` with draft and future-post handling
-- Permalinks for pages, collections, and posts, including built-in post styles such as `date`, `pretty`, `ordinal`, `weekdate`, and `none`
-- Post tags and categories exposed through `page.*`, `site.tags`, and `site.categories`
-- Post categories derived from directories above `_posts`, plus front matter `tag` / `tags` and `category` / `categories`
-- Draft support from `_drafts` when enabled
-- Plugin loading from `_plugins` and built-in Hyde plugins such as `seo-tag` and `titles-from-headings`
 
-### Current Gaps
+#### Templating & Rendering
+
+- Liquid rendering through my standalone **PowerLiquid** module
+- Markdown rendering using built-in logic
+- Jekyll-style Liquid global variables: `site`, `page`, `page.previous`, `page.next`, `paginator`, and `site.data`
+- `_includes` and `_layouts` with layout inheritance
+- `include_relative` for post content (limited to `_posts` directory)
+
+#### Content Management
+
+- Posts from `_posts` with draft and future-post handling
+- Draft support from `_drafts`, when enabled
+- Permalinks for pages, collections, and posts (`date`, `pretty`, `ordinal`, `weekdate`, `none`)
+- Post tags and categories via front matter and directory structure
+
+#### Data & Extensibility
+
+- Recursive YAML, JSON, CSV, and TSV `_data` loading with nested paths
+- Clear collision and parse error reporting
+- Plugin loading from `_plugins` with these included:
+  - seo-tag
+  - titles-from-headings
+
+### Under Consideration
 
 - Sass conversion
 - Themes
 - Syntax highlighting
-- lack of many Plugins,like [these](https://pages.github.com/versions.json) used by GitHub Pages
+- Plugins: sitemap, relative-links, optional-front-matter, gallery-generator, redirect-from, responsive-image, remote-theme, minifier, github-metadata, readme-index
+
+### Deliberate NON-goals
+
+- `Serve` command, file watching, auto-regeneration
+- Ruby plugins including Gem-based themes
+- incremental regeneration
+- CoffeeScript conversion
+- TOML config files
 
 ## Quick Start
 
