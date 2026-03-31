@@ -4,7 +4,7 @@ All notable changes to Hyde will be documented in this file.
 
 The format is loosely based on Keep a Changelog, but entries are kept short and practical for this project.
 
-## [0.4.15] - 2026-03-31
+## [0.5.0] - 2026-03-31
 
 ### Added
 
