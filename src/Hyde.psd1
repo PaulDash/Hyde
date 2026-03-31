@@ -44,7 +44,9 @@
         'Private\HydeTypes.ps1',
         'Plugins\seo-tag.ps1',
         'Plugins\titles-from-headings.ps1',
-        'Plugins\libsass-converter.ps1'
+        'Plugins\libsass-converter.ps1',
+        'en-US\Hyde-help.xml',
+        'en-US\Hyde-Plugin-Authoring-help.xml'
     )
 
         PrivateData = @{

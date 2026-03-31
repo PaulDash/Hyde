@@ -1,3 +1,59 @@
+<#
+.SYNOPSIS
+Removes generated Hyde output and cache artifacts.
+
+.DESCRIPTION
+Clear-StaticSite removes generated content for a Hyde site, including the destination
+folder and common build artifact paths used by Hyde/Jekyll-compatible workflows.
+
+The command initializes a normal Hyde build context so destination resolution follows
+the same rules as build commands (site config, source location, and optional override).
+
+Safety checks prevent destructive cleanup scenarios such as deleting drive roots,
+site source roots, or parent paths of the source tree.
+
+.PARAMETER SourcePath
+Optional site source path used to resolve the site configuration and configured destination.
+When omitted, Hyde uses its default source discovery behavior.
+
+.PARAMETER Destination
+Optional destination override. When provided, it takes precedence over destination values
+from site configuration.
+
+.PARAMETER Quiet
+Suppresses informational output and emits only warnings/errors unless verbose output is enabled.
+
+.PARAMETER ScriptPath
+Internal/back-compat parameter for wrapper invocation. Not intended for normal use.
+
+.PARAMETER ModuleRoot
+Internal override for Hyde module root resolution. Not intended for normal use.
+
+.PARAMETER Version
+Internal override for reported Hyde version. Not intended for normal use.
+
+.EXAMPLE
+Clear-StaticSite -SourcePath .\site
+
+Resolves site config from .\site and removes generated output and cache targets.
+
+.EXAMPLE
+Clear-StaticSite -SourcePath .\site -Destination .\site\_dist
+
+Uses .\site for config lookup but removes generated output from the explicit destination override.
+
+.EXAMPLE
+Clear-StaticSite -SourcePath .\site -WhatIf
+
+Shows what clean targets would be removed without deleting anything.
+
+.OUTPUTS
+System.Object[]
+Returns the clean target descriptors evaluated and processed by the command.
+
+.NOTES
+Supports ShouldProcess, so -WhatIf and -Confirm are honored.
+#>
 function Clear-StaticSite {
     [CmdletBinding(SupportsShouldProcess = $true)]
     param(

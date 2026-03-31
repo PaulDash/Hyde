@@ -1,3 +1,55 @@
+<#
+.SYNOPSIS
+Validates Hyde site health before build.
+
+.DESCRIPTION
+Test-StaticSite runs Hyde "doctor" validation checks against the current site context.
+
+The command initializes context, discovers documents/static files, and runs content
+validation checks to report issues before a publish run. Results include a health flag
+and issue list that can be used in CI or local preflight checks.
+
+.PARAMETER Source
+Optional source path for the site under test.
+
+.PARAMETER Destination
+Optional destination override used while preparing test context.
+
+.PARAMETER Environment
+Environment name used for context initialization. Defaults to `development`.
+
+.PARAMETER Quiet
+Suppresses informational output and emits only warnings/errors unless verbose output is enabled.
+
+.PARAMETER ScriptPath
+Internal/back-compat parameter for wrapper invocation. Not intended for normal use.
+
+.PARAMETER ModuleRoot
+Internal override for Hyde module root resolution. Not intended for normal use.
+
+.PARAMETER Version
+Internal override for reported Hyde version. Not intended for normal use.
+
+.EXAMPLE
+Test-StaticSite -Source .\site
+
+Runs doctor checks for the site rooted at .\site.
+
+.EXAMPLE
+Test-StaticSite -Source .\site -Environment production -Verbose
+
+Runs validation with production context and detailed trace output.
+
+.EXAMPLE
+$report = Test-StaticSite -Source .\site -Quiet
+if (-not $report.Healthy) { $report.Issues }
+
+Captures validation report for scripting/automation.
+
+.OUTPUTS
+System.Collections.Hashtable
+Returns a report with `Healthy` and `Issues` entries.
+#>
 function Test-StaticSite {
     [CmdletBinding()]
     param(

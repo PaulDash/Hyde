@@ -1,3 +1,47 @@
+<#
+.SYNOPSIS
+Creates a new Hyde site scaffold.
+
+.DESCRIPTION
+New-StaticSite creates a new static site folder with Hyde-compatible structure and starter files.
+
+By default, the command creates a richer starter scaffold that includes a default layout,
+starter pages, and a basic stylesheet. Use -Blank to create a minimal scaffold.
+
+If the destination already exists and is non-empty, the command fails to avoid overwriting
+existing content.
+
+.PARAMETER Destination
+Required destination path where the new site scaffold will be created.
+
+.PARAMETER Blank
+Creates a minimal scaffold instead of the default starter layout/content files.
+
+.PARAMETER Quiet
+Suppresses informational output and emits only warnings/errors unless verbose output is enabled.
+
+.EXAMPLE
+New-StaticSite -Destination .\mysite
+
+Creates a new Hyde site with starter layouts, pages, and CSS.
+
+.EXAMPLE
+New-StaticSite -Destination .\mysite -Blank
+
+Creates a minimal Hyde scaffold with only essential files.
+
+.EXAMPLE
+New-StaticSite -Destination .\mysite -WhatIf
+
+Shows the scaffold creation operations without writing files.
+
+.OUTPUTS
+System.IO.DirectoryInfo
+Returns the destination directory object.
+
+.NOTES
+Supports ShouldProcess, so -WhatIf and -Confirm are honored.
+#>
 function New-StaticSite {
     [CmdletBinding(SupportsShouldProcess = $true)]
     [OutputType([System.IO.DirectoryInfo])]

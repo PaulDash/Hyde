@@ -4,9 +4,9 @@
 param(
     [string]$ModuleManifestPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'src/Hyde.psd1'),
 
-    [string]$MarkdownOutputPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'docs/help'),
+    [string]$MarkdownOutputPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'docs'),
 
-    [string]$ExternalHelpOutputPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'src/en-US'),
+    [string]$ExternalHelpOutputPath = (Join-Path -Path (Split-Path -Parent $PSScriptRoot) -ChildPath 'en-US'),
 
     [switch]$Force
 )
@@ -14,7 +14,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-Import-Module PlatyPS -MinimumVersion 0.14.2 -ErrorAction Stop
+Import-Module PlatyPS -ErrorAction Stop
 
 $resolvedManifestPath = [System.IO.Path]::GetFullPath($ModuleManifestPath)
 $resolvedMarkdownOutputPath = [System.IO.Path]::GetFullPath($MarkdownOutputPath)
@@ -57,40 +57,61 @@ function New-HydePluginAuthoringAboutTopic {
         return
     }
 
+    $aboutPath = Join-Path -Path $OutputFolder -ChildPath 'about_Hyde_Plugin_Authoring.md'
+
+    if (Test-Path -LiteralPath $aboutPath -PathType Leaf) {
+        Write-Warning "An about topic markdown file already exists at '$aboutPath'. It will be overwritten."
+        Remove-Item -LiteralPath $aboutPath -Force
+    }
+
+    # Create a correctly structured about topic skeleton using PlatyPS.
+    New-MarkdownAboutHelp -AboutName 'Hyde_Plugin_Authoring' -OutputFolder $OutputFolder | Out-Null
+
+    # Load the source content and normalise line endings.
     $raw = Get-Content -LiteralPath $SourcePath -Raw
     $raw = ($raw -replace "`r`n", "`n") -replace "`r", "`n"
 
-    # Remove the document title heading; the about topic provides its own canonical heading.
-    $body = [System.Text.RegularExpressions.Regex]::Replace($raw, '^#\s+Plugin\s+Authoring\s*\n+', '', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
-    $body = $body.Trim()
+    # Strip the document title heading; New-MarkdownAboutHelp provides the canonical heading.
+    $body = [System.Text.RegularExpressions.Regex]::Replace(
+        $raw,
+        '^#\s+Plugin\s+Authoring\s*\n+',
+        '',
+        [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+    ).Trim()
 
-    $aboutPath = Join-Path -Path $OutputFolder -ChildPath 'about_Hyde_Plugin_Authoring.md'
-    $aboutContent = @"
-# about_Hyde_Plugin_Authoring
+    # Fill in the placeholder sections PlatyPS left in the skeleton.
+    $skeleton = Get-Content -LiteralPath $aboutPath -Raw
+    $skeleton = ($skeleton -replace "`r`n", "`n") -replace "`r", "`n"
+    $skeleton = $skeleton -replace '\{\{[^}]*SHORT DESCRIPTION[^}]*\}\}', 'Guidance for authoring Hyde plugins.'
+    $skeleton = $skeleton -replace '\{\{[^}]*LONG DESCRIPTION[^}]*\}\}', $body
 
-## SHORT DESCRIPTION
-Guidance for authoring Hyde plugins.
-
-## LONG DESCRIPTION
-
-$body
-"@
-
-    Set-Content -LiteralPath $aboutPath -Encoding UTF8 -Value $aboutContent
-    Write-Verbose "Generated about topic markdown at '$aboutPath'."
+    Set-Content -LiteralPath $aboutPath -Encoding UTF8 -Value $skeleton
+    Write-Verbose "Generated about topic at '$aboutPath'."
 }
 
-$proceed = Read-Host -Prompt "Type [Y] if you want to regenerate markdown help from comment-based help in the module's .ps1 files. This will overwrite any existing .md files in '$resolvedMarkdownOutputPath'.`nType [N] to skip to external help generation from the existing markdown files."
+Write-Host "`nCreate about_ file" -BackgroundColor DarkBlue
+$proceed = Read-Host -Prompt "Type [Y] to generate a plugin authoring about topic from '$pluginAuthoringSourcePath' into '$resolvedMarkdownOutputPath'.`nThis will overwrite any existing about topic markdown file at '$resolvedMarkdownOutputPath\about_Hyde_Plugin_Authoring.md'.`nType [N] to skip about topic generation."
+if ($proceed -match '^[Yy]$') {
+    Write-Verbose "Generating plugin authoring about topic from '$pluginAuthoringSourcePath' into '$resolvedMarkdownOutputPath'."
+    New-HydePluginAuthoringAboutTopic -SourcePath $pluginAuthoringSourcePath -OutputFolder $resolvedMarkdownOutputPath
+} else {
+    Write-Verbose "Skipping plugin authoring about topic generation."
+}
+
+Write-Host "`nGenerate markdown help" -BackgroundColor DarkBlue
+$proceed = Read-Host -Prompt "Type [Y] to regenerate markdown help from comment-based help in the module's .ps1 files.`nType [A] if you also want to generate a BLANK!!! module description.`nThis will overwrite any existing .md files in '$resolvedMarkdownOutputPath'.`nType [N] to skip to external help generation from the existing markdown files."
 
 if ($proceed -match '^[Yy]$') {
     Write-Verbose "Regenerating markdown help from comment-based help in the module's .ps1 files into '$resolvedMarkdownOutputPath'."
-    New-MarkdownHelp -Module $moduleName -OutputFolder $resolvedMarkdownOutputPath -WithModulePage -Force -ExcludeDontShow | Out-Null
+    New-MarkdownHelp -Module $moduleName -OutputFolder $resolvedMarkdownOutputPath -Force -ExcludeDontShow | Out-Null
+} elseif ($proceed -match '^[Aa]$') {
+    Write-Verbose "Regenerating markdown help from comment-based help in the module's .ps1 files into '$resolvedMarkdownOutputPath' with a blank module description."
+    New-MarkdownHelp -Module $moduleName -OutputFolder $resolvedMarkdownOutputPath -WithModulePage -ExcludeDontShow -Force  | Out-Null
 } else {
     Write-Verbose "Skipping markdown help regeneration and proceeding to external help generation from the existing markdown files in '$resolvedMarkdownOutputPath'."
 }
 
-New-HydePluginAuthoringAboutTopic -SourcePath $pluginAuthoringSourcePath -OutputFolder $resolvedMarkdownOutputPath
-
+Write-Host "`nGenerate external help" -BackgroundColor DarkBlue
 $proceed = Read-Host -Prompt "Type [Y] to continue with external help generation from the markdown files.`nThis will overwrite any existing .xml help files in '$resolvedExternalHelpOutputPath'."
 
 if ($proceed -match '^[Yy]$') {

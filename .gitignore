@@ -4,14 +4,15 @@ _site/
 .jekyll-cache/
 .sass-cache/
 
-# Local VS Code state
+# Local VS Code files
 .vscode/
-
-# Local workspace files
 *.code-workspace
 
 # Raw design assets
 res/*.psd
+
+# Rendered help files
+en-US/
 
 # OS-generated files
 Thumbs.db
