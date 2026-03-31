@@ -140,7 +140,7 @@ if ($Install) {
         Copy-Item -LiteralPath $SourcePath -Destination $TargetPath -Force
     }
 
-    function Download-LibSassNuGetPackage {
+    function downloadLibSassNuGetPackage {
         param(
             [Parameter(Mandatory = $true)]
             [string]$PackageId,
@@ -216,7 +216,7 @@ if ($Install) {
         $managedTargetDirectory = Split-Path -Path $managedTargetPath -Parent
         foreach ($dependencySpec in $dependencySpecs) {
             try {
-                $dependencyExtractRoot = Download-LibSassNuGetPackage -PackageId $dependencySpec.Id -PackageVersion $dependencySpec.Version -DownloadRoot $tempRoot
+                $dependencyExtractRoot = downloadLibSassNuGetPackage -PackageId $dependencySpec.Id -PackageVersion $dependencySpec.Version -DownloadRoot $tempRoot
 
                 $dependencyCandidates = @(
                     (Join-Path -Path $dependencyExtractRoot -ChildPath 'lib\netstandard2.0'),
@@ -260,7 +260,7 @@ if ($Install) {
 
         foreach ($nativePackageSpec in $nativePackageSpecs) {
             try {
-                $nativeExtractRoot = Download-LibSassNuGetPackage -PackageId $nativePackageSpec.Id -PackageVersion $nativePackageSpec.Version -DownloadRoot $tempRoot
+                $nativeExtractRoot = downloadLibSassNuGetPackage -PackageId $nativePackageSpec.Id -PackageVersion $nativePackageSpec.Version -DownloadRoot $tempRoot
 
                 $nativeCandidates = @(
                     (Join-Path -Path $nativeExtractRoot -ChildPath ("runtimes\\{0}\\native" -f $nativePackageSpec.Runtime)),
