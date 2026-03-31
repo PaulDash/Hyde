@@ -129,7 +129,10 @@ author:
 
         $pageOutput | Should -Match '<meta name="author" content="Page Author">'
         $pageOutput | Should -Match '<meta property="og:locale" content="fr_FR">'
-        $pageOutput | Should -Match '"author":\{"@type":"Person","name":"Page Author"\}'
+        # JSON serialization can reorder object keys, so assert on the author payload content
+        # rather than a fixed key order inside the JSON-LD snippet.
+        $pageOutput | Should -Match '"author":\{[^}]*"name":"Page Author"[^}]*\}'
+        $pageOutput | Should -Match '"author":\{[^}]*"@type":"Person"[^}]*\}'
     }
 
     It 'uses page image and article type for posts' {
