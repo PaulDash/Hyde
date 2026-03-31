@@ -18,16 +18,23 @@ Describe 'Hyde libsass-converter behavior' {
         $projectRoot = Split-Path -Parent $PSScriptRoot
         $isolatedRoot = Join-Path -Path $TestDrive -ChildPath 'isolated-hyde'
         $isolatedSrcRoot = Join-Path -Path $isolatedRoot -ChildPath 'src'
+        $isolatedManifestPath = Join-Path -Path $isolatedSrcRoot -ChildPath 'Hyde.psd1'
+
+        # Create the parent folder first so Copy-Item always produces isolated-hyde\src rather than depending on destination semantics.
+        [void](New-Item -Path $isolatedRoot -ItemType Directory -Force)
 
         # Copy the module source into an isolated folder so we can force plugin dependency absence.
         Copy-Item -LiteralPath (Join-Path -Path $projectRoot -ChildPath 'src') -Destination $isolatedRoot -Recurse -Force
+
+        # Fail early with a useful assertion if the isolated module copy did not land where the test expects it.
+        Test-Path -LiteralPath $isolatedManifestPath -PathType Leaf | Should -BeTrue
 
         $bundlePath = Join-Path -Path $isolatedSrcRoot -ChildPath 'Plugins\libsass-converter'
         if (Test-Path -LiteralPath $bundlePath -PathType Container) {
             Remove-Item -LiteralPath $bundlePath -Recurse -Force
         }
 
-        Import-Module (Join-Path -Path $isolatedSrcRoot -ChildPath 'Hyde.psd1') -Force
+        Import-Module $isolatedManifestPath -Force
 
         $siteRoot = New-TestSiteDirectory -Name 'libsass-missing-dll-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'libsass-missing-dll-output'
@@ -52,8 +59,21 @@ $color: #333;
 body { color: $color; }
 '@
 
-        {
-            Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
-        } | Should -Throw -ExpectedMessage "*requires bundled LibSassHost DLLs*Get-LibSassHost.ps1*"
+        $runnerScriptPath = Join-Path -Path $TestDrive -ChildPath 'invoke-libsass-missing-dll.ps1'
+        $runnerScript = @(
+            "`$ErrorActionPreference = 'Stop'"
+            "Import-Module '$isolatedManifestPath' -Force"
+            "Publish-StaticSite -Source '$siteRoot' -Destination '$destinationRoot' -Environment development | Out-Null"
+        ) -join [Environment]::NewLine
+        Set-Content -LiteralPath $runnerScriptPath -Encoding UTF8 -Value $runnerScript
+
+        # Use a fresh PowerShell process so previously loaded LibSass assemblies in the current session do not mask the missing-bundle failure path.
+        $powerShellExecutable = (Get-Process -Id $PID).Path
+        $commandOutput = & $powerShellExecutable -NoProfile -File $runnerScriptPath 2>&1 | Out-String
+        $exitCode = $LASTEXITCODE
+
+        $exitCode | Should -Not -Be 0
+        $commandOutput | Should -Match 'requires .*LibSassHost.*Run: .*Get-LibSassHost\.ps1'
+        $commandOutput | Should -Match 'Get-LibSassHost.ps1'
     }
 }
