@@ -12,6 +12,7 @@ $configuration.Run.Path = @(
     (Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.Manifest.Tests.ps1')
     (Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.Config.Tests.ps1')
     (Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.Script.Tests.ps1')
+    (Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.Theme.Tests.ps1')
     (Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.Liquid.Tests.ps1')
     (Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.Doctor.Tests.ps1')
     (Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.Build.Tests.ps1')

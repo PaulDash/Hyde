@@ -4,6 +4,13 @@ All notable changes to Hyde will be documented in this file.
 
 The format is loosely based on Keep a Changelog, but entries are kept short and practical for this project.
 
+## [0.5.1] - 2026-03-31
+
+### Added
+
+- Added `Hyde New-Theme` and `New-StaticTheme` for starter theme scaffolding.
+- Added theme scaffold documentation covering previewable and portable layouts.
+
 ## [0.5.0] - 2026-03-31
 
 ### Added

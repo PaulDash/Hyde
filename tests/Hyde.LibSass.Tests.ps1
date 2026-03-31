@@ -22,7 +22,7 @@ Describe 'Hyde libsass-converter behavior' {
         # Copy the module source into an isolated folder so we can force plugin dependency absence.
         Copy-Item -LiteralPath (Join-Path -Path $projectRoot -ChildPath 'src') -Destination $isolatedRoot -Recurse -Force
 
-        $bundlePath = Join-Path -Path $isolatedSrcRoot -ChildPath 'Plugins\libsass-converter\lib'
+        $bundlePath = Join-Path -Path $isolatedSrcRoot -ChildPath 'Plugins\libsass-converter'
         if (Test-Path -LiteralPath $bundlePath -PathType Container) {
             Remove-Item -LiteralPath $bundlePath -Recurse -Force
         }

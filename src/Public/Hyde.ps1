@@ -6,6 +6,7 @@ Hyde is a PowerShell static site generator inspired by Jekyll. Created as a fun 
 
 The current implementation supports:
 - `New`
+- `New-Theme`
 - loading Hyde defaults from `globalConfig.yaml`
 - loading site settings from `_config.yml`
 - loading site and built-in plugins
@@ -25,7 +26,7 @@ The current implementation supports:
 We may never support:
 - all plugins
 - syntax highlighting
-- new-theme command
+- theme installation workflows
 
 Due to the nature of PowerShell, there is no intention to support:
 - serve command
@@ -35,6 +36,7 @@ Chooses which top-level Hyde action to run.
 
 Available options are:
 - `New`
+- `New-Theme`
 - `Build`
 - `Clean`
 - `Doctor`
@@ -47,16 +49,19 @@ Uses the given site source directory only to read configuration for `Clean`.
 Supported by: `Clean`
 .PARAMETER Destination
 Overrides the configured destination directory for generated output.
-Supported by: `Build`, `Clean`, `New`
+Supported by: `Build`, `Clean`, `New`, `New-Theme`
 .PARAMETER Blank
 Creates a minimal new-site scaffold.
 Supported by: `New`
+.PARAMETER Portable
+Creates a reusable theme package scaffold without preview content pages.
+Supported by: `New-Theme`
 .PARAMETER Environment
 Sets the build environment value exposed internally during the build.
 Supported by: `Build`
 .PARAMETER Quiet
 Suppresses Hyde information messages during execution.
-Supported by: `Build`, `Clean`, `Doctor`
+Supported by: `Build`, `Clean`, `Doctor`, `New`, `New-Theme`
 .EXAMPLE
 Hyde Build
 
@@ -82,6 +87,14 @@ Hyde New mysite -Blank
 
 Creates a minimal new Hyde site scaffold at `.\mysite`.
 .EXAMPLE
+Hyde New-Theme mytheme
+
+Creates a previewable Hyde theme scaffold at `./mytheme`.
+.EXAMPLE
+Hyde New-Theme mytheme -Portable
+
+Creates a reusable Hyde theme scaffold at `./mytheme` without preview content pages.
+.EXAMPLE
 Hyde Doctor
 
 Checks the site for common problems such as invalid front matter, missing layouts, and output-path conflicts.
@@ -95,7 +108,7 @@ function Hyde {
     param(
         # Chooses the top-level Hyde action to run from the imported module.
         [Parameter(Position = 0)]
-        [ValidateSet('New', 'Build', 'Clean', 'Doctor', 'Help')]
+        [ValidateSet('New', 'New-Theme', 'Build', 'Clean', 'Doctor', 'Help')]
         [string]$Command
     )
 
@@ -132,6 +145,12 @@ function Hyde {
                 $dynamicParameters.Add('Destination', (newHydeDynamicParameter -Name 'Destination' -Type ([string]) -Aliases @('Path')))
                 $dynamicParameters['Destination'].Attributes[0].Position = 1
                 $dynamicParameters.Add('Blank', (newHydeDynamicParameter -Name 'Blank' -Type ([switch])))
+                $dynamicParameters.Add('Quiet', (newHydeDynamicParameter -Name 'Quiet' -Type ([switch])))
+            }
+            'New-Theme' {
+                $dynamicParameters.Add('Destination', (newHydeDynamicParameter -Name 'Destination' -Type ([string]) -Aliases @('Path')))
+                $dynamicParameters['Destination'].Attributes[0].Position = 1
+                $dynamicParameters.Add('Portable', (newHydeDynamicParameter -Name 'Portable' -Type ([switch])))
                 $dynamicParameters.Add('Quiet', (newHydeDynamicParameter -Name 'Quiet' -Type ([switch])))
             }
             'Build' {
@@ -182,6 +201,26 @@ function Hyde {
                 }
 
                 New-StaticSite @commandParameters
+            }
+            'New-Theme' {
+                if (-not $PSBoundParameters.ContainsKey('Destination') -or [string]::IsNullOrWhiteSpace([string]$PSBoundParameters['Destination'])) {
+                    throw "The New-Theme command requires a destination path."
+                }
+
+                $commandParameters = @{
+                    Destination = [string]$PSBoundParameters['Destination']
+                    Quiet       = [bool]($PSBoundParameters.ContainsKey('Quiet') -and $PSBoundParameters['Quiet'])
+                }
+
+                if ($PSBoundParameters.ContainsKey('Portable')) {
+                    $commandParameters['Portable'] = [bool]$PSBoundParameters['Portable']
+                }
+
+                if ($VerbosePreference -eq 'Continue') {
+                    $commandParameters['Verbose'] = $true
+                }
+
+                New-StaticTheme @commandParameters
             }
             'Build' {
                 $commandParameters = @{
@@ -241,7 +280,7 @@ function Hyde {
                 Get-Help -Name Hyde
             }
             default {
-                throw "Choose one of: Build, New, Clean, Doctor, Help. Use 'Help' to see command documentation."
+                throw "Choose one of: Build, New, New-Theme, Clean, Doctor, Help. Use 'Help' to see command documentation."
             }
         }
     }

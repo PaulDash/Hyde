@@ -1,6 +1,6 @@
 @{
     RootModule        = 'Hyde.psm1'
-    ModuleVersion     = '0.5.0'
+    ModuleVersion     = '0.5.1'
     GUID              = '42b2840d-8661-47ad-b051-9c3d868fc3d5'
     Author            = 'Paul Dash'
     CompanyName       = 'Paul Dash'
@@ -11,6 +11,7 @@
     FunctionsToExport = @(
         'Hyde',
         'New-StaticSite',
+        'New-StaticTheme',
         'Publish-StaticSite',
         'Clear-StaticSite',
         'Test-StaticSite'
@@ -28,6 +29,7 @@
         'globalConfig.yaml',
         'Public\Hyde.ps1',
         'Public\New-StaticSite.ps1',
+        'Public\New-StaticTheme.ps1',
         'Public\Publish-StaticSite.ps1',
         'Public\Clear-StaticSite.ps1',
         'Public\Test-StaticSite.ps1',
@@ -60,7 +62,11 @@
 - Liquid rendering through the standalone `PowerLiquid` module
 - Markdown rendering using built-in logic
 
-# 0.4.15
+# 0.5.1
+
+- Added `Hyde New-Theme` and `New-StaticTheme` for starter theme scaffolding.
+
+# 0.5.0
 
 
 '

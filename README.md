@@ -20,6 +20,7 @@ Hyde is usable today, but it is not trying to become a complete Jekyll clone.
 ### Core Commands
 
 - Site scaffolding with `Hyde New`
+- Theme scaffolding with `Hyde New-Theme`
 - Site builds with `Hyde Build`
 - Generated-file cleanup with `Hyde Clean`
 - Site validation with `Hyde Doctor`
@@ -61,7 +62,6 @@ All functionality is also exposed as PowerShell-friendly Verb-Noun syntax!
 
 ### Under Consideration
 
-- Core command `Hyde New-Theme`
 - Themes
 - Syntax highlighting
 - Plugins: sitemap, relative-links, optional-front-matter, gallery-generator, redirect-from, responsive-image, remote-theme, minifier, github-metadata, readme-index
@@ -90,6 +90,20 @@ Create a new site with the cmdlet directly:
 ```powershell
 Import-Module .\src\Hyde.psd1
 New-StaticSite -Destination .\mysite
+```
+
+Create a previewable theme scaffold:
+
+```powershell
+Import-Module .\src\Hyde.psd1
+Hyde New-Theme .\mytheme
+```
+
+Create a portable theme scaffold with the cmdlet directly:
+
+```powershell
+Import-Module .\src\Hyde.psd1
+New-StaticTheme -Destination .\mytheme -Portable
 ```
 
 Build a site:
@@ -167,6 +181,8 @@ See [docs/about_Hyde_libsass_converter.md](docs/about_Hyde_libsass_converter.md)
 ## Plugin Authoring
 
 Plugin authoring guidance lives in [docs/PluginAuthoring.md](docs/PluginAuthoring.md).
+
+Theme scaffold guidance lives in [docs/about_Hyde_theme_scaffold.md](docs/about_Hyde_theme_scaffold.md).
 
 ## Testing
 
