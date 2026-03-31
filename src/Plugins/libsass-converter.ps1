@@ -400,6 +400,7 @@ $null = $Context
                             [void][System.Reflection.Assembly]::LoadFrom($dependencyDll.FullName)
                         } catch {
                             # Ignore optional dependency load failures and let compiler load surface hard requirements.
+                            Write-Verbose ("Could not load dependency assembly '{0}'. Trying in a different context. {1}" -f $dependencyDll.FullName, $_.Exception.Message)
                         }
                     }
 
