@@ -4,6 +4,46 @@ All notable changes to Hyde will be documented in this file.
 
 The format is loosely based on Keep a Changelog, but entries are kept short and practical for this project.
 
+## [0.6.7] - 2026-03-31
+
+### Added
+
+- Added `tools/generateHelp.ps1` to build Hyde markdown help and external help XML output.
+- Added generation of `about_Hyde_Plugin_Authoring` from `src/Plugins/PluginAuthoring.md` during help build flow.
+
+### Changed
+
+- Updated `tools/Invoke-HydeTests.ps1` to discover all `*.Tests.ps1` files dynamically from `/tests`.
+- Updated `ReleaseNotes` in `src/Hyde.psd1` to align with recent 0.6.x changes.
+
+### Fixed
+
+- Fixed BPA `PSUseOutputTypeCorrectly` informational findings in markdown/discovery internals using explicit output typing.
+
+## [0.6.6] - 2026-03-31
+
+### Added
+
+- Added destination-root write containment checks for document and static output paths.
+- Added build tests covering permalink and plugin-derived output path traversal protections.
+
+### Changed
+
+- Added installer warnings and interactive confirmation for `libsass-converter -Install` network downloads.
+- Added security documentation updates in README/CONTRIBUTING to describe trust boundaries and safety behavior.
+
+## [0.6.5] - 2026-03-31
+
+### Added
+
+- Added markdown support for abbreviations, subscript, superscript, definition lists, and table captions.
+- Added markdown integration tests for new inline and block syntax coverage.
+
+### Changed
+
+- Expanded markdown feature documentation and under-consideration notes.
+- Updated markdown parser internals to keep output deterministic while supporting the expanded syntax surface.
+
 ## [0.6.2] - 2026-03-31
 
 ### Added
