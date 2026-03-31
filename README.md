@@ -59,6 +59,7 @@ All functionality is also exposed as PowerShell-friendly Verb-Noun syntax!
   - seo-tag
   - titles-from-headings
   - libsass-converter (requires bundled LibSassHost DLLs)
+- Plugin setup now lives in each plugin script via `-Install`.
 
 ### Under Consideration
 
@@ -172,6 +173,14 @@ defaults:
 ## Plugin Authoring
 
 Plugin authoring guidance lives in [docs/PluginAuthoring.md](docs/PluginAuthoring.md).
+
+For built-in plugins, run installation/setup directly from the plugin script:
+
+```powershell
+.\src\Plugins\seo-tag.ps1 -Install
+.\src\Plugins\titles-from-headings.ps1 -Install
+.\src\Plugins\libsass-converter.ps1 -Install
+```
 
 Theme scaffold guidance lives in [docs/about_Hyde_theme_scaffold.md](docs/about_Hyde_theme_scaffold.md).
 

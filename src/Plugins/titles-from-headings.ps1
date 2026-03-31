@@ -1,4 +1,40 @@
-param($Context)
+<#
+.SYNOPSIS
+Built-in Hyde plugin that fills missing titles from Markdown headings.
+
+.DESCRIPTION
+`titles-from-headings` assigns a semantic page title from the first Markdown H1
+when front matter does not provide one.
+
+This plugin has no external installation requirements.
+
+.PARAMETER Context
+Plugin execution context supplied by Hyde.
+
+.PARAMETER Install
+Runs plugin installation flow.
+
+For this plugin, installation is not required. The command returns `$true`.
+
+.EXAMPLE
+./src/Plugins/titles-from-headings.ps1 -Install
+
+Returns `True` because no installation is needed.
+#>
+[CmdletBinding()]
+param(
+    $Context,
+
+    [switch]$Install
+)
+
+if ($Install) {
+    if ($VerbosePreference -eq 'Continue' -or $VerbosePreference -eq 'Inquire') {
+        Write-Verbose "Plugin 'titles-from-headings' does not require installation."
+    }
+
+    return $true
+}
 
 # This built-in plugin fills missing page titles from the first Markdown H1 heading.
 $null = $Context

@@ -4,6 +4,18 @@ All notable changes to Hyde will be documented in this file.
 
 The format is loosely based on Keep a Changelog, but entries are kept short and practical for this project.
 
+## [0.5.3] - 2026-03-31
+
+### Added
+
+- Added `-Install` switch support to built-in plugin scripts so plugin setup is self-contained.
+- Added in-plugin installation flow for `libsass-converter` that bundles LibSassHost assets relative to the plugin script path.
+
+### Changed
+
+- Updated plugin authoring guidance to require plugin-level `-Install` behavior.
+- Updated README to document plugin-integrated installation commands.
+
 ## [0.5.1] - 2026-03-31
 
 ### Added

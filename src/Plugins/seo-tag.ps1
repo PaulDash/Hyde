@@ -1,4 +1,40 @@
-param($Context)
+<#
+.SYNOPSIS
+Built-in Hyde plugin that adds SEO metadata Liquid tag behavior.
+
+.DESCRIPTION
+`seo-tag` provides a Hyde equivalent of Jekyll SEO Tag behavior through a Liquid
+tag implementation.
+
+This plugin has no external installation requirements.
+
+.PARAMETER Context
+Plugin execution context supplied by Hyde.
+
+.PARAMETER Install
+Runs plugin installation flow.
+
+For this plugin, installation is not required. The command returns `$true`.
+
+.EXAMPLE
+./src/Plugins/seo-tag.ps1 -Install
+
+Returns `True` because no installation is needed.
+#>
+[CmdletBinding()]
+param(
+    $Context,
+
+    [switch]$Install
+)
+
+if ($Install) {
+    if ($VerbosePreference -eq 'Continue' -or $VerbosePreference -eq 'Inquire') {
+        Write-Verbose "Plugin 'seo-tag' does not require installation."
+    }
+
+    return $true
+}
 
 # This built-in plugin provides a compact Hyde equivalent of the Jekyll SEO Tag plugin.
 $null = $Context

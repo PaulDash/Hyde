@@ -15,10 +15,22 @@ Hyde loads plugins from the configured `plugins_dir`, which defaults to `_plugin
 
 A plugin should be documented with a comment-based help block near the top of the file.
 
+Every plugin should expose an `-Install` switch so installation/setup behavior is
+self-contained in the plugin script.
+
 A plugin script should return a hashtable:
 
 ```powershell
-param($Context)
+[CmdletBinding()]
+param(
+    $Context,
+    [switch]$Install
+)
+
+if ($Install) {
+    Write-Verbose "No installation is required for this plugin."
+    return $true
+}
 
 @{
     Name = 'my-plugin'
@@ -70,6 +82,17 @@ Use it to inspect:
 - the shared Liquid extension registry
 
 Most plugins will only need `$Context` for setup-time decisions. Hook handlers receive their own invocation object later.
+
+## Install Contract
+
+Hyde plugin scripts should implement an install path using `-Install`.
+
+- When a plugin has no setup dependencies, `-Install` should return `True`.
+- If `-Verbose` is supplied, `-Install` should state installation is not needed.
+- When a plugin has dependencies (for example external binaries), `-Install`
+    should fetch or prepare those dependencies from inside the plugin script.
+
+This keeps plugin setup and plugin behavior in one place.
 
 ## Hook Names
 

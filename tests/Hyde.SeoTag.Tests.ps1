@@ -16,6 +16,18 @@ Describe 'Hyde seo-tag plugin' {
         }
     }
 
+    It 'supports the plugin self-install contract as a no-op' {
+      $pluginPath = Join-Path -Path $projectRoot -ChildPath 'src\Plugins\seo-tag.ps1'
+
+      # seo-tag has no external dependencies, so -Install should succeed immediately.
+      $installResult = & $pluginPath -Install
+      $installVerboseRecords = @(& $pluginPath -Install -Verbose 4>&1)
+      $verboseMessages = @($installVerboseRecords | Where-Object { $_ -is [System.Management.Automation.VerboseRecord] } | ForEach-Object { $_.Message })
+
+      $installResult | Should -BeTrue
+      $verboseMessages | Should -Contain "Plugin 'seo-tag' does not require installation."
+    }
+
     It 'loads the built-in seo plugin and renders title description canonical and social tags from site and page metadata' {
         $siteRoot = New-TestSiteDirectory -Name 'plugin-seo-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'plugin-seo-output'

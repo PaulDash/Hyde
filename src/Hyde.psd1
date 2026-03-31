@@ -1,6 +1,6 @@
 @{
     RootModule        = 'Hyde.psm1'
-    ModuleVersion     = '0.5.2'
+    ModuleVersion     = '0.5.3'
     GUID              = '42b2840d-8661-47ad-b051-9c3d868fc3d5'
     Author            = 'Paul Dash'
     CompanyName       = 'Paul Dash'
@@ -61,6 +61,10 @@
 - YAML Front Matter parsing and integration with content objects
 - Liquid rendering through the standalone `PowerLiquid` module
 - Markdown rendering using built-in logic
+
+# 0.5.3
+
+- Added built-in plugin `-Install` support, including self-contained LibSassHost setup in `libsass-converter`.
 
 # 0.5.1
 

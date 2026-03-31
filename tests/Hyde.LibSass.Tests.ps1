@@ -14,6 +14,16 @@ Describe 'Hyde libsass-converter behavior' {
         }
     }
 
+    It 'declares install parameters for self-contained plugin setup' {
+        $pluginPath = Join-Path -Path $projectRoot -ChildPath 'src\Plugins\libsass-converter.ps1'
+        $pluginCommand = Get-Command -Name $pluginPath
+
+        # Keep this test lightweight: validate install-surface shape without performing network installation.
+        $pluginCommand.Parameters.Keys | Should -Contain 'Install'
+        $pluginCommand.Parameters.Keys | Should -Contain 'Version'
+        $pluginCommand.Parameters.Keys | Should -Contain 'Force'
+    }
+
     It 'fails with actionable guidance when libsass DLLs are missing' {
         $projectRoot = Split-Path -Parent $PSScriptRoot
         $isolatedRoot = Join-Path -Path $TestDrive -ChildPath 'isolated-hyde'
