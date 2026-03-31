@@ -6,7 +6,7 @@ PowerShell static site generator. The ugly Mr. Hyde to the popular [Jekyll](http
 
 Hyde started as a teaching and personal-site project, but it now has enough functionality to build real static sites with pages, collections, posts, layouts, Liquid templates, plugins, and cleaning/validation workflows.
 
-> No infringment is meant on the wonderful project that is Jekyll and on the great team that develops and supports it.
+> No infringment is meant on the wonderful project that is Jekyll and on its great team.
 
 ## Dependencies
 
@@ -15,8 +15,6 @@ Hyde started as a teaching and personal-site project, but it now has enough func
 - some plugins MAY have dependencies of their own
 
 ## Status
-
-Hyde is usable today, but it is not trying to become a complete Jekyll clone.
 
 ### Core Commands
 
@@ -204,16 +202,6 @@ mytheme/
 
 When a path exists in both site and theme, the site version wins for layouts, includes, and static assets.
 
-## Plugin Authoring
-
-Plugin authoring guidance lives in [docs/PluginAuthoring.md](docs/PluginAuthoring.md).
-
-For built-in plugins that have dependencies to install, run installation/setup directly from the plugin script:
-
-```powershell
-.\src\Plugins\libsass-converter.ps1 -Install
-```
-
 ## Markdown Support
 
 - ATX headings (`#` through `######`) and Setext headings (`===` / `---`) with deterministic slug IDs
@@ -232,10 +220,6 @@ For built-in plugins that have dependencies to install, run installation/setup d
 - Footnotes with back-links
 - Abbreviation definitions (`*[ABBR]: expansion`) with automatic `<abbr>` wrapping
 - Raw HTML passthrough
-
-## Testing
-
-Pester tests are available under `/tests`.
 
 ## Changelog
 
