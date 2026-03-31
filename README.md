@@ -33,6 +33,7 @@ All functionality is also exposed as PowerShell-friendly Verb-Noun syntax!
 #### Configuration & Content Discovery
 
 - `_config.yml` loading and merge with built-in defaults
+- File-based theme support through `theme_dir` with fallback discovery for layouts, includes, and static assets
 - Pages, posts, collections, and static file discovery
 - YAML Front Matter with defaults
 
@@ -42,6 +43,7 @@ All functionality is also exposed as PowerShell-friendly Verb-Noun syntax!
 - Markdown rendering using built-in logic
 - Jekyll-style Liquid global variables: `site`, `page`, `page.previous`, `page.next`, `paginator`, and `site.data`
 - `_includes` and `_layouts` with layout inheritance
+- Theme include/layout fallback with site-first override precedence
 - `include_relative` for post content (limited to `_posts` directory)
 - Optional Sass conversion for `.scss` and `.sass` files through the `libsass-converter` plugin
 
@@ -61,6 +63,13 @@ All functionality is also exposed as PowerShell-friendly Verb-Noun syntax!
   - titles-from-headings
   - libsass-converter (requires bundled LibSassHost DLLs)
 - Plugin setup now lives in each plugin script via `-Install`.
+
+#### Themes
+
+- Theme scaffolding with `Hyde New-Theme` / `New-StaticSiteTheme`
+- Build-time file-based themes via `theme_dir` in `_config.yml`
+- Theme `_config.yml` values act as defaults that site `_config.yml` can override
+- Theme `_sass` is added as an import path for the `libsass-converter` plugin when present
 
 ### Under Consideration
 
@@ -169,6 +178,31 @@ defaults:
     values:
       layout: default
 ```
+
+### File-Based Theme Configuration
+
+Use `theme_dir` to point at a local reusable theme folder (relative to the site root or absolute):
+
+```yaml
+title: Example Site
+theme_dir: ../mytheme
+
+# Site values override theme _config.yml values
+brand: Site Brand
+```
+
+Expected theme structure:
+
+```text
+mytheme/
+  _config.yml
+  _layouts/
+  _includes/
+  _sass/
+  assets/
+```
+
+When a path exists in both site and theme, the site version wins for layouts, includes, and static assets.
 
 ## Plugin Authoring
 

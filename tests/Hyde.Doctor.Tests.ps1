@@ -120,4 +120,62 @@ title: [unterminated
         $report.Issues.Count | Should -Be 1
         $report.Issues[0].Code | Should -Be 'InvalidFrontMatter'
     }
+
+    It 'reports invalid theme directories that provide no layouts, includes, or assets' {
+        $siteRoot = New-TestSiteDirectory -Name 'doctor-invalid-theme-site'
+        $themeRoot = New-TestSiteDirectory -Name 'doctor-invalid-theme-root'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+theme_dir: ../doctor-invalid-theme-root
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+# Hello
+'@
+
+        $report = Test-StaticSite -Source $siteRoot -Environment development
+
+        $report.Healthy | Should -BeFalse
+        ($report.Issues.Code -contains 'InvalidThemeDirectory') | Should -BeTrue
+        ($report.Issues.Code -contains 'ThemeMissingLayouts') | Should -BeTrue
+    }
+
+    It 'reports a warning when a theme has support files but no layouts directory' {
+        $siteRoot = New-TestSiteDirectory -Name 'doctor-theme-missing-layouts-site'
+        $themeRoot = New-TestSiteDirectory -Name 'doctor-theme-missing-layouts-root'
+        $themeIncludesDirectory = Join-Path -Path $themeRoot -ChildPath '_includes'
+        $siteLayoutsDirectory = Join-Path -Path $siteRoot -ChildPath '_layouts'
+
+        [void](New-Item -Path $themeIncludesDirectory -ItemType Directory -Force)
+        [void](New-Item -Path $siteLayoutsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $themeIncludesDirectory -ChildPath 'banner.html') -Encoding UTF8 -Value 'Theme Banner'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+theme_dir: ../doctor-theme-missing-layouts-root
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteLayoutsDirectory -ChildPath 'default.html') -Encoding UTF8 -Value @'
+<main>{% include banner.html %} {{ content }}</main>
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+layout: default
+---
+# Hello
+'@
+
+        $report = Test-StaticSite -Source $siteRoot -Environment development
+
+        $report.Healthy | Should -BeFalse
+        ($report.Issues.Code -contains 'ThemeMissingLayouts') | Should -BeTrue
+        ($report.Issues.Code -contains 'InvalidThemeDirectory') | Should -BeFalse
+    }
 }

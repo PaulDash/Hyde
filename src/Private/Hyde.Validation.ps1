@@ -158,17 +158,29 @@ function testHydeThemeConfiguration {
         return
     }
 
+    $layoutsDirectoryName = if ($Context.Settings.ContainsKey('layouts_dir') -and -not [string]::IsNullOrWhiteSpace([string]$Context.Settings.layouts_dir)) {
+        [string]$Context.Settings.layouts_dir
+    } else {
+        '_layouts'
+    }
+
+    $includesDirectoryName = if ($Context.Settings.ContainsKey('includes_dir') -and -not [string]::IsNullOrWhiteSpace([string]$Context.Settings.includes_dir)) {
+        [string]$Context.Settings.includes_dir
+    } else {
+        '_includes'
+    }
+
     $themeSupportPaths = @(
-        Join-Path -Path $Context.ThemePath -ChildPath $Context.Settings.layouts_dir,
-        Join-Path -Path $Context.ThemePath -ChildPath $Context.Settings.includes_dir,
-        Join-Path -Path $Context.ThemePath -ChildPath 'assets'
+        [System.IO.Path]::Combine($Context.ThemePath, $layoutsDirectoryName),
+        [System.IO.Path]::Combine($Context.ThemePath, $includesDirectoryName),
+        [System.IO.Path]::Combine($Context.ThemePath, 'assets')
     )
 
     if (-not ($themeSupportPaths | Where-Object { Test-Path -LiteralPath $_ })) {
         addHydeValidationIssue -Report $Report -Code 'InvalidThemeDirectory' -Path $Context.ThemePath -Message "Configured theme directory '$($Context.ThemePath)' does not contain layouts, includes, or assets."
     }
 
-    $themeLayoutsPath = Join-Path -Path $Context.ThemePath -ChildPath $Context.Settings.layouts_dir
+    $themeLayoutsPath = [System.IO.Path]::Combine($Context.ThemePath, $layoutsDirectoryName)
     if (-not (Test-Path -LiteralPath $themeLayoutsPath -PathType Container)) {
         addHydeValidationIssue -Report $Report -Code 'ThemeMissingLayouts' -Path $Context.ThemePath -Severity 'Warning' -Message "Theme directory '$($Context.ThemePath)' does not contain a layouts directory."
     }
