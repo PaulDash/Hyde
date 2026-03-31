@@ -59,7 +59,6 @@ All functionality is also exposed as PowerShell-friendly Verb-Noun syntax!
 
 ### Under Consideration
 
-- for Clean, handle when -Destination is root of drive
 - Sass conversion
 - Core command `Hyde New-Theme`
 - Themes

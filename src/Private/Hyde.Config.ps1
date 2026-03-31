@@ -546,6 +546,14 @@ function removeHydeGeneratedPath {
         [string]$Kind
     )
 
+    # TODO: Add safety check to prevent removing the destination if it is a parent of the source
+    #  That is also a common misconfiguration that can lead to data loss. Jekyll clean does not protect against this currently, but it would be a valuable safeguard to add in Hyde.
+
+
+
+    # TODO: Handle case of destination being a drive
+
+
     # Resolve paths first so the safety checks operate on normalized absolute paths.
     $resolvedTargetPath = [System.IO.Path]::GetFullPath($Path)
 

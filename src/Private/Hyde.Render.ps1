@@ -1264,6 +1264,11 @@ function convertHydeInlineMarkdown {
     return $encoded
 }
 
+# TODO: Handle markdown footnotes
+
+
+
+
 # Convert Markdown content to HTML.
 function convertHydeMarkdown {
     [CmdletBinding()]
