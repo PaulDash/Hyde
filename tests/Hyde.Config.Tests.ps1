@@ -6,7 +6,11 @@ Describe 'Hyde configuration and context initialization' {
         $globalConfigPath = Join-Path -Path $moduleRoot -ChildPath 'globalConfig.yaml'
 
         Import-Module $moduleManifestPath -Force
-        $hydeModule = Get-Module Hyde
+        $hydeModule = Get-Module Hyde | Where-Object { $_.ModuleBase -eq $moduleRoot } | Select-Object -Last 1
+
+        if ($null -eq $hydeModule) {
+            throw "Could not locate loaded Hyde module from '$moduleRoot'."
+        }
 
         function Invoke-InHydeModule {
             param(

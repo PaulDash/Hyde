@@ -34,8 +34,6 @@ Describe 'Hyde libsass-converter behavior' {
             Remove-Item -LiteralPath $bundlePath -Recurse -Force
         }
 
-        Import-Module $isolatedManifestPath -Force
-
         $siteRoot = New-TestSiteDirectory -Name 'libsass-missing-dll-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'libsass-missing-dll-output'
         $assetsDirectory = Join-Path -Path $siteRoot -ChildPath 'assets'

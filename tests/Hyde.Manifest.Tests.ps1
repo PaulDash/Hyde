@@ -17,7 +17,7 @@ Describe 'Hyde module manifest' {
     It 'imports and exports the expected public functions' {
         Import-Module $moduleManifestPath -Force
 
-        $module = Get-Module Hyde
+        $module = Get-Module Hyde | Where-Object { $_.ModuleBase -eq $moduleRoot } | Select-Object -Last 1
         $exportedFunctions = @($module.ExportedFunctions.Keys | Sort-Object)
 
         ($exportedFunctions -join ',') | Should -BeExactly 'Clear-StaticSite,Hyde,New-StaticSite,New-StaticTheme,Publish-StaticSite,Test-StaticSite'
