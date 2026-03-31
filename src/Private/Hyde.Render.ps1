@@ -370,7 +370,7 @@ function getHydeDocumentTerms {
         }
 
         if ($termsValue -is [System.Collections.IEnumerable] -and $termsValue -isnot [string]) {
-            return @(
+            return [string[]]@(
                 $termsValue |
                     ForEach-Object { [string]$_ } |
                     Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
@@ -379,16 +379,16 @@ function getHydeDocumentTerms {
 
         if ($termsValue -is [string]) {
             if ($SingularKeys -contains $key) {
-                return @([string]$termsValue.Trim())
+                return [string[]]@([string]$termsValue.Trim())
             }
 
-            return @($termsValue -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            return [string[]]@($termsValue -split '\s+' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
         }
 
-        return @([string]$termsValue)
+        return [string[]]@([string]$termsValue)
     }
 
-    return @()
+    return [string[]]@()
 }
 
 # Derive post categories from the directory path above _posts.
@@ -401,25 +401,25 @@ function getHydePostPathCategories {
     )
 
     if (-not (testHydePostDocument -Document $Document)) {
-        return @()
+        return [string[]]@()
     }
 
     $relativeDirectory = Split-Path -Path $Document.RelativePath -Parent
     if ([string]::IsNullOrWhiteSpace($relativeDirectory)) {
-        return @()
+        return [string[]]@()
     }
 
     $segments = @($relativeDirectory.Replace('\', '/') -split '/')
     $postsIndex = [array]::IndexOf($segments, '_posts')
     if ($postsIndex -lt 0) {
-        return @()
+        return [string[]]@()
     }
 
     if ($postsIndex -eq 0) {
-        return @()
+        return [string[]]@()
     }
 
-    return @(
+    return [string[]]@(
         $segments[0..($postsIndex - 1)] |
             Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
     )

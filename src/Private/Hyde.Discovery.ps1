@@ -265,8 +265,9 @@ function testHydePostFileName {
 }
 
 # Load supported _data files into site.data.
-function importHydeDataFiles {
+function importHydeDataFile {
     [CmdletBinding()]
+    [OutputType([System.Collections.Hashtable], [System.Object[]])]
     param(
         [Parameter(Mandatory = $true)]
         [HydeBuildContext]$Context
