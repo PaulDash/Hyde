@@ -11,7 +11,7 @@
 
 ## Plugin Authoring
 
-Plugin authoring guidance lives in [docs/PluginAuthoring.md](docs/PluginAuthoring.md).
+Plugin authoring guidance lives in [src/Plugins/PluginAuthoring.md](docs/PluginAuthoring.md) and is available as about_Hyde_Plugin_Authoring help topic.
 
 For built-in plugins that have dependencies to install, run installation/setup directly from the plugin script:
 
