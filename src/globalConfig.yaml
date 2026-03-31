@@ -29,7 +29,7 @@ unpublished         : false
 
 # Plugins
 whitelist           : []
-plugins             : []
+plugins             : [seo-tag, titles-from-headings, libsass-converter]
 
 # Conversion
 markdown            : kramdown

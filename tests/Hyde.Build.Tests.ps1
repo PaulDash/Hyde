@@ -76,6 +76,80 @@ title: About
         $context.StaticFiles.Count | Should -Be 1
     }
 
+        It 'lets plugins transform static files and cancel raw source copy' {
+                $siteRoot = New-TestSiteDirectory -Name 'plugin-static-transform-site'
+                $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'plugin-static-transform-output'
+                $assetsDirectory = Join-Path -Path $siteRoot -ChildPath 'assets'
+                $pluginsDirectory = Join-Path -Path $siteRoot -ChildPath '_plugins'
+
+                [void](New-Item -Path $assetsDirectory -ItemType Directory -Force)
+                [void](New-Item -Path $pluginsDirectory -ItemType Directory -Force)
+
+                Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+plugins:
+  - mock-static-transform
+'@
+
+                Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+# Hello
+'@
+
+                Set-Content -LiteralPath (Join-Path -Path $assetsDirectory -ChildPath 'main.scss') -Encoding UTF8 -Value @'
+$color: #333;
+body { color: $color; }
+'@
+
+                Set-Content -LiteralPath (Join-Path -Path $pluginsDirectory -ChildPath 'mock-static-transform.ps1') -Encoding UTF8 -Value @'
+param($Context)
+
+$null = $Context
+@{
+        Name = 'mock-static-transform'
+        Hooks = @{
+                ResolveStaticFileOutputPath = {
+                        param($CurrentValue, $Invocation)
+
+                        if ($Invocation.StaticFile.Extension -eq '.scss') {
+                                return ([System.IO.Path]::ChangeExtension($CurrentValue, '.css').Replace('\\', '/'))
+                        }
+
+                        return $CurrentValue
+                }
+
+                BeforeCopyStaticFile = {
+                        param($Invocation)
+
+                        if ($Invocation.StaticFile.Extension -ne '.scss') {
+                                return
+                        }
+
+                        $destinationPath = Join-Path -Path $Invocation.Context.DestinationPath -ChildPath $Invocation.StaticFile.OutputRelativePath
+                        $destinationDirectory = Split-Path -Path $destinationPath -Parent
+
+                        if (-not (Test-Path -LiteralPath $destinationDirectory -PathType Container)) {
+                                [void](New-Item -Path $destinationDirectory -ItemType Directory -Force)
+                        }
+
+                        Set-Content -LiteralPath $destinationPath -Encoding UTF8 -Value 'body { color: #333; }'
+                        $Invocation.CancelCopy = $true
+                }
+        }
+}
+'@
+
+                Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
+
+                Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'assets\main.css') | Should -BeTrue
+                Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'assets\main.scss') | Should -BeFalse
+
+                $compiledOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'assets\main.css') -Raw
+                $compiledOutput.Trim() | Should -BeExactly 'body { color: #333; }'
+        }
+
     It 'does not write pages marked published false' {
         $siteRoot = New-TestSiteDirectory -Name 'site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'output'

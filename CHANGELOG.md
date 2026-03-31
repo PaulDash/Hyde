@@ -4,6 +4,24 @@ All notable changes to Hyde will be documented in this file.
 
 The format is loosely based on Keep a Changelog, but entries are kept short and practical for this project.
 
+## [0.4.15] - 2026-03-31
+
+### Added
+
+- Added built-in `libsass-converter` plugin support for SCSS/Sass static-file transforms.
+- Added dedicated `about_Hyde_libsass_converter` documentation.
+- Added deterministic Pester coverage for missing LibSassHost DLL failure guidance.
+
+### Changed
+
+- Added static-file copy cancellation support for transform plugins via `BeforeCopyStaticFile` invocation state.
+- Expanded `tools/Get-LibSassHost.ps1` with usage guidance and inline operational comments.
+- Moved detailed libsass-converter setup content out of README into dedicated docs.
+
+### Fixed
+
+- Fixed plugin/value-hook usage examples to match Hyde's value-hook signature contract.
+
 ## [0.4.14] - 2026-03-30
 
 ### Added

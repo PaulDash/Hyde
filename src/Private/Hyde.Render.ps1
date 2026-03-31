@@ -1535,9 +1535,17 @@ function copyHydeStaticFile {
     )
 
     # Static files reuse the same output tree logic but skip the rendering step entirely.
-    invokeHydePluginHook -Context $Context -HookName 'BeforeCopyStaticFile' -Arguments @{
+    # Plugins can set CancelCopy when they transform assets (for example SCSS -> CSS).
+    $invocation = @{
         Context    = $Context
         StaticFile = $StaticFile
+    }
+
+    invokeHydePluginHook -Context $Context -HookName 'BeforeCopyStaticFile' -Arguments $invocation
+
+    if ($invocation.ContainsKey('CancelCopy') -and [bool]$invocation.CancelCopy) {
+        Write-Verbose "Skipping static copy for '$($StaticFile.RelativePath)' because a plugin handled output generation."
+        return
     }
 
     $destinationPath = Join-Path -Path $Context.DestinationPath -ChildPath $StaticFile.OutputRelativePath

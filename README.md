@@ -56,10 +56,17 @@ All functionality is also exposed as PowerShell-friendly Verb-Noun syntax!
 - Plugin loading from `_plugins` with these included:
   - seo-tag
   - titles-from-headings
+  - libsass-converter (requires bundled LibSassHost DLLs)
+
+#### Stylesheets
+
+- Optional Sass conversion through the built-in `libsass-converter` plugin
+- `.scss` and `.sass` files compile to `.css` output
+- Sass partials (filenames that start with `_`) are treated as include-only inputs and are not emitted to output
+- Full setup and usage guidance is in [docs/about_Hyde_libsass_converter.md](docs/about_Hyde_libsass_converter.md)
 
 ### Under Consideration
 
-- Sass conversion
 - Core command `Hyde New-Theme`
 - Themes
 - Syntax highlighting
@@ -153,6 +160,15 @@ defaults:
     values:
       layout: default
 ```
+
+### libsass-converter Documentation
+
+See [docs/about_Hyde_libsass_converter.md](docs/about_Hyde_libsass_converter.md) for:
+
+- plugin configuration and behavior
+- helper tool usage (`tools/Get-LibSassHost.ps1`)
+- manual DLL bundling steps
+- failure behavior and current limitations
 
 ## Plugin Authoring
 

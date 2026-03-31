@@ -96,6 +96,21 @@ Hook handlers receive a single `$Invocation` object. Depending on the hook, it m
 - `StaticFile`
 - `OutputPath`
 - `DestinationPath`
+- `CancelCopy` (mutable flag for static-file transform hooks)
+
+Value resolver hooks (`ResolveDocumentOutputPath`, `ResolveStaticFileOutputPath`) receive two parameters:
+
+```powershell
+param($CurrentValue, $Invocation)
+```
+
+For `BeforeCopyStaticFile`, handlers can set:
+
+```powershell
+$Invocation.CancelCopy = $true
+```
+
+When `CancelCopy` is true, Hyde skips the default `Copy-Item` step. This is useful when your plugin writes transformed output itself (for example, SCSS -> CSS).
 
 For document-centric hooks, you should expect `Document` to be a `HydeDocument` object with semantic properties such as:
 
@@ -223,3 +238,43 @@ In this config, `custom-plugin` is ignored because it is not whitelisted.
 - Use Liquid tags and filters for presentation behavior.
 - Use Hyde hooks for discovery, metadata enrichment, or output-path changes.
 - Avoid directly reading or writing arbitrary files unless the plugin truly owns that behavior.
+
+## Example: Transform Static Assets
+
+This pattern remaps `.scss` output to `.css`, writes transformed output, then cancels the raw source copy.
+
+```powershell
+param($Context)
+
+@{
+    Name = 'example-transform'
+    Hooks = @{
+        ResolveStaticFileOutputPath = {
+            param($CurrentValue, $Invocation)
+
+            if ($Invocation.StaticFile.Extension -eq '.scss') {
+                return ([System.IO.Path]::ChangeExtension($CurrentValue, '.css').Replace('\\', '/'))
+            }
+
+            return $CurrentValue
+        }
+
+        BeforeCopyStaticFile = {
+            param($Invocation)
+
+            if ($Invocation.StaticFile.Extension -ne '.scss') {
+                return
+            }
+
+            $destinationPath = Join-Path -Path $Invocation.Context.DestinationPath -ChildPath $Invocation.StaticFile.OutputRelativePath
+            $destinationDirectory = Split-Path -Path $destinationPath -Parent
+            if (-not (Test-Path -LiteralPath $destinationDirectory -PathType Container)) {
+                [void](New-Item -Path $destinationDirectory -ItemType Directory -Force)
+            }
+
+            Set-Content -LiteralPath $destinationPath -Encoding UTF8 -Value '/* transformed css */'
+            $Invocation.CancelCopy = $true
+        }
+    }
+}
+```

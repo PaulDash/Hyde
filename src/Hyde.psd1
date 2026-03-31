@@ -1,6 +1,6 @@
 @{
     RootModule        = 'Hyde.psm1'
-    ModuleVersion     = '0.4.14'
+    ModuleVersion     = '0.4.15'
     GUID              = '42b2840d-8661-47ad-b051-9c3d868fc3d5'
     Author            = 'Paul Dash'
     CompanyName       = 'Paul Dash'
@@ -40,7 +40,8 @@
         'Private\Hyde.Validation.ps1',
         'Private\HydeTypes.ps1',
         'Plugins\seo-tag.ps1',
-        'Plugins\titles-from-headings.ps1'
+        'Plugins\titles-from-headings.ps1',
+        'Plugins\libsass-converter.ps1'
     )
 
         PrivateData = @{
@@ -59,7 +60,7 @@
 - Liquid rendering through the standalone `PowerLiquid` module
 - Markdown rendering using built-in logic
 
-# 0.4.14
+# 0.4.15
 
 
 '
