@@ -1,6 +1,6 @@
 # about_Hyde_libsass_converter
 
-The built-in `libsass-converter` plugin compiles `.scss` and `.sass` static files to `.css` during `Hyde Build` / `Publish-StaticSite`.
+The built-in `libsass-converter` plugin compiles `.scss` and `.sass` files to `.css` during `Hyde Build` / `Publish-StaticSite`.
 
 ## What It Does
 

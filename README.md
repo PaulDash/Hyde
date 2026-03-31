@@ -41,6 +41,7 @@ All functionality is also exposed as PowerShell-friendly Verb-Noun syntax!
 - Jekyll-style Liquid global variables: `site`, `page`, `page.previous`, `page.next`, `paginator`, and `site.data`
 - `_includes` and `_layouts` with layout inheritance
 - `include_relative` for post content (limited to `_posts` directory)
+- Optional Sass conversion for `.scss` and `.sass` files through the `libsass-converter` plugin
 
 #### Content Management
 
@@ -57,13 +58,6 @@ All functionality is also exposed as PowerShell-friendly Verb-Noun syntax!
   - seo-tag
   - titles-from-headings
   - libsass-converter (requires bundled LibSassHost DLLs)
-
-#### Stylesheets
-
-- Optional Sass conversion through the built-in `libsass-converter` plugin
-- `.scss` and `.sass` files compile to `.css` output
-- Sass partials (filenames that start with `_`) are treated as include-only inputs and are not emitted to output
-- Full setup and usage guidance is in [docs/about_Hyde_libsass_converter.md](docs/about_Hyde_libsass_converter.md)
 
 ### Under Consideration
 

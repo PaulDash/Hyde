@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$Version = 'latest',
-    [string]$DestinationRoot = (Join-Path -Path $PSScriptRoot -ChildPath '..\src\Plugins\libsass-converter\lib'),
+    [string]$DestinationRoot = (Join-Path -Path $PSScriptRoot -ChildPath '..\src\Plugins\libsass-converter'),
     [switch]$Force
 )
 
@@ -73,7 +73,45 @@ function Copy-LibSassAsset {
         [void](New-Item -Path $targetDirectory -ItemType Directory -Force)
     }
 
-    Copy-Item -LiteralPath $SourcePath -Destination $TargetPath -Force
+    try {
+        Copy-Item -LiteralPath $SourcePath -Destination $TargetPath -Force
+    } catch {
+        if ((Test-Path -LiteralPath $TargetPath -PathType Leaf) -and
+            ($_.Exception.Message -match 'being used by another process|Access to the path')) {
+            Write-Warning "Skipping locked file '$TargetPath'. Close active Hyde/PowerShell sessions and re-run with -Force to fully refresh."
+            return
+        }
+
+        throw
+    }
+}
+
+function Download-NuGetPackage {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PackageId,
+
+        [Parameter(Mandatory = $true)]
+        [string]$PackageVersion,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DownloadRoot
+    )
+
+    $packageRoot = Join-Path -Path $DownloadRoot -ChildPath ("{0}.{1}" -f $PackageId, $PackageVersion)
+    $packageFile = Join-Path -Path $packageRoot -ChildPath ("{0}.{1}.nupkg" -f $PackageId, $PackageVersion)
+    $extractRoot = Join-Path -Path $packageRoot -ChildPath 'pkg'
+
+    [void](New-Item -Path $packageRoot -ItemType Directory -Force)
+
+    $lowerId = $PackageId.ToLowerInvariant()
+    $lowerVersion = $PackageVersion.ToLowerInvariant()
+    $packageUrl = "https://api.nuget.org/v3-flatcontainer/$lowerId/$lowerVersion/$lowerId.$lowerVersion.nupkg"
+
+    Invoke-WebRequest -Uri $packageUrl -OutFile $packageFile
+    Expand-Archive -LiteralPath $packageFile -DestinationPath $extractRoot -Force
+
+    return $extractRoot
 }
 
 $resolvedVersion = Resolve-LibSassVersion -RequestedVersion $Version
@@ -107,9 +145,12 @@ try {
 
     # Preserve NuGet layout so plugin probing logic can remain simple and predictable.
     $managedCandidates = @(
-        (Join-Path -Path $extractPath -ChildPath 'lib\netstandard2.0\LibSassHost.dll'),
-        (Join-Path -Path $extractPath -ChildPath 'lib\net8.0\LibSassHost.dll'),
-        (Join-Path -Path $extractPath -ChildPath 'lib\net7.0\LibSassHost.dll')
+        (Join-Path -Path $bundleRoot -ChildPath 'LibSassHost.dll'),
+        (Join-Path -Path $bundleRoot -ChildPath 'lib\net10.0\LibSassHost.dll'),
+        (Join-Path -Path $bundleRoot -ChildPath 'lib\net9.0\LibSassHost.dll'),
+        (Join-Path -Path $bundleRoot -ChildPath 'lib\net8.0\LibSassHost.dll'),
+        (Join-Path -Path $bundleRoot -ChildPath 'lib\net7.0\LibSassHost.dll'),
+        (Join-Path -Path $bundleRoot -ChildPath 'lib\netstandard2.0\LibSassHost.dll')
     )
 
     $managedAssemblyPath = $managedCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
@@ -118,7 +159,39 @@ try {
     }
 
     $relativeManagedPath = $managedAssemblyPath.Substring($extractPath.Length).TrimStart([char[]]@('\', '/'))
-    Copy-LibSassAsset -SourcePath $managedAssemblyPath -TargetPath (Join-Path -Path $destinationRootPath -ChildPath $relativeManagedPath)
+    $managedTargetPath = Join-Path -Path $destinationRootPath -ChildPath $relativeManagedPath
+    Copy-LibSassAsset -SourcePath $managedAssemblyPath -TargetPath $managedTargetPath
+
+    # Bundle known managed dependencies used by LibSassHost so runtime type loading succeeds.
+    $dependencySpecs = @(
+        @{ Id = 'AdvancedStringBuilder'; Version = '0.1.1' }
+        @{ Id = 'System.Buffers'; Version = '4.5.1' }
+    )
+
+    $managedTargetDirectory = Split-Path -Path $managedTargetPath -Parent
+    foreach ($dependencySpec in $dependencySpecs) {
+        try {
+            Write-Host ("Downloading dependency {0} {1}..." -f $dependencySpec.Id, $dependencySpec.Version)
+            $dependencyExtractRoot = Download-NuGetPackage -PackageId $dependencySpec.Id -PackageVersion $dependencySpec.Version -DownloadRoot $tempRoot
+
+            $dependencyCandidates = @(
+                (Join-Path -Path $dependencyExtractRoot -ChildPath 'lib\netstandard2.0'),
+                (Join-Path -Path $dependencyExtractRoot -ChildPath 'lib\netstandard1.3'),
+                (Join-Path -Path $dependencyExtractRoot -ChildPath 'lib\netstandard1.0')
+            )
+
+            $dependencyLibFolder = $dependencyCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Container } | Select-Object -First 1
+            if ($null -eq $dependencyLibFolder) {
+                continue
+            }
+
+            foreach ($dependencyDll in Get-ChildItem -LiteralPath $dependencyLibFolder -Filter '*.dll' -File) {
+                Copy-LibSassAsset -SourcePath $dependencyDll.FullName -TargetPath (Join-Path -Path $managedTargetDirectory -ChildPath $dependencyDll.Name)
+            }
+        } catch {
+            Write-Warning ("Could not bundle dependency {0} {1}. {2}" -f $dependencySpec.Id, $dependencySpec.Version, $_.Exception.Message)
+        }
+    }
 
     foreach ($runtimeFolder in @('win-x64', 'win-x86')) {
         $nativeSourcePath = Join-Path -Path $extractPath -ChildPath ("runtimes\\$runtimeFolder\\native")
@@ -133,6 +206,40 @@ try {
 
         foreach ($nativeAsset in Get-ChildItem -LiteralPath $nativeSourcePath -File) {
             Copy-LibSassAsset -SourcePath $nativeAsset.FullName -TargetPath (Join-Path -Path $nativeTargetPath -ChildPath $nativeAsset.Name)
+        }
+    }
+
+    # Bundle native packages that carry libsass.dll for current architecture.
+    $nativePackageSpecs = @(
+        @{ Id = 'LibSassHost.Native.win-x64'; Version = $resolvedVersion; Runtime = 'win-x64' }
+        @{ Id = 'LibSassHost.Native.win-x86'; Version = $resolvedVersion; Runtime = 'win-x86' }
+    )
+
+    foreach ($nativePackageSpec in $nativePackageSpecs) {
+        try {
+            Write-Host ("Downloading native package {0} {1}..." -f $nativePackageSpec.Id, $nativePackageSpec.Version)
+            $nativeExtractRoot = Download-NuGetPackage -PackageId $nativePackageSpec.Id -PackageVersion $nativePackageSpec.Version -DownloadRoot $tempRoot
+
+            $nativeCandidates = @(
+                (Join-Path -Path $nativeExtractRoot -ChildPath ("runtimes\\{0}\\native" -f $nativePackageSpec.Runtime)),
+                (Join-Path -Path $nativeExtractRoot -ChildPath 'native')
+            )
+
+            $nativeSourceFolder = $nativeCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Container } | Select-Object -First 1
+            if ($null -eq $nativeSourceFolder) {
+                continue
+            }
+
+            $nativeTargetFolder = Join-Path -Path $destinationRootPath -ChildPath ("runtimes\\{0}\\native" -f $nativePackageSpec.Runtime)
+            if (-not (Test-Path -LiteralPath $nativeTargetFolder -PathType Container)) {
+                [void](New-Item -Path $nativeTargetFolder -ItemType Directory -Force)
+            }
+
+            foreach ($nativeAsset in Get-ChildItem -LiteralPath $nativeSourceFolder -File) {
+                Copy-LibSassAsset -SourcePath $nativeAsset.FullName -TargetPath (Join-Path -Path $nativeTargetFolder -ChildPath $nativeAsset.Name)
+            }
+        } catch {
+            Write-Warning ("Could not bundle native package {0} {1}. {2}" -f $nativePackageSpec.Id, $nativePackageSpec.Version, $_.Exception.Message)
         }
     }
 
