@@ -1,3 +1,67 @@
+<#
+.SYNOPSIS
+Built-in Hyde plugin that compiles Sass/SCSS static files to CSS.
+
+.DESCRIPTION
+`libsass-converter` runs during static-file processing and transforms `.scss` and
+`.sass` files into `.css` output.
+
+The plugin preserves folder structure, remaps the extension to `.css`, and cancels
+raw-source copy so transformed output replaces direct file copy.
+
+Underscore-prefixed Sass files are treated as partials and are never emitted as
+standalone output files.
+
+.PARAMETER Context
+Plugin execution context supplied by Hyde when the plugin is loaded.
+
+This parameter is provided by Hyde's plugin loader and is not intended to be
+supplied manually.
+
+.EXAMPLE
+plugins:
+    - libsass-converter
+
+Enable the plugin in `_config.yml` so Hyde compiles Sass assets during build.
+
+.EXAMPLE
+libsass:
+    include_paths:
+        - assets/styles
+
+Provide optional include paths (relative to site source or absolute paths) for
+Sass imports.
+
+.EXAMPLE
+./tools/Get-LibSassHost.ps1
+
+Download and bundle required LibSassHost binaries into the expected plugin path.
+
+.NOTES
+Bundled LibSassHost assets are required. The plugin expects binaries under:
+- `src/Plugins/libsass-converter/lib`
+
+Recommended setup:
+- Run `./tools/Get-LibSassHost.ps1`
+
+Manual setup:
+1. Download the `LibSassHost` NuGet package (`.nupkg`).
+2. Extract the package.
+3. Copy `LibSassHost.dll` from an available framework folder under `lib/` into
+     `src/Plugins/libsass-converter/lib/...`.
+4. Copy native runtime files from `runtimes/win-x64/native/` (and optionally
+     `runtimes/win-x86/native/`) into matching plugin runtime paths.
+
+If required assets are missing, the plugin fails fast with actionable guidance to
+run `./tools/Get-LibSassHost.ps1`.
+
+Compatibility note:
+- This plugin uses LibSassHost (LibSass).
+- Modern Dart Sass module features such as `@use` and `@forward` are not fully
+    supported by LibSass.
+- A future `dartsass-converter` plugin can coexist as a separate option; configure
+    only one Sass converter plugin for a site.
+#>
 param($Context)
 
 # Built-in plugin that compiles SCSS/Sass static files to CSS during static copy.

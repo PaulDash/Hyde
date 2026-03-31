@@ -169,15 +169,6 @@ defaults:
       layout: default
 ```
 
-### libsass-converter Documentation
-
-See [docs/about_Hyde_libsass_converter.md](docs/about_Hyde_libsass_converter.md) for:
-
-- plugin configuration and behavior
-- helper tool usage (`tools/Get-LibSassHost.ps1`)
-- manual DLL bundling steps
-- failure behavior and current limitations
-
 ## Plugin Authoring
 
 Plugin authoring guidance lives in [docs/PluginAuthoring.md](docs/PluginAuthoring.md).

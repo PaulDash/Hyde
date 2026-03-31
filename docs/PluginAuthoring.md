@@ -13,6 +13,8 @@ Hyde loads plugins from the configured `plugins_dir`, which defaults to `_plugin
 
 ## Plugin File Shape
 
+A plugin should be documented with a comment-based help block near the top of the file.
+
 A plugin script should return a hashtable:
 
 ```powershell
@@ -238,6 +240,7 @@ In this config, `custom-plugin` is ignored because it is not whitelisted.
 - Use Liquid tags and filters for presentation behavior.
 - Use Hyde hooks for discovery, metadata enrichment, or output-path changes.
 - Avoid directly reading or writing arbitrary files unless the plugin truly owns that behavior.
+- Document your code.
 
 ## Example: Transform Static Assets
 
