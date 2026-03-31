@@ -99,6 +99,47 @@ function convertToHydeDateTime {
     }
 }
 
+# Resolve a destination output path and enforce containment under destination root.
+function resolveHydeDestinationOutputPath {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$DestinationRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$OutputRelativePath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ItemKind
+    )
+
+    if ([string]::IsNullOrWhiteSpace($OutputRelativePath)) {
+        throw "Could not write $ItemKind because output path is empty."
+    }
+
+    $trimChars = [char[]]@([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+    $resolvedRoot = [System.IO.Path]::GetFullPath($DestinationRoot).TrimEnd($trimChars)
+
+    $resolvedCandidate = if ([System.IO.Path]::IsPathRooted($OutputRelativePath)) {
+        [System.IO.Path]::GetFullPath($OutputRelativePath)
+    } else {
+        [System.IO.Path]::GetFullPath((Join-Path -Path $resolvedRoot -ChildPath $OutputRelativePath))
+    }
+
+    $normalizedCandidate = $resolvedCandidate.TrimEnd($trimChars)
+    $isWithinRoot =
+        $normalizedCandidate.Equals($resolvedRoot, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $normalizedCandidate.StartsWith($resolvedRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase) -or
+        $normalizedCandidate.StartsWith($resolvedRoot + [System.IO.Path]::AltDirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
+
+    if (-not $isWithinRoot) {
+        throw "Refusing to write $ItemKind outside destination root '$resolvedRoot'. Resolved path: '$resolvedCandidate'."
+    }
+
+    return $resolvedCandidate
+}
+
 # Determine whether a document represents a post.
 function testHydePostDocument {
     [CmdletBinding()]
@@ -1343,7 +1384,7 @@ function writeHydeDocument {
     }
 
     # Materialize the destination tree lazily as each document is written.
-    $destinationPath = Join-Path -Path $Context.DestinationPath -ChildPath $Document.OutputRelativePath
+    $destinationPath = resolveHydeDestinationOutputPath -DestinationRoot $Context.DestinationPath -OutputRelativePath $Document.OutputRelativePath -ItemKind 'document'
     $destinationDirectory = Split-Path -Path $destinationPath -Parent
 
     try {
@@ -1388,7 +1429,7 @@ function copyHydeStaticFile {
         return
     }
 
-    $destinationPath = Join-Path -Path $Context.DestinationPath -ChildPath $StaticFile.OutputRelativePath
+    $destinationPath = resolveHydeDestinationOutputPath -DestinationRoot $Context.DestinationPath -OutputRelativePath $StaticFile.OutputRelativePath -ItemKind 'static file'
     $destinationDirectory = Split-Path -Path $destinationPath -Parent
 
     try {

@@ -231,6 +231,76 @@ title: Home
         Test-Path -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') | Should -BeFalse
     }
 
+        It 'rejects permalink output paths that escape destination root' {
+                $siteRoot = New-TestSiteDirectory -Name 'traversal-permalink-site'
+                $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'traversal-permalink-output'
+                $outsidePath = Join-Path -Path $TestDrive -ChildPath 'escape\index.html'
+
+                Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+                Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+permalink: ../escape
+---
+# Hello
+'@
+
+                { Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development } | Should -Throw '*outside destination root*'
+                Test-Path -LiteralPath $outsidePath | Should -BeFalse
+        }
+
+        It 'rejects plugin static output paths that escape destination root' {
+                $siteRoot = New-TestSiteDirectory -Name 'traversal-static-site'
+                $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'traversal-static-output'
+                $assetsDirectory = Join-Path -Path $siteRoot -ChildPath 'assets'
+                $pluginsDirectory = Join-Path -Path $siteRoot -ChildPath '_plugins'
+                $outsidePath = Join-Path -Path $TestDrive -ChildPath 'stolen.txt'
+
+                [void](New-Item -Path $assetsDirectory -ItemType Directory -Force)
+                [void](New-Item -Path $pluginsDirectory -ItemType Directory -Force)
+
+                Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+plugins:
+  - bad-output-path
+'@
+
+                Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+title: Home
+---
+# Hello
+'@
+
+                Set-Content -LiteralPath (Join-Path -Path $assetsDirectory -ChildPath 'site.css') -Encoding UTF8 -Value 'body { color: black; }'
+
+                Set-Content -LiteralPath (Join-Path -Path $pluginsDirectory -ChildPath 'bad-output-path.ps1') -Encoding UTF8 -Value @'
+param($Context)
+
+$null = $Context
+@{
+        Name = 'bad-output-path'
+        Hooks = @{
+                ResolveStaticFileOutputPath = {
+                        param($CurrentValue, $Invocation)
+
+                        if ($Invocation.StaticFile.Name -eq 'site.css') {
+                                return '../stolen.txt'
+                        }
+
+                        return $CurrentValue
+                }
+        }
+}
+'@
+
+                { Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development } | Should -Throw '*outside destination root*'
+                Test-Path -LiteralPath $outsidePath | Should -BeFalse
+        }
+
     It 'renders Liquid in document content by default' {
         $siteRoot = New-TestSiteDirectory -Name 'content-liquid-site'
         $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'content-liquid-output'

@@ -103,6 +103,20 @@ if ($Install) {
     Set-StrictMode -Version Latest
     $ErrorActionPreference = 'Stop'
 
+    Write-Warning 'Installing LibSassHost downloads binaries from NuGet over the network and does not currently perform package integrity verification.'
+    if ([string]::IsNullOrWhiteSpace($Version) -or $Version -eq 'latest') {
+        Write-Warning "Version is set to 'latest'. For predictable and safer installs, pin an explicit version with -Version."
+    }
+
+    if (-not $Force) {
+        $confirmation = Read-Host 'Continue with LibSassHost download and installation? [y/N]'
+        if ($confirmation -notmatch '^(?i:y|yes)$') {
+            throw 'LibSassHost installation cancelled by user.'
+        }
+    } else {
+        Write-Warning 'Skipping install prompt because -Force was specified.'
+    }
+
     function Get-LibSassLatestVersion {
         $indexUrl = 'https://api.nuget.org/v3-flatcontainer/libsasshost/index.json'
         $indexPayload = Invoke-RestMethod -Uri $indexUrl -Method Get

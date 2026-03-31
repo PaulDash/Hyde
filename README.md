@@ -221,6 +221,18 @@ When a path exists in both site and theme, the site version wins for layouts, in
 - Abbreviation definitions (`*[ABBR]: expansion`) with automatic `<abbr>` wrapping
 - Raw HTML passthrough
 
+## Security
+
+- Hyde does not sanitize rendered Liquid/Markdown HTML output. Authors must trust the content they render.
+- Build output path safety: Hyde rejects document/static output paths that resolve outside the configured destination root (including permalink- and plugin-derived output paths).
+- Clean safety rails: `Hyde Clean`/`Clear-StaticSite` refuse dangerous removals such as drive roots, site roots, and destinations that are parents of source.
+- Scoped relative includes: `include_relative` is limited to post content under the matching `_posts` tree.
+
+### Plugins
+
+- Plugin safe mode: when `safe: true` is enabled, only plugins listed in `whitelist` are loaded.
+- `libsass-converter` install flow warns about network downloads and prompts for confirmation before continuing (unless `-Force` is used). Pin `-Version` for more predictable installs.
+
 ## Changelog
 
 Version history is tracked in [CHANGELOG.md](CHANGELOG.md).
