@@ -1215,6 +1215,8 @@ title: Home
 
         Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
 title: Test Site
+plugins:
+  - lastmod
 '@
 
         Set-Content -LiteralPath (Join-Path -Path $pluginsDirectory -ChildPath 'lastmod.ps1') -Encoding UTF8 -Value @'
@@ -1227,7 +1229,7 @@ param($Context)
             param($CurrentValue, $Invocation)
 
             $lastWriteTime = (Get-Item -LiteralPath $Invocation.Document.SourcePath).LastWriteTimeUtc
-            return ('archive/{0}/{1}' -f $lastWriteTime.ToString('yyyyMMdd'), $CurrentValue)
+            return "archive/$($lastWriteTime.ToString('yyyyMMdd'))/$CurrentValue"
         }
     }
 }
