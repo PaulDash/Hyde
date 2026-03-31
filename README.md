@@ -6,7 +6,7 @@ PowerShell static site generator. The ugly Mr. Hyde to the popular [Jekyll](http
 
 Hyde started as a teaching and personal-site project, but it now has enough functionality to build real static sites with pages, collections, posts, layouts, Liquid templates, plugins, and cleaning/validation workflows.
 
-No infringment is meant on the wonderful project that is Jekyll and on the great team that develop and support it.
+> No infringment is meant on the wonderful project that is Jekyll and on the great team that develops and supports it.
 
 ## Dependencies
 
@@ -20,13 +20,13 @@ Hyde is usable today, but it is not trying to become a complete Jekyll clone.
 
 ### Core Commands
 
-- Site scaffolding with `Hyde New`
-- Theme scaffolding with `Hyde New-Theme`
-- Site builds with `Hyde Build`
-- Generated-file cleanup with `Hyde Clean`
-- Site validation with `Hyde Doctor`
-
-All functionality is also exposed as PowerShell-friendly Verb-Noun syntax!
+| Command        | Cmdlet              |                            |
+| -------------- | ------------------- | -------------------------- |
+| Hyde New       | New-StaticSite      | Create site scaffolding    |
+| Hyde New-Theme | New-StaticSiteTheme | Create theme scaffolding   |
+| Hyde Build     | Publish-StaticSite  | Build or rebuild a site    |
+| Hyde Clean     | Clear-StaticSite    | Clean up generated site    |
+| Hyde Doctor    | Test-StaticSite     | Validate site before build |
 
 ### Implemented Features
 
@@ -62,11 +62,11 @@ All functionality is also exposed as PowerShell-friendly Verb-Noun syntax!
   - seo-tag
   - titles-from-headings
   - libsass-converter (requires bundled LibSassHost DLLs)
-- Plugin setup now lives in each plugin script via `-Install`.
+- Plugin setup in plugin scripts via `-Install`.
 
 #### Themes
 
-- Theme scaffolding with `Hyde New-Theme` / `New-StaticSiteTheme`
+- Theme scaffolding
 - Build-time file-based themes via `theme_dir` in `_config.yml`
 - Theme `_config.yml` values act as defaults that site `_config.yml` can override
 - Theme `_sass` is added as an import path for the `libsass-converter` plugin when present
