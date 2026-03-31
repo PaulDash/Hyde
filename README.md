@@ -40,7 +40,7 @@ Hyde is usable today, but it is not trying to become a complete Jekyll clone.
 #### Templating & Rendering
 
 - Liquid rendering through my standalone **PowerLiquid** module
-- Markdown rendering using built-in logic
+- Built-in Markdown renderer
 - Jekyll-style Liquid global variables: `site`, `page`, `page.previous`, `page.next`, `paginator`, and `site.data`
 - `_includes` and `_layouts` with layout inheritance
 - Theme include/layout fallback with site-first override precedence
@@ -73,9 +73,9 @@ Hyde is usable today, but it is not trying to become a complete Jekyll clone.
 
 ### Under Consideration
 
-- Syntax highlighting
+- Markdown: syntax highlighting in fenced code blocks, emoji shortcodes (`:smile:`), and `==highlighted text==`
 - Plugins: sitemap, relative-links, optional-front-matter, gallery-generator, redirect-from, responsive-image, remote-theme, minifier, github-metadata, readme-index
-- incremental regeneration
+- Incremental regeneration
 
 ### Deliberate NON-goals
 
@@ -214,13 +214,28 @@ For built-in plugins that have dependencies to install, run installation/setup d
 .\src\Plugins\libsass-converter.ps1 -Install
 ```
 
+## Markdown Support
+
+- ATX headings (`#` through `######`) and Setext headings (`===` / `---`) with deterministic slug IDs
+- Paragraphs with hard line breaks (`\` or two trailing spaces)
+- **Bold**, *italic*, ***bold-italic***, ~~strikethrough~~, `inline code`
+- Subscript (`~text~`) and superscript (`^text^`)
+- Unordered and ordered lists, including task lists (`- [ ]` / `- [x]`)
+- Aligned tables with optional `[Caption]` line
+- Definition lists (`Term\n: Definition`)
+- Blockquotes (nestable)
+- Fenced code blocks (`` ``` ``) and indented code blocks
+- Horizontal rules
+- Inline images and links with optional title attributes
+- Bare URL autolinks and angle-bracket autolinks/email links
+- Escaped punctuation
+- Footnotes with back-links
+- Abbreviation definitions (`*[ABBR]: expansion`) with automatic `<abbr>` wrapping
+- Raw HTML passthrough
+
 ## Testing
 
-Run the Hyde test suite with:
-
-```powershell
-.\tests\Invoke-HydeTests.ps1
-```
+Pester tests are available under `/tests`.
 
 ## Changelog
 

@@ -291,6 +291,20 @@ function convertHydeInlineMarkdown {
         '<del>$1</del>'
     )
 
+    # Convert subscript spans wrapped in single tildes (not preceded by another tilde).
+    $encoded = [System.Text.RegularExpressions.Regex]::Replace(
+        $encoded,
+        '(?<!~)~([^~\r\n]+)~(?!~)',
+        '<sub>$1</sub>'
+    )
+
+    # Convert superscript spans wrapped in single carets.
+    $encoded = [System.Text.RegularExpressions.Regex]::Replace(
+        $encoded,
+        '\^([^\^\r\n]+)\^',
+        '<sup>$1</sup>'
+    )
+
     # Convert plain URLs into anchors after other inline replacements.
     $encoded = convertHydeBareUrlAutolinks -Text $encoded
 
@@ -315,6 +329,85 @@ function convertHydeInlineMarkdown {
     }
 
     return $encoded
+}
+
+# Split abbreviation definitions (*[ABBR]: expansion) out of the markdown body lines.
+function splitHydeMarkdownAbbreviations {
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [AllowEmptyCollection()]
+        [string[]]$Lines
+    )
+
+    $bodyLines = New-Object System.Collections.ArrayList
+    $abbreviations = @{}
+
+    foreach ($line in $Lines) {
+        if ($line -match '^\*\[([^\]]+)\]:\s*(.+)$') {
+            $abbreviations[$Matches[1]] = $Matches[2]
+            continue
+        }
+
+        [void]$bodyLines.Add($line)
+    }
+
+    return @{
+        BodyLines     = @($bodyLines.ToArray())
+        Abbreviations = $abbreviations
+    }
+}
+
+# Replace plain-text occurrences of known abbreviations in rendered HTML with <abbr> elements.
+# Only matches occurrences that are not already inside an HTML tag or attribute.
+function applyHydeMarkdownAbbreviations {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string]$Html,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Abbreviations
+    )
+
+    if ($Abbreviations.Count -eq 0) {
+        return $Html
+    }
+
+    # Sort longest abbreviations first to avoid partial replacements.
+    $sortedKeys = @($Abbreviations.Keys | Sort-Object { $_.Length } -Descending)
+
+    foreach ($abbr in $sortedKeys) {
+        $title = [System.Net.WebUtility]::HtmlEncode($Abbreviations[$abbr])
+        $escapedAbbr = [System.Text.RegularExpressions.Regex]::Escape($abbr)
+        $segments = [System.Text.RegularExpressions.Regex]::Split($Html, '(<[^>]+>)')
+        $result = New-Object System.Text.StringBuilder
+        foreach ($segment in $segments) {
+            if ([string]::IsNullOrEmpty($segment)) {
+                continue
+            }
+
+            if ($segment.StartsWith('<')) {
+                [void]$result.Append($segment)
+                continue
+            }
+
+            $replaced = [System.Text.RegularExpressions.Regex]::Replace(
+                $segment,
+                "(?<![A-Za-z0-9])$escapedAbbr(?![A-Za-z0-9])",
+                "<abbr title=`"$title`">$abbr</abbr>"
+            )
+            [void]$result.Append($replaced)
+        }
+
+        $Html = $result.ToString()
+    }
+
+    return $Html
 }
 
 # Split markdown into body lines plus extracted footnote definitions.
@@ -449,12 +542,23 @@ function convertHydeMarkdown {
         [Parameter(Mandatory = $true)]
         [string]$Markdown,
 
-        [switch]$SkipFootnoteParsing
+        [switch]$SkipFootnoteParsing,
+
+        # Internal parameter: pre-parsed abbreviation table passed from the top-level call into recursive blockquote calls.
+        [hashtable]$AbbreviationDefinitions
     )
 
     # Normalize line endings first so the simple parser behaves the same on all platforms.
     $normalizedContent = ($Markdown -replace "`r`n", "`n") -replace "`r", "`n"
     $lines = @($normalizedContent -split "`n")
+
+    # Extract abbreviation definitions (*[ABBR]: expansion) at the top level only.
+    $abbreviations = if ($AbbreviationDefinitions) { $AbbreviationDefinitions } else { @{} }
+    if (-not $AbbreviationDefinitions) {
+        $abbrevSplit = splitHydeMarkdownAbbreviations -Lines @($lines)
+        $lines = @($abbrevSplit.BodyLines)
+        $abbreviations = $abbrevSplit.Abbreviations
+    }
 
     $footnoteDefinitions = @{}
     if (-not $SkipFootnoteParsing) {
@@ -475,6 +579,7 @@ function convertHydeMarkdown {
     $orderedListItems = New-Object System.Collections.ArrayList
     $codeLines = New-Object System.Collections.ArrayList
     $inCodeFence = $false
+    $pendingTableCaption = $null
 
     # Buffer-based helpers let the parser convert markdown one block at a time.
     # Flush accumulated paragraph lines to a rendered paragraph block.
@@ -656,7 +761,7 @@ function convertHydeMarkdown {
             }
 
             $quoteMarkdown = [string]::Join("`n", @($quoteLines.ToArray()))
-            $quoteHtml = convertHydeMarkdown -Markdown $quoteMarkdown -SkipFootnoteParsing
+            $quoteHtml = convertHydeMarkdown -Markdown $quoteMarkdown -SkipFootnoteParsing -AbbreviationDefinitions $abbreviations
             [void]$blocks.Add("<blockquote>$quoteHtml</blockquote>")
             continue
         }
@@ -692,6 +797,19 @@ function convertHydeMarkdown {
                 $headingId = newHydeHeadingSlug -HeadingHtml $headingHtml -SlugState $headingSlugState
                 [void]$blocks.Add("<h2 id=`"$headingId`">$headingHtml</h2>")
                 $index += 2
+                continue
+            }
+        }
+
+        # Handle a [Caption text] line immediately before a table header.
+        if ($line -match '^\[(?!\^)([^\]]+)\]\s*$' -and ($index + 2 -lt $lines.Count) -and ([string]$lines[$index + 1]).Contains('|')) {
+            $lookaheadAlignments = @(getHydeMarkdownTableAlignments -DividerLine ([string]$lines[$index + 2]))
+            if ($lookaheadAlignments.Count -gt 0) {
+                completeHydeParagraphBuffer
+                completeHydeListBuffer
+                completeHydeOrderedListBuffer
+                $pendingTableCaption = convertHydeInlineMarkdown -Text $Matches[1] -FootnoteState $footnoteState
+                $index++
                 continue
             }
         }
@@ -738,7 +856,9 @@ function convertHydeMarkdown {
                 }
 
                 $tableBody = if ($bodyRows.Count -gt 0) { "<tbody>$($bodyRows -join '')</tbody>" } else { '' }
-                [void]$blocks.Add("<table><thead><tr>$($headerHtml -join '')</tr></thead>$tableBody</table>")
+                $captionHtml = if ($pendingTableCaption) { "<caption>$pendingTableCaption</caption>" } else { '' }
+                $pendingTableCaption = $null
+                [void]$blocks.Add("<table>$captionHtml<thead><tr>$($headerHtml -join '')</tr></thead>$tableBody</table>")
                 continue
             }
         }
@@ -748,6 +868,7 @@ function convertHydeMarkdown {
             completeHydeParagraphBuffer
             completeHydeListBuffer
             completeHydeOrderedListBuffer
+            $pendingTableCaption = $null
             [void]$blocks.Add('<hr />')
             $index++
             continue
@@ -794,6 +915,64 @@ function convertHydeMarkdown {
             continue
         }
 
+        # Handle definition lists: a term followed by one or more ": definition" lines.
+        if (($index + 1 -lt $lines.Count) -and ([string]$lines[$index + 1]) -match '^:\s+(.+)$') {
+            completeHydeParagraphBuffer
+            completeHydeListBuffer
+            completeHydeOrderedListBuffer
+            $pendingTableCaption = $null
+
+            $dlItems = New-Object System.Collections.ArrayList
+            $pendingTerm = $line.Trim()
+            $index++
+            while ($index -lt $lines.Count) {
+                $dlLine = [string]$lines[$index]
+                if ($dlLine -match '^:\s+(.+)$') {
+                    if ($pendingTerm) {
+                        [void]$dlItems.Add("<dt>$(convertHydeInlineMarkdown -Text $pendingTerm -FootnoteState $footnoteState)</dt>")
+                        $pendingTerm = $null
+                    }
+
+                    [void]$dlItems.Add("<dd>$(convertHydeInlineMarkdown -Text $Matches[1].Trim() -FootnoteState $footnoteState)</dd>")
+                    $index++
+                    continue
+                }
+
+                if ([string]::IsNullOrWhiteSpace($dlLine)) {
+                    $index++
+                    break
+                }
+
+                # A non-definition, non-blank line is a new term.
+                if ($pendingTerm) {
+                    [void]$dlItems.Add("<dt>$(convertHydeInlineMarkdown -Text $pendingTerm -FootnoteState $footnoteState)</dt>")
+                }
+
+                $pendingTerm = $dlLine.Trim()
+                $index++
+
+                # Only continue as a definition list while the next line is a definition or another term followed by a definition.
+                if ($index -ge $lines.Count -or ([string]$lines[$index]) -notmatch '^:\s+') {
+                    if ($pendingTerm) {
+                        [void]$dlItems.Add("<dt>$(convertHydeInlineMarkdown -Text $pendingTerm -FootnoteState $footnoteState)</dt>")
+                        $pendingTerm = $null
+                    }
+
+                    break
+                }
+            }
+
+            if ($pendingTerm) {
+                [void]$dlItems.Add("<dt>$(convertHydeInlineMarkdown -Text $pendingTerm -FootnoteState $footnoteState)</dt>")
+            }
+
+            if ($dlItems.Count -gt 0) {
+                [void]$blocks.Add("<dl>$($dlItems -join '')</dl>")
+            }
+
+            continue
+        }
+
         [void]$paragraphLines.Add($line)
         $index++
     }
@@ -808,13 +987,19 @@ function convertHydeMarkdown {
 
     $bodyHtml = ($blocks.ToArray() -join [Environment]::NewLine)
     $footnotesHtml = if ($SkipFootnoteParsing) { '' } else { convertHydeMarkdownFootnotesToHtml -FootnoteState $footnoteState -Definitions $footnoteDefinitions }
-    if ([string]::IsNullOrWhiteSpace($footnotesHtml)) {
-        return $bodyHtml
+
+    $fullHtml = if ([string]::IsNullOrWhiteSpace($footnotesHtml)) {
+        $bodyHtml
+    } elseif ([string]::IsNullOrWhiteSpace($bodyHtml)) {
+        $footnotesHtml.Trim()
+    } else {
+        $bodyHtml + [Environment]::NewLine + $footnotesHtml.Trim()
     }
 
-    if ([string]::IsNullOrWhiteSpace($bodyHtml)) {
-        return $footnotesHtml.Trim()
+    # Abbreviation expansion is only applied at the top level (not in recursive blockquote calls).
+    if (-not $AbbreviationDefinitions) {
+        $fullHtml = applyHydeMarkdownAbbreviations -Html $fullHtml -Abbreviations $abbreviations
     }
 
-    return ($bodyHtml + [Environment]::NewLine + $footnotesHtml.Trim())
+    return $fullHtml
 }

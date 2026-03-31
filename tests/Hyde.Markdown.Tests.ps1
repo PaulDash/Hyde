@@ -140,4 +140,124 @@ Another note appears here.[^two]
         $indexOutput | Should -Match '<li id="fn:two">'
         $indexOutput | Should -Match 'class="footnote-backref"'
     }
+
+    It 'renders subscript and superscript inline spans' {
+        $siteRoot = New-TestSiteDirectory -Name 'markdown-sub-sup-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'markdown-sub-sup-output'
+        $layoutsDirectory = Join-Path -Path $siteRoot -ChildPath '_layouts'
+
+        [void](New-Item -Path $layoutsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value ''
+
+        Set-Content -LiteralPath (Join-Path -Path $layoutsDirectory -ChildPath 'default.html') -Encoding UTF8 -Value '<main>{{ content }}</main>'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+layout: default
+---
+Water is H~2~O.
+
+E = mc^2^.
+'@
+
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+
+        $indexOutput | Should -Match 'H<sub>2</sub>O'
+        $indexOutput | Should -Match 'mc<sup>2</sup>'
+    }
+
+    It 'renders abbreviation definitions and wraps occurrences in <abbr> elements' {
+        $siteRoot = New-TestSiteDirectory -Name 'markdown-abbr-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'markdown-abbr-output'
+        $layoutsDirectory = Join-Path -Path $siteRoot -ChildPath '_layouts'
+
+        [void](New-Item -Path $layoutsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value ''
+
+        Set-Content -LiteralPath (Join-Path -Path $layoutsDirectory -ChildPath 'default.html') -Encoding UTF8 -Value '<main>{{ content }}</main>'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+layout: default
+---
+The HTML spec defines CSS rules.
+
+*[HTML]: HyperText Markup Language
+*[CSS]: Cascading Style Sheets
+'@
+
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+
+        $indexOutput | Should -Match '<abbr title="HyperText Markup Language">HTML</abbr>'
+        $indexOutput | Should -Match '<abbr title="Cascading Style Sheets">CSS</abbr>'
+        $indexOutput | Should -Not -Match '\*\[HTML\]'
+    }
+
+    It 'renders definition lists with terms and definitions' {
+        $siteRoot = New-TestSiteDirectory -Name 'markdown-dl-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'markdown-dl-output'
+        $layoutsDirectory = Join-Path -Path $siteRoot -ChildPath '_layouts'
+
+        [void](New-Item -Path $layoutsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value ''
+
+        Set-Content -LiteralPath (Join-Path -Path $layoutsDirectory -ChildPath 'default.html') -Encoding UTF8 -Value '<main>{{ content }}</main>'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+layout: default
+---
+Apple
+: A fruit
+: Also a tech company
+
+Orange
+: A citrus fruit
+'@
+
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+
+        $indexOutput | Should -Match '<dl>'
+        $indexOutput | Should -Match '<dt>Apple</dt>'
+        $indexOutput | Should -Match '<dd>A fruit</dd>'
+        $indexOutput | Should -Match '<dd>Also a tech company</dd>'
+        $indexOutput | Should -Match '<dt>Orange</dt>'
+        $indexOutput | Should -Match '<dd>A citrus fruit</dd>'
+    }
+
+    It 'renders a table with a caption line above it' {
+        $siteRoot = New-TestSiteDirectory -Name 'markdown-caption-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'markdown-caption-output'
+        $layoutsDirectory = Join-Path -Path $siteRoot -ChildPath '_layouts'
+
+        [void](New-Item -Path $layoutsDirectory -ItemType Directory -Force)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value ''
+
+        Set-Content -LiteralPath (Join-Path -Path $layoutsDirectory -ChildPath 'default.html') -Encoding UTF8 -Value '<main>{{ content }}</main>'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.md') -Encoding UTF8 -Value @'
+---
+layout: default
+---
+[Quarterly Results]
+| Quarter | Revenue |
+| ------- | ------- |
+| Q1      | 100     |
+| Q2      | 200     |
+'@
+
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+
+        $indexOutput | Should -Match '<table><caption>Quarterly Results</caption><thead>'
+        $indexOutput | Should -Match '<th>Quarter</th>'
+        $indexOutput | Should -Match '<td>Q1</td>'
+    }
 }
