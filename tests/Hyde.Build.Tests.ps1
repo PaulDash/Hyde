@@ -66,7 +66,7 @@ title: About
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
         $aboutOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'about.html') -Raw
 
-        $indexOutput | Should -Match '<h1>Hello</h1>'
+        $indexOutput | Should -Match '<h1 id="hello">Hello</h1>'
         $indexOutput | Should -Match '<p>This is <strong>Hyde</strong>\.</p>'
         $indexOutput | Should -Match '<ul><li>one</li><li>two</li></ul>'
         $aboutOutput | Should -Match '<main><p>About Hyde</p></main>'
@@ -249,7 +249,7 @@ title: Home
         Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
-        $indexOutput | Should -Match '<h1>HOME</h1>'
+        $indexOutput | Should -Match '<h1 id="home">HOME</h1>'
     }
 
     It 'skips Liquid rendering when render_with_liquid is false' {
@@ -279,7 +279,7 @@ render_with_liquid: false
         Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
-        $indexOutput | Should -Match '<main><h1>\{\{ page.title \| upcase \}\}</h1></main>'
+        $indexOutput | Should -Match '<main><h1 id="pagetitle-upcase">\{\{ page.title \| upcase \}\}</h1></main>'
     }
 
     It 'applies a single-level layout using Liquid objects tags and filters' {
@@ -322,7 +322,7 @@ layout: default
 
         $indexOutput | Should -Match '<title>HOME</title>'
         $indexOutput | Should -Match '<header>Test Site</header>'
-        $indexOutput | Should -Match '<main><h1>Hello</h1></main>'
+        $indexOutput | Should -Match '<main><h1 id="hello">Hello</h1></main>'
         $indexOutput | Should -Match '<div id="slug">index</div>'
         $indexOutput | Should -Match '<div id="hyde-version">'
         $indexOutput | Should -Match '<footer>Wrapper</footer>'
@@ -397,7 +397,7 @@ layout: notes
         Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
-        $indexOutput | Should -Match '<div class="base"><section><h1>Notes</h1><h1>Hello</h1></section>\s*</div>'
+        $indexOutput | Should -Match '<div class="base"><section><h1>Notes</h1><h1 id="hello">Hello</h1></section>\s*</div>'
     }
 
     It 'writes pages to a front matter permalink and exposes the permalink URL' {
@@ -1515,13 +1515,13 @@ render_with_liquid: true
         $overrideDocument = $context.Documents | Where-Object { $_.BaseName -eq 'override' }
 
         $guideOutput | Should -Match '<title>Docs Default</title>'
-        $guideOutput | Should -Match '<h1>\{\{ page.title \}\}</h1>'
+        $guideOutput | Should -Match '<h1 id="pagetitle">\{\{ page.title \}\}</h1>'
         $guideDocument.RenderWithLiquid | Should -BeFalse
         $guideDocument.FrontMatter.layout | Should -Be 'default'
         $guideDocument.FrontMatter.title | Should -Be 'Docs Default'
 
         $overrideOutput | Should -Match '<title>Custom Title</title>'
-        $overrideOutput | Should -Match '<h1>Custom Title</h1>'
+        $overrideOutput | Should -Match '<h1 id="custom-title">Custom Title</h1>'
         $overrideDocument.RenderWithLiquid | Should -BeTrue
         $overrideDocument.FrontMatter.layout | Should -Be 'default'
         $overrideDocument.FrontMatter.title | Should -Be 'Custom Title'

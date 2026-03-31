@@ -108,6 +108,7 @@ function splitHydeMarkdownTableRow {
     [OutputType([string[]])]
     param(
         [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
         [string]$Row
     )
 
@@ -129,6 +130,7 @@ function getHydeMarkdownTableAlignments {
     [OutputType([string[]])]
     param(
         [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
         [string]$DividerLine
     )
 
@@ -697,13 +699,15 @@ function convertHydeMarkdown {
         # Handle markdown tables with a header line plus divider line.
         if (($index + 1 -lt $lines.Count) -and $line.Contains('|')) {
             $dividerLine = [string]$lines[$index + 1]
-            $alignments = getHydeMarkdownTableAlignments -DividerLine $dividerLine
+            # Force array context so Count is reliable even when helper returns one value.
+            $alignments = @(getHydeMarkdownTableAlignments -DividerLine $dividerLine)
             if ($alignments.Count -gt 0) {
                 completeHydeParagraphBuffer
                 completeHydeListBuffer
                 completeHydeOrderedListBuffer
 
-                $headerCells = splitHydeMarkdownTableRow -Row $line
+                # Keep header and row parsing in array form to avoid scalar string edge-cases.
+                $headerCells = @(splitHydeMarkdownTableRow -Row $line)
                 $maxCellCount = [Math]::Min($headerCells.Count, $alignments.Count)
                 $headerHtml = New-Object System.Collections.ArrayList
                 for ($cellIndex = 0; $cellIndex -lt $maxCellCount; $cellIndex++) {
@@ -720,7 +724,7 @@ function convertHydeMarkdown {
                         break
                     }
 
-                    $rowCells = splitHydeMarkdownTableRow -Row $rowLine
+                    $rowCells = @(splitHydeMarkdownTableRow -Row $rowLine)
                     $rowHtml = New-Object System.Collections.ArrayList
                     for ($cellIndex = 0; $cellIndex -lt $maxCellCount; $cellIndex++) {
                         $cellValue = if ($cellIndex -lt $rowCells.Count) { $rowCells[$cellIndex] } else { '' }
