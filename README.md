@@ -8,10 +8,11 @@ Hyde started as a teaching and personal-site project, but it now has enough func
 
 No infringment is meant on the wonderful project that is Jekyll and on the great team that develop and support it.
 
-## Dependancies
+## Dependencies
 
 - [powershell-yaml](https://github.com/cloudbase/powershell-yaml) module by cloudbase for YAML support
 - my [PowerLiquid](https://github.com/PaulDash/PowerLiquid) module to parse and render Liquid templates
+- some plugins MAY have dependencies of their own
 
 ## Status
 
@@ -66,12 +67,12 @@ All functionality is also exposed as PowerShell-friendly Verb-Noun syntax!
 - Themes
 - Syntax highlighting
 - Plugins: sitemap, relative-links, optional-front-matter, gallery-generator, redirect-from, responsive-image, remote-theme, minifier, github-metadata, readme-index
+- incremental regeneration
 
 ### Deliberate NON-goals
 
 - `Serve` command, file watching, auto-regeneration
 - Ruby plugins including Gem-based themes
-- incremental regeneration
 - CoffeeScript conversion
 - TOML config files
 
@@ -174,15 +175,11 @@ defaults:
 
 Plugin authoring guidance lives in [docs/PluginAuthoring.md](docs/PluginAuthoring.md).
 
-For built-in plugins, run installation/setup directly from the plugin script:
+For built-in plugins that have dependencies to install, run installation/setup directly from the plugin script:
 
 ```powershell
-.\src\Plugins\seo-tag.ps1 -Install
-.\src\Plugins\titles-from-headings.ps1 -Install
 .\src\Plugins\libsass-converter.ps1 -Install
 ```
-
-Theme scaffold guidance lives in [docs/about_Hyde_theme_scaffold.md](docs/about_Hyde_theme_scaffold.md).
 
 ## Testing
 
