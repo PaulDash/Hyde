@@ -4,6 +4,17 @@ All notable changes to Hyde will be documented in this file.
 
 The format is loosely based on Keep a Changelog, but entries are kept short and practical for this project.
 
+## [0.6.1] - 2026-03-31
+
+### Added
+
+- Added a dedicated private markdown module script (`Private/Hyde.Markdown.ps1`) with CBH for markdown conversion helpers.
+
+### Changed
+
+- Extracted markdown conversion logic from `Hyde.Render.ps1` into `Hyde.Markdown.ps1` without changing rendering behavior.
+- Updated module manifest file list and bumped module version to `0.6.1`.
+
 ## [0.5.3] - 2026-03-31
 
 ### Added

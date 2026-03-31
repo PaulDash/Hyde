@@ -1,6 +1,6 @@
 @{
     RootModule        = 'Hyde.psm1'
-    ModuleVersion     = '0.6.0'
+    ModuleVersion     = '0.6.1'
     GUID              = '42b2840d-8661-47ad-b051-9c3d868fc3d5'
     Author            = 'Paul Dash'
     CompanyName       = 'Paul Dash'
@@ -35,6 +35,7 @@
         'Public\Test-StaticSite.ps1',
         'Private\Hyde.Config.ps1',
         'Private\Hyde.Discovery.ps1',
+        'Private\Hyde.Markdown.ps1',
         'Private\Hyde.Plugins.ps1',
         'Private\Hyde.Render.ps1',
         'Private\Hyde.Variables.ps1',
