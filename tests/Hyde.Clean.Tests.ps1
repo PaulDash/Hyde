@@ -179,4 +179,52 @@ title: Test Site
         Test-Path -LiteralPath $siteRoot | Should -BeTrue
         Test-Path -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') | Should -BeTrue
     }
+
+    It 'refuses to remove a destination that is a parent of source path' {
+        $parentRoot = Join-Path -Path $TestDrive -ChildPath 'clean-parent-root'
+        $siteRoot = Join-Path -Path $parentRoot -ChildPath 'nested-site'
+
+        [void](New-Item -Path $siteRoot -ItemType Directory -Force)
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Push-Location -LiteralPath $siteRoot
+        try {
+            {
+                Clear-StaticSite -Destination '..' | Out-Null
+            } | Should -Throw -ExpectedMessage '*Clean failed while removing destination folder*parent of source path*'
+        } finally {
+            Pop-Location
+        }
+
+        Test-Path -LiteralPath $siteRoot | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') | Should -BeTrue
+    }
+
+    It 'refuses to remove a destination that resolves to a drive root' {
+        if (-not $IsWindows) {
+            Set-ItResult -Skipped -Because 'Drive-root safety test is Windows-specific.'
+            return
+        }
+
+        $siteRoot = New-TestSiteDirectory -Name 'drive-root-clean-site'
+        $driveRoot = [System.IO.Path]::GetPathRoot($siteRoot)
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+'@
+
+        Push-Location -LiteralPath $siteRoot
+        try {
+            {
+                Clear-StaticSite -Destination $driveRoot | Out-Null
+            } | Should -Throw -ExpectedMessage '*Clean failed while removing destination folder*drive root*'
+        } finally {
+            Pop-Location
+        }
+
+        Test-Path -LiteralPath $siteRoot | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') | Should -BeTrue
+    }
 }

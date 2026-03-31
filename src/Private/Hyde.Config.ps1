@@ -669,19 +669,38 @@ function removeHydeGeneratedPath {
         [string]$Path,
 
         [Parameter(Mandatory = $true)]
-        [string]$Kind
+        [string]$Kind,
+
+        [string]$SourcePath
     )
-
-    # TODO: Add safety check to prevent removing the destination if it is a parent of the source
-    #  That is also a common misconfiguration that can lead to data loss. Jekyll clean does not protect against this currently, but it would be a valuable safeguard to add in Hyde.
-
-
-
-    # TODO: Handle case of destination being a drive
-
 
     # Resolve paths first so the safety checks operate on normalized absolute paths.
     $resolvedTargetPath = [System.IO.Path]::GetFullPath($Path)
+
+    if ($Kind -eq 'destination folder') {
+        $normalizedTargetPath = $resolvedTargetPath.TrimEnd([char[]]@('\', '/'))
+        $normalizedDriveRoot = [System.IO.Path]::GetPathRoot($resolvedTargetPath).TrimEnd([char[]]@('\', '/'))
+
+        # Cleaning a drive root would be catastrophic if destination is misconfigured.
+        if (-not [string]::IsNullOrWhiteSpace($normalizedDriveRoot) -and $normalizedTargetPath.Equals($normalizedDriveRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "Refusing to remove destination folder path '$resolvedTargetPath' because it resolves to a drive root."
+        }
+    }
+
+    if (($Kind -eq 'destination folder') -and -not [string]::IsNullOrWhiteSpace($SourcePath)) {
+        $resolvedSourcePath = [System.IO.Path]::GetFullPath($SourcePath)
+
+        $normalizedTargetPath = $resolvedTargetPath.TrimEnd([char[]]@('\', '/'))
+        $normalizedSourcePath = $resolvedSourcePath.TrimEnd([char[]]@('\', '/'))
+
+        # Clean must not remove a destination folder that is a parent of the source tree.
+        if (
+            $normalizedSourcePath.StartsWith($normalizedTargetPath + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase) -or
+            $normalizedSourcePath.StartsWith($normalizedTargetPath + [System.IO.Path]::AltDirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
+        ) {
+            throw "Refusing to remove destination folder path '$resolvedTargetPath' because it is a parent of source path '$resolvedSourcePath'."
+        }
+    }
 
     # Clean must never remove an actual site source directory, even if the destination points at it.
     if (($Kind -eq 'destination folder') -and (testHydeSiteRootPath -Path $resolvedTargetPath)) {

@@ -79,7 +79,7 @@ function Clear-StaticSite {
         try {
             if ($PSCmdlet.ShouldProcess($target.Path, "Remove $($target.Kind)")) {
                 Write-Verbose "Removing $($target.Kind) at '$($target.Path)'."
-                removeHydeGeneratedPath -Path $target.Path -Kind $target.Kind
+                removeHydeGeneratedPath -Path $target.Path -Kind $target.Kind -SourcePath $context.SourcePath
             } else {
                 Write-Verbose "Skipping removal of $($target.Kind) at '$($target.Path)' because ShouldProcess declined it."
             }
