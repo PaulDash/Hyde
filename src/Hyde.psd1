@@ -11,7 +11,7 @@
     FunctionsToExport = @(
         'Hyde',
         'New-StaticSite',
-        'New-StaticTheme',
+        'New-StaticSiteTheme',
         'Publish-StaticSite',
         'Clear-StaticSite',
         'Test-StaticSite'
@@ -29,7 +29,7 @@
         'globalConfig.yaml',
         'Public\Hyde.ps1',
         'Public\New-StaticSite.ps1',
-        'Public\New-StaticTheme.ps1',
+        'Public\New-StaticSiteTheme.ps1',
         'Public\Publish-StaticSite.ps1',
         'Public\Clear-StaticSite.ps1',
         'Public\Test-StaticSite.ps1',
@@ -64,7 +64,7 @@
 
 # 0.5.1
 
-- Added `Hyde New-Theme` and `New-StaticTheme` for starter theme scaffolding.
+- Added `Hyde New-Theme` and `New-StaticSiteTheme` for starter theme scaffolding.
 
 # 0.5.0
 

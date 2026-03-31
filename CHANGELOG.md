@@ -8,7 +8,7 @@ The format is loosely based on Keep a Changelog, but entries are kept short and 
 
 ### Added
 
-- Added `Hyde New-Theme` and `New-StaticTheme` for starter theme scaffolding.
+- Added `Hyde New-Theme` and `New-StaticSiteTheme` for starter theme scaffolding.
 - Added theme scaffold documentation covering previewable and portable layouts.
 
 ### Changed

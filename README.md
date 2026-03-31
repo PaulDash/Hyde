@@ -103,7 +103,7 @@ Create a portable theme scaffold with the cmdlet directly:
 
 ```powershell
 Import-Module .\src\Hyde.psd1
-New-StaticTheme -Destination .\mytheme -Portable
+New-StaticSiteTheme -Destination .\mytheme -Portable
 ```
 
 Build a site:

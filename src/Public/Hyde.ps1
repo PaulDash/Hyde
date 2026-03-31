@@ -220,7 +220,7 @@ function Hyde {
                     $commandParameters['Verbose'] = $true
                 }
 
-                New-StaticTheme @commandParameters
+                New-StaticSiteTheme @commandParameters
             }
             'Build' {
                 $commandParameters = @{

@@ -20,7 +20,7 @@ Describe 'Hyde module manifest' {
         $module = Get-Module Hyde | Where-Object { $_.ModuleBase -eq $moduleRoot } | Select-Object -Last 1
         $exportedFunctions = @($module.ExportedFunctions.Keys | Sort-Object)
 
-        ($exportedFunctions -join ',') | Should -BeExactly 'Clear-StaticSite,Hyde,New-StaticSite,New-StaticTheme,Publish-StaticSite,Test-StaticSite'
+        ($exportedFunctions -join ',') | Should -BeExactly 'Clear-StaticSite,Hyde,New-StaticSite,New-StaticSiteTheme,Publish-StaticSite,Test-StaticSite'
     }
 
     It 'declares the expected required modules' {

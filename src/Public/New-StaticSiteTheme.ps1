@@ -3,7 +3,7 @@
 Creates a new Hyde theme scaffold.
 
 .DESCRIPTION
-`New-StaticTheme` scaffolds a starter Hyde theme at the target destination.
+`New-StaticSiteTheme` scaffolds a starter Hyde theme at the target destination.
 
 By default, it creates a previewable scaffold that includes an `index.md` page
 so the generated structure can be built immediately.
@@ -25,12 +25,12 @@ Portable mode omits `index.md` and keeps only shared theme structure.
 Suppresses information messages while creating the scaffold.
 
 .EXAMPLE
-New-StaticTheme -Destination .\mytheme
+New-StaticSiteTheme -Destination .\mytheme
 
 Creates a previewable theme scaffold in `./mytheme`.
 
 .EXAMPLE
-New-StaticTheme -Destination .\mytheme -Portable
+New-StaticSiteTheme -Destination .\mytheme -Portable
 
 Creates a portable theme scaffold in `./mytheme`.
 
@@ -53,7 +53,7 @@ The scaffold uses `_sass` plus `assets/css/site.scss` on purpose:
 - The current built-in Sass path is LibSass-based.
 - Generated Sass uses classic `@import` intentionally for current compatibility.
 #>
-function New-StaticTheme {
+function New-StaticSiteTheme {
     [CmdletBinding(SupportsShouldProcess = $true)]
     [OutputType([System.IO.DirectoryInfo])]
     param(

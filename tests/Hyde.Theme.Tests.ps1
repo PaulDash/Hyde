@@ -33,7 +33,7 @@ Describe 'Hyde theme scaffolding' {
     It 'allows Hyde New-Theme to scaffold a previewable theme from the imported module' {
         $themeRoot = New-TestThemeDirectory -Name 'preview-theme'
 
-        # Route through the top-level Hyde command to verify the command parser forwards to New-StaticTheme.
+        # Route through the top-level Hyde command to verify the command parser forwards to New-StaticSiteTheme.
         {
             Hyde New-Theme $themeRoot -Quiet
         } | Should -Not -Throw
@@ -44,11 +44,11 @@ Describe 'Hyde theme scaffolding' {
         Test-Path -LiteralPath (Join-Path -Path $themeRoot -ChildPath 'index.md') | Should -BeTrue
     }
 
-    It 'allows New-StaticTheme to scaffold a portable theme directly' {
+    It 'allows New-StaticSiteTheme to scaffold a portable theme directly' {
         $themeRoot = New-TestThemeDirectory -Name 'portable-theme'
 
         # Call the cmdlet directly to verify the exported Verb-Noun surface independently of Hyde routing.
-        $createdTheme = New-StaticTheme -Destination $themeRoot -Portable -Quiet
+        $createdTheme = New-StaticSiteTheme -Destination $themeRoot -Portable -Quiet
 
         $createdTheme | Should -BeOfType ([System.IO.DirectoryInfo])
         Assert-BaseThemeScaffold -ThemeRoot $themeRoot
