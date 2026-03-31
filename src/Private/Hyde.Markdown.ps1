@@ -497,20 +497,23 @@ function convertHydeMarkdown {
         }
 
         $hasTaskItems = $false
-        $items = $listItems.ToArray() | ForEach-Object {
-            if ($_ -match '^\[(?<marker>[ xX])\]') {
+        $items = New-Object System.Collections.ArrayList
+        foreach ($listItem in $listItems.ToArray()) {
+            if ($listItem -match '^\[(?<marker>[ xX])\]') {
                 $hasTaskItems = $true
                 $isChecked = $Matches['marker'] -match '[xX]'
-                $taskLabel = if ($_.Length -gt 3) { $_.Substring(3).TrimStart() } else { '' }
+                $taskLabel = if ($listItem.Length -gt 3) { $listItem.Substring(3).TrimStart() } else { '' }
                 $taskText = convertHydeInlineMarkdown -Text $taskLabel -FootnoteState $footnoteState
                 if ($isChecked) {
-                    return "<li class=`"task-list-item`"><input type=`"checkbox`" checked disabled /> $taskText</li>"
+                    [void]$items.Add("<li class=`"task-list-item`"><input type=`"checkbox`" checked disabled /> $taskText</li>")
+                    continue
                 }
 
-                return "<li class=`"task-list-item`"><input type=`"checkbox`" disabled /> $taskText</li>"
+                [void]$items.Add("<li class=`"task-list-item`"><input type=`"checkbox`" disabled /> $taskText</li>")
+                continue
             }
 
-            return "<li>$(convertHydeInlineMarkdown -Text $_ -FootnoteState $footnoteState)</li>"
+            [void]$items.Add("<li>$(convertHydeInlineMarkdown -Text $listItem -FootnoteState $footnoteState)</li>")
         }
 
         if ($hasTaskItems) {
@@ -529,20 +532,23 @@ function convertHydeMarkdown {
         }
 
         $hasTaskItems = $false
-        $items = $orderedListItems.ToArray() | ForEach-Object {
-            if ($_ -match '^\[(?<marker>[ xX])\]') {
+        $items = New-Object System.Collections.ArrayList
+        foreach ($orderedListItem in $orderedListItems.ToArray()) {
+            if ($orderedListItem -match '^\[(?<marker>[ xX])\]') {
                 $hasTaskItems = $true
                 $isChecked = $Matches['marker'] -match '[xX]'
-                $taskLabel = if ($_.Length -gt 3) { $_.Substring(3).TrimStart() } else { '' }
+                $taskLabel = if ($orderedListItem.Length -gt 3) { $orderedListItem.Substring(3).TrimStart() } else { '' }
                 $taskText = convertHydeInlineMarkdown -Text $taskLabel -FootnoteState $footnoteState
                 if ($isChecked) {
-                    return "<li class=`"task-list-item`"><input type=`"checkbox`" checked disabled /> $taskText</li>"
+                    [void]$items.Add("<li class=`"task-list-item`"><input type=`"checkbox`" checked disabled /> $taskText</li>")
+                    continue
                 }
 
-                return "<li class=`"task-list-item`"><input type=`"checkbox`" disabled /> $taskText</li>"
+                [void]$items.Add("<li class=`"task-list-item`"><input type=`"checkbox`" disabled /> $taskText</li>")
+                continue
             }
 
-            return "<li>$(convertHydeInlineMarkdown -Text $_ -FootnoteState $footnoteState)</li>"
+            [void]$items.Add("<li>$(convertHydeInlineMarkdown -Text $orderedListItem -FootnoteState $footnoteState)</li>")
         }
 
         if ($hasTaskItems) {
