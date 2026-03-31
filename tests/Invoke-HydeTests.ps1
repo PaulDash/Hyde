@@ -18,6 +18,7 @@ $configuration.Run.Path = @(
     (Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.Build.Tests.ps1')
     (Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.Clean.Tests.ps1')
     (Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.SeoTag.Tests.ps1')
+    (Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.TitlesFromHeadings.Tests.ps1')
     (Join-Path -Path $PSScriptRoot -ChildPath 'Hyde.LibSass.Tests.ps1')
 )
 $configuration.Output.Verbosity = 'Detailed'
