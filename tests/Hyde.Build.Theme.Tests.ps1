@@ -71,7 +71,7 @@ layout: default
         $context.ThemePath | Should -BeExactly $themeRoot
         $indexOutput | Should -Match 'Theme Banner'
         $indexOutput | Should -Match 'data-brand="Theme Brand"'
-        $indexOutput | Should -Match '<h1>Theme Fallback</h1>'
+        $indexOutput | Should -Match '<h1 id="theme-fallback">Theme Fallback</h1>'
         $assetOutput.Trim() | Should -BeExactly 'body { color: #123456; }'
     }
 

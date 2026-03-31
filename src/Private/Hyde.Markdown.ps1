@@ -23,12 +23,152 @@ System.String
 .NOTES
 This is not a full CommonMark implementation.
 #>
+# Convert plain text URLs into anchor tags while skipping existing HTML tags.
+function convertHydeBareUrlAutolinks {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string]$Text
+    )
+
+    $segments = [System.Text.RegularExpressions.Regex]::Split($Text, '(<[^>]+>)')
+    $result = New-Object System.Text.StringBuilder
+    foreach ($segment in $segments) {
+        if ([string]::IsNullOrEmpty($segment)) {
+            continue
+        }
+
+        if ($segment.StartsWith('<')) {
+            [void]$result.Append($segment)
+            continue
+        }
+
+        $converted = [System.Text.RegularExpressions.Regex]::Replace(
+            $segment,
+            '(^|[\s\(\[])((?:https?://)[^\s<]+)',
+            {
+                param($match)
+
+                $prefix = $match.Groups[1].Value
+                $url = $match.Groups[2].Value
+                $trimmedUrl = $url.TrimEnd('.', ',', ';', ':', '!', '?', ')')
+                $suffix = $url.Substring($trimmedUrl.Length)
+
+                if ([string]::IsNullOrWhiteSpace($trimmedUrl)) {
+                    return $match.Value
+                }
+
+                return "$prefix<a href=`"$trimmedUrl`">$trimmedUrl</a>$suffix"
+            }
+        )
+
+        [void]$result.Append($converted)
+    }
+
+    return $result.ToString()
+}
+
+# Create deterministic, unique heading IDs using a slug policy.
+function newHydeHeadingSlug {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$HeadingHtml,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$SlugState
+    )
+
+    $plainText = [System.Text.RegularExpressions.Regex]::Replace($HeadingHtml, '<[^>]+>', '')
+    $plainText = [System.Net.WebUtility]::HtmlDecode($plainText)
+    $slug = $plainText.ToLowerInvariant()
+    $slug = [System.Text.RegularExpressions.Regex]::Replace($slug, '[^a-z0-9\s-]', '')
+    $slug = [System.Text.RegularExpressions.Regex]::Replace($slug, '[\s-]+', '-')
+    $slug = $slug.Trim('-')
+
+    if ([string]::IsNullOrWhiteSpace($slug)) {
+        $slug = 'section'
+    }
+
+    if (-not $SlugState.ContainsKey($slug)) {
+        $SlugState[$slug] = 1
+        return $slug
+    }
+
+    $SlugState[$slug] = [int]$SlugState[$slug] + 1
+    return ($slug + '-' + $SlugState[$slug])
+}
+
+# Split a markdown table row into trimmed cell values.
+function splitHydeMarkdownTableRow {
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Row
+    )
+
+    $normalized = $Row.Trim()
+    if ($normalized.StartsWith('|')) {
+        $normalized = $normalized.Substring(1)
+    }
+
+    if ($normalized.EndsWith('|')) {
+        $normalized = $normalized.Substring(0, $normalized.Length - 1)
+    }
+
+    return @($normalized.Split('|') | ForEach-Object { $_.Trim() })
+}
+
+# Resolve markdown table alignment markers into HTML alignment values.
+function getHydeMarkdownTableAlignments {
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$DividerLine
+    )
+
+    $alignmentCells = splitHydeMarkdownTableRow -Row $DividerLine
+    $alignments = New-Object System.Collections.ArrayList
+    foreach ($cell in $alignmentCells) {
+        $trimmedCell = $cell.Trim()
+        $isValid = $trimmedCell -match '^:?-{3,}:?$'
+        if (-not $isValid) {
+            return @()
+        }
+
+        if ($trimmedCell.StartsWith(':') -and $trimmedCell.EndsWith(':')) {
+            [void]$alignments.Add('center')
+            continue
+        }
+
+        if ($trimmedCell.EndsWith(':')) {
+            [void]$alignments.Add('right')
+            continue
+        }
+
+        if ($trimmedCell.StartsWith(':')) {
+            [void]$alignments.Add('left')
+            continue
+        }
+
+        [void]$alignments.Add('')
+    }
+
+    return @($alignments.ToArray())
+}
+
 # Process inline markdown elements inside a single text span.
 function convertHydeInlineMarkdown {
     [CmdletBinding()]
     [OutputType([string])]
     param(
         [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
         [string]$Text,
 
         [hashtable]$FootnoteState
@@ -141,6 +281,16 @@ function convertHydeInlineMarkdown {
         '(?<!_)_([^_]+)_(?!_)',
         '<em>$1</em>'
     )
+
+    # Convert strikethrough using double tildes.
+    $encoded = [System.Text.RegularExpressions.Regex]::Replace(
+        $encoded,
+        '(?<!~)~~([^~]+)~~(?!~)',
+        '<del>$1</del>'
+    )
+
+    # Convert plain URLs into anchors after other inline replacements.
+    $encoded = convertHydeBareUrlAutolinks -Text $encoded
 
     # Convert footnote references such as [^note] into linked superscripts.
     if ($FootnoteState) {
@@ -315,6 +465,7 @@ function convertHydeMarkdown {
         Order     = New-Object System.Collections.ArrayList
         IndexById = @{}
     }
+    $headingSlugState = @{}
 
     $blocks = New-Object System.Collections.ArrayList
     $paragraphLines = New-Object System.Collections.ArrayList
@@ -332,6 +483,7 @@ function convertHydeMarkdown {
 
         $text = ($paragraphLines.ToArray() -join "`n").Trim()
         $text = [System.Text.RegularExpressions.Regex]::Replace($text, '( {2,}|\\)\n', '__HYDE_BR__')
+        $text = [System.Text.RegularExpressions.Regex]::Replace($text, '\n+', ' ')
         $rendered = convertHydeInlineMarkdown -Text $text -FootnoteState $footnoteState
         $rendered = $rendered.Replace('__HYDE_BR__', '<br />')
         [void]$blocks.Add("<p>$rendered</p>")
@@ -344,11 +496,29 @@ function convertHydeMarkdown {
             return
         }
 
+        $hasTaskItems = $false
         $items = $listItems.ToArray() | ForEach-Object {
-            "<li>$(convertHydeInlineMarkdown -Text $_ -FootnoteState $footnoteState)</li>"
+            if ($_ -match '^\[(?<marker>[ xX])\]') {
+                $hasTaskItems = $true
+                $isChecked = $Matches['marker'] -match '[xX]'
+                $taskLabel = if ($_.Length -gt 3) { $_.Substring(3).TrimStart() } else { '' }
+                $taskText = convertHydeInlineMarkdown -Text $taskLabel -FootnoteState $footnoteState
+                if ($isChecked) {
+                    return "<li class=`"task-list-item`"><input type=`"checkbox`" checked disabled /> $taskText</li>"
+                }
+
+                return "<li class=`"task-list-item`"><input type=`"checkbox`" disabled /> $taskText</li>"
+            }
+
+            return "<li>$(convertHydeInlineMarkdown -Text $_ -FootnoteState $footnoteState)</li>"
         }
 
-        [void]$blocks.Add("<ul>$($items -join '')</ul>")
+        if ($hasTaskItems) {
+            [void]$blocks.Add("<ul class=`"task-list`">$($items -join '')</ul>")
+        } else {
+            [void]$blocks.Add("<ul>$($items -join '')</ul>")
+        }
+
         $listItems.Clear()
     }
 
@@ -358,11 +528,29 @@ function convertHydeMarkdown {
             return
         }
 
+        $hasTaskItems = $false
         $items = $orderedListItems.ToArray() | ForEach-Object {
-            "<li>$(convertHydeInlineMarkdown -Text $_ -FootnoteState $footnoteState)</li>"
+            if ($_ -match '^\[(?<marker>[ xX])\]') {
+                $hasTaskItems = $true
+                $isChecked = $Matches['marker'] -match '[xX]'
+                $taskLabel = if ($_.Length -gt 3) { $_.Substring(3).TrimStart() } else { '' }
+                $taskText = convertHydeInlineMarkdown -Text $taskLabel -FootnoteState $footnoteState
+                if ($isChecked) {
+                    return "<li class=`"task-list-item`"><input type=`"checkbox`" checked disabled /> $taskText</li>"
+                }
+
+                return "<li class=`"task-list-item`"><input type=`"checkbox`" disabled /> $taskText</li>"
+            }
+
+            return "<li>$(convertHydeInlineMarkdown -Text $_ -FootnoteState $footnoteState)</li>"
         }
 
-        [void]$blocks.Add("<ol>$($items -join '')</ol>")
+        if ($hasTaskItems) {
+            [void]$blocks.Add("<ol class=`"task-list`">$($items -join '')</ol>")
+        } else {
+            [void]$blocks.Add("<ol>$($items -join '')</ol>")
+        }
+
         $orderedListItems.Clear()
     }
 
@@ -481,7 +669,9 @@ function convertHydeMarkdown {
                 completeHydeParagraphBuffer
                 completeHydeListBuffer
                 completeHydeOrderedListBuffer
-                [void]$blocks.Add("<h1>$(convertHydeInlineMarkdown -Text $line.Trim() -FootnoteState $footnoteState)</h1>")
+                $headingHtml = convertHydeInlineMarkdown -Text $line.Trim() -FootnoteState $footnoteState
+                $headingId = newHydeHeadingSlug -HeadingHtml $headingHtml -SlugState $headingSlugState
+                [void]$blocks.Add("<h1 id=`"$headingId`">$headingHtml</h1>")
                 $index += 2
                 continue
             }
@@ -490,8 +680,55 @@ function convertHydeMarkdown {
                 completeHydeParagraphBuffer
                 completeHydeListBuffer
                 completeHydeOrderedListBuffer
-                [void]$blocks.Add("<h2>$(convertHydeInlineMarkdown -Text $line.Trim() -FootnoteState $footnoteState)</h2>")
+                $headingHtml = convertHydeInlineMarkdown -Text $line.Trim() -FootnoteState $footnoteState
+                $headingId = newHydeHeadingSlug -HeadingHtml $headingHtml -SlugState $headingSlugState
+                [void]$blocks.Add("<h2 id=`"$headingId`">$headingHtml</h2>")
                 $index += 2
+                continue
+            }
+        }
+
+        # Handle markdown tables with a header line plus divider line.
+        if (($index + 1 -lt $lines.Count) -and $line.Contains('|')) {
+            $dividerLine = [string]$lines[$index + 1]
+            $alignments = getHydeMarkdownTableAlignments -DividerLine $dividerLine
+            if ($alignments.Count -gt 0) {
+                completeHydeParagraphBuffer
+                completeHydeListBuffer
+                completeHydeOrderedListBuffer
+
+                $headerCells = splitHydeMarkdownTableRow -Row $line
+                $maxCellCount = [Math]::Min($headerCells.Count, $alignments.Count)
+                $headerHtml = New-Object System.Collections.ArrayList
+                for ($cellIndex = 0; $cellIndex -lt $maxCellCount; $cellIndex++) {
+                    $alignmentAttribute = if ([string]::IsNullOrWhiteSpace($alignments[$cellIndex])) { '' } else { " style=`"text-align: $($alignments[$cellIndex]);`"" }
+                    $cellHtml = convertHydeInlineMarkdown -Text $headerCells[$cellIndex] -FootnoteState $footnoteState
+                    [void]$headerHtml.Add("<th$alignmentAttribute>$cellHtml</th>")
+                }
+
+                $bodyRows = New-Object System.Collections.ArrayList
+                $index += 2
+                while ($index -lt $lines.Count) {
+                    $rowLine = [string]$lines[$index]
+                    if ([string]::IsNullOrWhiteSpace($rowLine) -or -not $rowLine.Contains('|')) {
+                        break
+                    }
+
+                    $rowCells = splitHydeMarkdownTableRow -Row $rowLine
+                    $rowHtml = New-Object System.Collections.ArrayList
+                    for ($cellIndex = 0; $cellIndex -lt $maxCellCount; $cellIndex++) {
+                        $cellValue = if ($cellIndex -lt $rowCells.Count) { $rowCells[$cellIndex] } else { '' }
+                        $alignmentAttribute = if ([string]::IsNullOrWhiteSpace($alignments[$cellIndex])) { '' } else { " style=`"text-align: $($alignments[$cellIndex]);`"" }
+                        $cellHtml = convertHydeInlineMarkdown -Text $cellValue -FootnoteState $footnoteState
+                        [void]$rowHtml.Add("<td$alignmentAttribute>$cellHtml</td>")
+                    }
+
+                    [void]$bodyRows.Add("<tr>$($rowHtml -join '')</tr>")
+                    $index++
+                }
+
+                $tableBody = if ($bodyRows.Count -gt 0) { "<tbody>$($bodyRows -join '')</tbody>" } else { '' }
+                [void]$blocks.Add("<table><thead><tr>$($headerHtml -join '')</tr></thead>$tableBody</table>")
                 continue
             }
         }
@@ -513,7 +750,8 @@ function convertHydeMarkdown {
             completeHydeOrderedListBuffer
             $level = $Matches[1].Length
             $headingText = convertHydeInlineMarkdown -Text $Matches[2].Trim() -FootnoteState $footnoteState
-            [void]$blocks.Add("<h$level>$headingText</h$level>")
+            $headingId = newHydeHeadingSlug -HeadingHtml $headingText -SlugState $headingSlugState
+            [void]$blocks.Add("<h$level id=`"$headingId`">$headingText</h$level>")
             $index++
             continue
         }

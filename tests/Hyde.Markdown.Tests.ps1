@@ -38,6 +38,8 @@ layout: default
 ---
 # Hash Heading
 
+# Hash Heading
+
 Setext heading
 -------------
 
@@ -52,9 +54,24 @@ Next line.
 - One unordered
 - Two unordered
 
+- [ ] Open task
+- [x] Done task
+
+1. [ ] Ordered open
+2. [x] Ordered done
+
 ---
 
 Inline image: ![Alt text](/assets/pic.png "Picture")
+
+Strikethrough: ~~legacy~~ text.
+
+Bare URL: https://example.com/docs?x=1.
+
+| Name | Score | Status |
+| :--- | ---: | :---: |
+| Alpha | 10 | Ready |
+| Beta | 20 | Done |
 
 Escaped punctuation: \*not italic\* and \[literal\]
 '@
@@ -62,14 +79,20 @@ Escaped punctuation: \*not italic\* and \[literal\]
         Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
         $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
 
-        $indexOutput | Should -Match '<h1>Hash Heading</h1>'
-        $indexOutput | Should -Match '<h2>Setext heading</h2>'
+        $indexOutput | Should -Match '<h1 id="hash-heading">Hash Heading</h1>'
+        $indexOutput | Should -Match '<h1 id="hash-heading-2">Hash Heading</h1>'
+        $indexOutput | Should -Match '<h2 id="setext-heading">Setext heading</h2>'
         $indexOutput | Should -Match '<br />'
         $indexOutput | Should -Match '<blockquote>'
         $indexOutput | Should -Match '<ol><li>First ordered</li><li>Second ordered</li></ol>'
         $indexOutput | Should -Match '<ul><li>One unordered</li><li>Two unordered</li></ul>'
+        $indexOutput | Should -Match '<ul class="task-list"><li class="task-list-item"><input type="checkbox" disabled /> Open task</li><li class="task-list-item"><input type="checkbox" checked disabled /> Done task</li></ul>'
+        $indexOutput | Should -Match '<ol class="task-list"><li class="task-list-item"><input type="checkbox" disabled /> Ordered open</li><li class="task-list-item"><input type="checkbox" checked disabled /> Ordered done</li></ol>'
         $indexOutput | Should -Match '<hr />'
         $indexOutput | Should -Match '<img src="/assets/pic\.png" alt="Alt text" title="Picture" />'
+        $indexOutput | Should -Match '<del>legacy</del>'
+        $indexOutput | Should -Match '<a href="https://example\.com/docs\?x=1">https://example\.com/docs\?x=1</a>\.'
+        $indexOutput | Should -Match '<table><thead><tr><th style="text-align: left;">Name</th><th style="text-align: right;">Score</th><th style="text-align: center;">Status</th></tr></thead><tbody><tr><td style="text-align: left;">Alpha</td><td style="text-align: right;">10</td><td style="text-align: center;">Ready</td></tr><tr><td style="text-align: left;">Beta</td><td style="text-align: right;">20</td><td style="text-align: center;">Done</td></tr></tbody></table>'
         $indexOutput | Should -Match '&#42;not italic&#42;'
         $indexOutput | Should -Match '&#91;literal&#93;'
     }

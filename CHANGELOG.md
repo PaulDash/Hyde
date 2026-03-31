@@ -4,6 +4,23 @@ All notable changes to Hyde will be documented in this file.
 
 The format is loosely based on Keep a Changelog, but entries are kept short and practical for this project.
 
+## [0.6.2] - 2026-03-31
+
+### Added
+
+- Added markdown heading IDs with deterministic slug generation and duplicate-suffix handling.
+- Added markdown support for strikethrough (`~~text~~`), plain URL autolinks, task list items, and basic pipe-table rendering with alignment markers.
+- Added/expanded markdown Pester coverage for heading IDs, task lists, tables, strikethrough, and URL autolinks.
+
+### Changed
+
+- Updated markdown paragraph normalization so soft line breaks collapse to spaces while explicit hard breaks still render as `<br />`.
+- Updated build/theme test expectations to account for heading IDs in rendered markdown headings.
+
+### Fixed
+
+- Fixed post `include_relative` rendering in paragraph content so included text no longer retains unintended literal newlines.
+
 ## [0.6.1] - 2026-03-31
 
 ### Added
