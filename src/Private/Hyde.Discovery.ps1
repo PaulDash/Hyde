@@ -1,4 +1,4 @@
-# Build the exclusion and include rules for source discovery.
+﻿# Build the exclusion and include rules for source discovery.
 function getHydeExcludedState {
     [CmdletBinding()]
     [OutputType([hashtable])]

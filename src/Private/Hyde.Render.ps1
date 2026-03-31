@@ -1,4 +1,4 @@
-# Convert a published front matter value into a boolean.
+﻿# Convert a published front matter value into a boolean.
 function convertToHydePublishedState {
     [CmdletBinding()]
     [OutputType([bool])]
