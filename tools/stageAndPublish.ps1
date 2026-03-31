@@ -68,6 +68,7 @@ function stageManifestFiles {
 
     $stagedFiles = New-Object System.Collections.ArrayList
     foreach ($relativePath in $Context.Manifest.FileList) {
+        Write-Verbose "Processing manifest FileList entry '$relativePath'."
         $sourcePath = Join-Path -Path $Context.ModuleSourceRoot -ChildPath $relativePath
         $destinationPath = Join-Path -Path $Context.StageModulePath -ChildPath $relativePath
         $destinationDirectory = Split-Path -Parent $destinationPath

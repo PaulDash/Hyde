@@ -46,7 +46,7 @@
         'Plugins\titles-from-headings.ps1',
         'Plugins\libsass-converter.ps1',
         'en-US\Hyde-help.xml',
-        'en-US\Hyde-Plugin-Authoring-help.xml'
+        'en-US\about_Hyde_Plugin_Authoring.help.txt'
     )
 
         PrivateData = @{
