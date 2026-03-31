@@ -439,6 +439,7 @@ function setHydeDataValue {
 # Parse a single data file by extension into PowerShell objects.
 function importHydeDataFile {
     [CmdletBinding()]
+    [OutputType([hashtable], [object[]], [object])]
     param(
         [Parameter(Mandatory = $true)]
         [string]$Path
@@ -459,9 +460,9 @@ function importHydeDataFile {
 
     if ([string]::IsNullOrWhiteSpace($content)) {
         switch ($extension) {
-            '.csv' { return @() }
-            '.tsv' { return @() }
-            default { return @{} }
+            '.csv' { return [object[]]@() }
+            '.tsv' { return [object[]]@() }
+            default { return [hashtable]@{} }
         }
     }
 

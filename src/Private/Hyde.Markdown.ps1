@@ -121,7 +121,7 @@ function splitHydeMarkdownTableRow {
         $normalized = $normalized.Substring(0, $normalized.Length - 1)
     }
 
-    return @($normalized.Split('|') | ForEach-Object { $_.Trim() })
+    return [string[]]@($normalized.Split('|') | ForEach-Object { $_.Trim() })
 }
 
 # Resolve markdown table alignment markers into HTML alignment values.
@@ -140,7 +140,7 @@ function getHydeMarkdownTableAlignments {
         $trimmedCell = $cell.Trim()
         $isValid = $trimmedCell -match '^:?-{3,}:?$'
         if (-not $isValid) {
-            return @()
+            return [string[]]@()
         }
 
         if ($trimmedCell.StartsWith(':') -and $trimmedCell.EndsWith(':')) {
@@ -161,7 +161,7 @@ function getHydeMarkdownTableAlignments {
         [void]$alignments.Add('')
     }
 
-    return @($alignments.ToArray())
+    return [string[]]@($alignments.ToArray())
 }
 
 # Process inline markdown elements inside a single text span.
@@ -328,7 +328,7 @@ function convertHydeInlineMarkdown {
         )
     }
 
-    return $encoded
+    return [string]$encoded
 }
 
 # Split abbreviation definitions (*[ABBR]: expansion) out of the markdown body lines.
