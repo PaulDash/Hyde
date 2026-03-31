@@ -76,6 +76,8 @@ class HydeBuildContext {
     [hashtable]$Site
     [string]$SourcePath
     [string]$DestinationPath
+    [string]$ThemePath
+    [string]$EffectiveIncludesPath
     [hashtable]$PluginRegistry
     [hashtable]$LiquidRegistry
     [hashtable]$Layouts
@@ -87,6 +89,8 @@ class HydeBuildContext {
         # The build context is the shared state bag for one Hyde invocation.
         $this.Settings = @{}
         $this.Site = @{}
+        $this.ThemePath = ''
+        $this.EffectiveIncludesPath = ''
         $this.PluginRegistry = @{}
         $this.LiquidRegistry = @{}
         $this.Layouts = @{}

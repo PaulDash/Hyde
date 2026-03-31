@@ -78,106 +78,113 @@ function Publish-StaticSite {
     initializeHydeLayouts -Context $context
 
     try {
-        if (-not (Test-Path -LiteralPath $context.DestinationPath -PathType Container)) {
-            if ($PSCmdlet.ShouldProcess($context.DestinationPath, 'Create destination directory')) {
-                Write-Verbose "Creating destination directory '$($context.DestinationPath)'."
-                [void](New-Item -Path $context.DestinationPath -ItemType Directory -Force)
-            } else {
-                Write-Verbose "Skipping creation of destination directory '$($context.DestinationPath)' because ShouldProcess declined it."
-            }
-        } else {
-            Write-Verbose "Destination directory '$($context.DestinationPath)' already exists."
-        }
-    } catch {
-        throw "Build failed while preparing destination '$($context.DestinationPath)'. $($_.Exception.Message)"
-    }
-
-    Write-Verbose "Discovering source items under '$($context.SourcePath)'."
-    try {
-        # Discover the source tree before any rendering starts.
-        getHydeSourceItems -Context $context
-    } catch {
-        throw "Build failed while discovering source items in '$($context.SourcePath)'. $($_.Exception.Message)"
-    }
-
-    Write-Information "Processing $($context.Documents.Count) document(s) and $($context.StaticFiles.Count) static file(s)."
-    Write-Verbose "Discovered $($context.Documents.Count) document(s) and $($context.StaticFiles.Count) static file(s)."
-    Write-Verbose "Preparing document metadata phase."
-
-    # Resolve front matter and semantic metadata for every document before any template loops read site collections.
-    foreach ($document in $context.Documents) {
         try {
-            Write-Verbose "Preparing document metadata for '$($document.RelativePath)'."
-            initializeHydeDocument -Document $document -Context $context
-        } catch {
-            throw "Build failed while preparing document '$($document.SourcePath)'. $($_.Exception.Message)"
-        }
-    }
-
-    # Post loops should see the final published, sorted post set before any page starts rendering.
-    syncHydePosts -Context $context
-
-    # Paginated listing pages are generated from the final site.posts set before rendering begins.
-    initializeHydePagination -Context $context
-
-    # Tag and category loops should also see the final published document buckets before rendering starts.
-    syncHydeTaxonomies -Context $context
-
-    Write-Verbose "Starting document rendering phase."
-
-    # Documents are rendered and written first so any rendering failures stop the build early.
-    $documentIndex = 0
-    $publishedDocumentCount = 0
-    foreach ($document in $context.Documents) {
-        $documentIndex++
-        try {
-            Write-Verbose "Rendering document $documentIndex of $($context.Documents.Count): '$($document.RelativePath)'."
-            convertHydeDocument -Document $document -Context $context
-            if (-not $document.Published) {
-                Write-Verbose "Skipping unpublished document '$($document.RelativePath)'."
-                continue
-            }
-
-            if (-not $document.WriteOutput) {
-                Write-Verbose "Skipping output for collection document '$($document.RelativePath)' because its collection is not configured for output."
-                continue
-            }
-
-            $documentTargetPath = Join-Path -Path $context.DestinationPath -ChildPath $document.OutputRelativePath
-            if ($PSCmdlet.ShouldProcess($documentTargetPath, "Write document '$($document.RelativePath)'")) {
-                Write-Verbose "Writing document '$($document.RelativePath)' to '$($document.OutputRelativePath)'."
-                writeHydeDocument -Document $document -Context $context
-                $publishedDocumentCount++
-                Write-Verbose "Finished document '$($document.RelativePath)'."
+            if (-not (Test-Path -LiteralPath $context.DestinationPath -PathType Container)) {
+                if ($PSCmdlet.ShouldProcess($context.DestinationPath, 'Create destination directory')) {
+                    Write-Verbose "Creating destination directory '$($context.DestinationPath)'."
+                    [void](New-Item -Path $context.DestinationPath -ItemType Directory -Force)
+                } else {
+                    Write-Verbose "Skipping creation of destination directory '$($context.DestinationPath)' because ShouldProcess declined it."
+                }
             } else {
-                Write-Verbose "Skipping write of document '$($document.RelativePath)' because ShouldProcess declined it."
+                Write-Verbose "Destination directory '$($context.DestinationPath)' already exists."
             }
         } catch {
-            throw "Build failed while processing document '$($document.SourcePath)'. $($_.Exception.Message)"
+            throw "Build failed while preparing destination '$($context.DestinationPath)'. $($_.Exception.Message)"
         }
-    }
 
-    Write-Verbose "Starting static file copy phase."
-    # Static assets are copied after document rendering.
-    $staticFileIndex = 0
-    foreach ($staticFile in $context.StaticFiles) {
-        $staticFileIndex++
+        Write-Verbose "Discovering source items under '$($context.SourcePath)'."
         try {
-            $staticFileTargetPath = Join-Path -Path $context.DestinationPath -ChildPath $staticFile.OutputRelativePath
-            if ($PSCmdlet.ShouldProcess($staticFileTargetPath, "Copy static file '$($staticFile.RelativePath)'")) {
-                Write-Verbose "Copying static file $staticFileIndex of $($context.StaticFiles.Count): '$($staticFile.RelativePath)' to '$($staticFile.OutputRelativePath)'."
-                copyHydeStaticFile -StaticFile $staticFile -Context $context
-                Write-Verbose "Finished static file '$($staticFile.RelativePath)'."
-            } else {
-                Write-Verbose "Skipping copy of static file '$($staticFile.RelativePath)' because ShouldProcess declined it."
-            }
+            # Discover the source tree before any rendering starts.
+            getHydeSourceItems -Context $context
         } catch {
-            throw "Build failed while copying static file '$($staticFile.SourcePath)'. $($_.Exception.Message)"
+            throw "Build failed while discovering source items in '$($context.SourcePath)'. $($_.Exception.Message)"
+        }
+
+        Write-Information "Processing $($context.Documents.Count) document(s) and $($context.StaticFiles.Count) static file(s)."
+        Write-Verbose "Discovered $($context.Documents.Count) document(s) and $($context.StaticFiles.Count) static file(s)."
+        Write-Verbose "Preparing document metadata phase."
+
+        # Resolve front matter and semantic metadata for every document before any template loops read site collections.
+        foreach ($document in $context.Documents) {
+            try {
+                Write-Verbose "Preparing document metadata for '$($document.RelativePath)'."
+                initializeHydeDocument -Document $document -Context $context
+            } catch {
+                throw "Build failed while preparing document '$($document.SourcePath)'. $($_.Exception.Message)"
+            }
+        }
+
+        # Post loops should see the final published, sorted post set before any page starts rendering.
+        syncHydePosts -Context $context
+
+        # Paginated listing pages are generated from the final site.posts set before rendering begins.
+        initializeHydePagination -Context $context
+
+        # Tag and category loops should also see the final published document buckets before rendering starts.
+        syncHydeTaxonomies -Context $context
+
+        Write-Verbose "Starting document rendering phase."
+
+        # Documents are rendered and written first so any rendering failures stop the build early.
+        $documentIndex = 0
+        $publishedDocumentCount = 0
+        foreach ($document in $context.Documents) {
+            $documentIndex++
+            try {
+                Write-Verbose "Rendering document $documentIndex of $($context.Documents.Count): '$($document.RelativePath)'."
+                convertHydeDocument -Document $document -Context $context
+                if (-not $document.Published) {
+                    Write-Verbose "Skipping unpublished document '$($document.RelativePath)'."
+                    continue
+                }
+
+                if (-not $document.WriteOutput) {
+                    Write-Verbose "Skipping output for collection document '$($document.RelativePath)' because its collection is not configured for output."
+                    continue
+                }
+
+                $documentTargetPath = Join-Path -Path $context.DestinationPath -ChildPath $document.OutputRelativePath
+                if ($PSCmdlet.ShouldProcess($documentTargetPath, "Write document '$($document.RelativePath)'")) {
+                    Write-Verbose "Writing document '$($document.RelativePath)' to '$($document.OutputRelativePath)'."
+                    writeHydeDocument -Document $document -Context $context
+                    $publishedDocumentCount++
+                    Write-Verbose "Finished document '$($document.RelativePath)'."
+                } else {
+                    Write-Verbose "Skipping write of document '$($document.RelativePath)' because ShouldProcess declined it."
+                }
+            } catch {
+                throw "Build failed while processing document '$($document.SourcePath)'. $($_.Exception.Message)"
+            }
+        }
+
+        Write-Verbose "Starting static file copy phase."
+        # Static assets are copied after document rendering.
+        $staticFileIndex = 0
+        foreach ($staticFile in $context.StaticFiles) {
+            $staticFileIndex++
+            try {
+                $staticFileTargetPath = Join-Path -Path $context.DestinationPath -ChildPath $staticFile.OutputRelativePath
+                if ($PSCmdlet.ShouldProcess($staticFileTargetPath, "Copy static file '$($staticFile.RelativePath)'")) {
+                    Write-Verbose "Copying static file $staticFileIndex of $($context.StaticFiles.Count): '$($staticFile.RelativePath)' to '$($staticFile.OutputRelativePath)'."
+                    copyHydeStaticFile -StaticFile $staticFile -Context $context
+                    Write-Verbose "Finished static file '$($staticFile.RelativePath)'."
+                } else {
+                    Write-Verbose "Skipping copy of static file '$($staticFile.RelativePath)' because ShouldProcess declined it."
+                }
+            } catch {
+                throw "Build failed while copying static file '$($staticFile.SourcePath)'. $($_.Exception.Message)"
+            }
+        }
+
+        Write-Verbose "Build summary: wrote $publishedDocumentCount published document(s) and copied $($context.StaticFiles.Count) static file(s)."
+        Write-Information "Finished in $(((Get-Date) - $context.Site.time).TotalSeconds.ToString('0.00')) seconds."
+
+        return $context
+    } finally {
+        if ($context -and -not [string]::IsNullOrWhiteSpace($context.EffectiveIncludesPath) -and (Test-Path -LiteralPath $context.EffectiveIncludesPath -PathType Container)) {
+            # Theme include fallback uses a temporary merged directory that should not outlive the build.
+            Remove-Item -LiteralPath $context.EffectiveIncludesPath -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
-
-    Write-Verbose "Build summary: wrote $publishedDocumentCount published document(s) and copied $($context.StaticFiles.Count) static file(s)."
-    Write-Information "Finished in $(((Get-Date) - $context.Site.time).TotalSeconds.ToString('0.00')) seconds."
-
-    return $context
 }

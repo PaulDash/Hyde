@@ -93,6 +93,109 @@ function resolveHydePath {
     throw "Could not resolve target path of '$Location'."
 }
 
+# Resolve the configured theme directory to an absolute local path.
+function resolveHydeThemePath {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Settings,
+
+        [Parameter(Mandatory = $true)]
+        [string]$SourcePath
+    )
+
+    if (-not $Settings.ContainsKey('theme_dir')) {
+        return ''
+    }
+
+    $themeDirectory = [string]$Settings.theme_dir
+    if ([string]::IsNullOrWhiteSpace($themeDirectory)) {
+        return ''
+    }
+
+    $resolvedThemePath = resolveHydePath -Location $themeDirectory -BasePath $SourcePath -MayNotExist
+    if (-not (Test-Path -LiteralPath $resolvedThemePath -PathType Container)) {
+        throw "Could not find configured theme directory '$themeDirectory' at '$resolvedThemePath'."
+    }
+
+    return $resolvedThemePath
+}
+
+# Resolve a configured support directory beneath a root if it exists.
+function resolveHydeSupportDirectoryPath {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Settings,
+
+        [Parameter(Mandatory = $true)]
+        [string]$RootPath,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateSet('includes_dir', 'layouts_dir', 'data_dir', 'plugins_dir')]
+        [string]$SettingName,
+
+        [Parameter(Mandatory = $true)]
+        [string]$DefaultDirectoryName
+    )
+
+    $directoryName = if ($Settings.ContainsKey($SettingName) -and -not [string]::IsNullOrWhiteSpace([string]$Settings[$SettingName])) {
+        [string]$Settings[$SettingName]
+    } else {
+        $DefaultDirectoryName
+    }
+
+    $directoryPath = Join-Path -Path $RootPath -ChildPath $directoryName
+    if (-not (Test-Path -LiteralPath $directoryPath -PathType Container)) {
+        return ''
+    }
+
+    return $directoryPath
+}
+
+# Build the include root used by Liquid when a theme contributes fallback includes.
+function newHydeEffectiveIncludesPath {
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory = $true)]
+        [hashtable]$Settings,
+
+        [Parameter(Mandatory = $true)]
+        [string]$SourcePath,
+
+        [string]$ThemePath
+    )
+
+    $siteIncludesPath = resolveHydeSupportDirectoryPath -Settings $Settings -RootPath $SourcePath -SettingName 'includes_dir' -DefaultDirectoryName '_includes'
+    if ([string]::IsNullOrWhiteSpace($ThemePath)) {
+        return ''
+    }
+
+    $themeIncludesPath = resolveHydeSupportDirectoryPath -Settings $Settings -RootPath $ThemePath -SettingName 'includes_dir' -DefaultDirectoryName '_includes'
+    if ([string]::IsNullOrWhiteSpace($themeIncludesPath)) {
+        return ''
+    }
+
+    $effectiveIncludesPath = Join-Path -Path ([System.IO.Path]::GetTempPath()) -ChildPath ("hyde-includes-{0}" -f [System.Guid]::NewGuid().ToString('N'))
+    [void](New-Item -Path $effectiveIncludesPath -ItemType Directory -Force)
+
+    # Copy theme include files first so site files can overwrite them with the same relative path.
+    foreach ($themeIncludeItem in Get-ChildItem -LiteralPath $themeIncludesPath -Force) {
+        Copy-Item -LiteralPath $themeIncludeItem.FullName -Destination $effectiveIncludesPath -Recurse -Force
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($siteIncludesPath)) {
+        foreach ($siteIncludeItem in Get-ChildItem -LiteralPath $siteIncludesPath -Force) {
+            Copy-Item -LiteralPath $siteIncludeItem.FullName -Destination $effectiveIncludesPath -Recurse -Force
+        }
+    }
+
+    return $effectiveIncludesPath
+}
+
 # Build the Hyde context from defaults, site config, plugins, and data files.
 function initializeHydeBuildContext {
     [CmdletBinding()]
@@ -119,12 +222,33 @@ function initializeHydeBuildContext {
     Write-Verbose "Resolved source path to '$sourcePath'."
 
     $siteConfigPath = Join-Path -Path $sourcePath -ChildPath $siteConfigName
+    $siteConfig = @{}
     if (Test-Path -LiteralPath $siteConfigPath -PathType Leaf) {
         Write-Verbose "Loading site configuration from '$siteConfigPath'."
         $siteConfig = readHydeConfigFile -Path $siteConfigPath
-        mergeHydeConfig -Existing $settings -Difference $siteConfig
     } else {
         Write-Verbose "No site configuration file found at '$siteConfigPath'."
+    }
+
+    $themeConfig = @{}
+    $themePath = ''
+    if ($siteConfig.ContainsKey('theme_dir') -and -not [string]::IsNullOrWhiteSpace([string]$siteConfig.theme_dir)) {
+        $themePath = resolveHydeThemePath -Settings $siteConfig -SourcePath $sourcePath
+        $themeConfigPath = Join-Path -Path $themePath -ChildPath $siteConfigName
+        if (Test-Path -LiteralPath $themeConfigPath -PathType Leaf) {
+            Write-Verbose "Loading theme configuration from '$themeConfigPath'."
+            $themeConfig = readHydeConfigFile -Path $themeConfigPath
+        } else {
+            Write-Verbose "No theme configuration file found at '$themeConfigPath'."
+        }
+    }
+
+    if ($themeConfig.Count -gt 0) {
+        mergeHydeConfig -Existing $settings -Difference $themeConfig
+    }
+
+    if ($siteConfig.Count -gt 0) {
+        mergeHydeConfig -Existing $settings -Difference $siteConfig
     }
 
     if ($PSBoundParameters.ContainsKey('Source')) {
@@ -146,6 +270,8 @@ function initializeHydeBuildContext {
     $context.Site = copyHydeValue -InputObject $settings
     $context.SourcePath = $sourcePath
     $context.DestinationPath = $destinationPath
+    $context.ThemePath = $themePath
+    $context.EffectiveIncludesPath = newHydeEffectiveIncludesPath -Settings $settings -SourcePath $sourcePath -ThemePath $themePath
     $context.PluginRegistry = newHydePluginRegistry
     $context.LiquidRegistry = New-LiquidExtensionRegistry
     Register-LiquidTrustedType -Registry $context.LiquidRegistry -TypeName HydeDocument

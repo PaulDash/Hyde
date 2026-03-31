@@ -64,7 +64,6 @@ All functionality is also exposed as PowerShell-friendly Verb-Noun syntax!
 
 ### Under Consideration
 
-- Themes
 - Syntax highlighting
 - Plugins: sitemap, relative-links, optional-front-matter, gallery-generator, redirect-from, responsive-image, remote-theme, minifier, github-metadata, readme-index
 - incremental regeneration

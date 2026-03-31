@@ -207,6 +207,68 @@ function getHydeSourceItems {
     }
 
     getHydeCollectionItems -Context $Context
+    addHydeThemeStaticFiles -Context $Context
+}
+
+# Discover fallback static assets from the configured theme without treating theme pages as site documents.
+function addHydeThemeStaticFiles {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Context.ThemePath)) {
+        return
+    }
+
+    $excludedState = getHydeExcludedState -Context $Context
+    $knownRelativePaths = New-Object System.Collections.Generic.HashSet[string]([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($staticFile in $Context.StaticFiles) {
+        [void]$knownRelativePaths.Add($staticFile.RelativePath.Replace('\', '/'))
+    }
+
+    $pendingDirectories = New-Object System.Collections.Queue
+    $pendingDirectories.Enqueue($Context.ThemePath)
+
+    while ($pendingDirectories.Count -gt 0) {
+        $directoryPath = [string]$pendingDirectories.Dequeue()
+
+        foreach ($directory in Get-ChildItem -LiteralPath $directoryPath -Directory) {
+            $relativeDirectoryPath = [System.IO.Path]::GetRelativePath($Context.ThemePath, $directory.FullName).Replace('\', '/')
+            if (testHydeItemExclusion -Item $directory -RelativePath $relativeDirectoryPath -ExcludedState $excludedState) {
+                continue
+            }
+
+            $pendingDirectories.Enqueue($directory.FullName)
+        }
+
+        foreach ($file in Get-ChildItem -LiteralPath $directoryPath -File) {
+            $relativeFilePath = [System.IO.Path]::GetRelativePath($Context.ThemePath, $file.FullName).Replace('\', '/')
+            if (testHydeItemExclusion -Item $file -RelativePath $relativeFilePath -ExcludedState $excludedState) {
+                continue
+            }
+
+            if ($knownRelativePaths.Contains($relativeFilePath)) {
+                continue
+            }
+
+            $staticFile = [HydeStaticFile]::new($file.FullName, $relativeFilePath)
+            $staticFile.OutputRelativePath = resolveHydeStaticFileOutputPath -StaticFile $staticFile -Context $Context
+            $staticFile.Url = '/' + $relativeFilePath.Replace('\', '/')
+            foreach ($default in getHydeMatchingDefaults -Context $Context -Item $staticFile) {
+                mergeHydeFrontMatterDefaults -Target $staticFile.Metadata -Defaults $default.Values
+            }
+
+            [void]$knownRelativePaths.Add($relativeFilePath)
+            $Context.AddStaticFile($staticFile)
+            invokeHydePluginHook -Context $Context -HookName 'AfterDiscoverStaticFile' -Arguments @{
+                Context    = $Context
+                StaticFile = $staticFile
+            }
+            Write-Verbose "Discovered theme static file '$relativeFilePath'."
+        }
+    }
 }
 
 # Initialize a post document’s metadata from its file name and location.
@@ -265,9 +327,8 @@ function testHydePostFileName {
 }
 
 # Load supported _data files into site.data.
-function importHydeDataFile {
+function importHydeDataFiles {
     [CmdletBinding()]
-    [OutputType([System.Collections.Hashtable], [System.Object[]])]
     param(
         [Parameter(Mandatory = $true)]
         [HydeBuildContext]$Context

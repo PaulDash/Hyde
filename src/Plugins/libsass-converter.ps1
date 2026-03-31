@@ -440,6 +440,13 @@ $null = $Context
                     -not [string]::IsNullOrWhiteSpace([string]$Invocation.Context.Settings.sass.sass_dir)) {
                     $sassDirectoryPath = Join-Path -Path $Invocation.Context.SourcePath -ChildPath ([string]$Invocation.Context.Settings.sass.sass_dir)
                     [void]$includePathList.Add($sassDirectoryPath)
+
+                    if (-not [string]::IsNullOrWhiteSpace($Invocation.Context.ThemePath)) {
+                        $themeSassDirectoryPath = Join-Path -Path $Invocation.Context.ThemePath -ChildPath ([string]$Invocation.Context.Settings.sass.sass_dir)
+                        if (Test-Path -LiteralPath $themeSassDirectoryPath -PathType Container) {
+                            [void]$includePathList.Add($themeSassDirectoryPath)
+                        }
+                    }
                 }
 
                 # Allow plugin-specific include paths from _config.yml under libsass.include_paths.

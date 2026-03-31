@@ -138,6 +138,42 @@ function testHydeOutputConflicts {
     }
 }
 
+# Validate the configured theme directory before content-level checks run.
+function testHydeThemeConfiguration {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [HydeBuildContext]$Context,
+
+        [Parameter(Mandatory = $true)]
+        $Report
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Context.ThemePath)) {
+        return
+    }
+
+    if (-not (Test-Path -LiteralPath $Context.ThemePath -PathType Container)) {
+        addHydeValidationIssue -Report $Report -Code 'MissingThemeDirectory' -Path $Context.ThemePath -Message "Configured theme directory '$($Context.ThemePath)' does not exist."
+        return
+    }
+
+    $themeSupportPaths = @(
+        Join-Path -Path $Context.ThemePath -ChildPath $Context.Settings.layouts_dir,
+        Join-Path -Path $Context.ThemePath -ChildPath $Context.Settings.includes_dir,
+        Join-Path -Path $Context.ThemePath -ChildPath 'assets'
+    )
+
+    if (-not ($themeSupportPaths | Where-Object { Test-Path -LiteralPath $_ })) {
+        addHydeValidationIssue -Report $Report -Code 'InvalidThemeDirectory' -Path $Context.ThemePath -Message "Configured theme directory '$($Context.ThemePath)' does not contain layouts, includes, or assets."
+    }
+
+    $themeLayoutsPath = Join-Path -Path $Context.ThemePath -ChildPath $Context.Settings.layouts_dir
+    if (-not (Test-Path -LiteralPath $themeLayoutsPath -PathType Container)) {
+        addHydeValidationIssue -Report $Report -Code 'ThemeMissingLayouts' -Path $Context.ThemePath -Severity 'Warning' -Message "Theme directory '$($Context.ThemePath)' does not contain a layouts directory."
+    }
+}
+
 # Run all validation checks across the site content.
 function testHydeSiteContent {
     [CmdletBinding()]
@@ -147,6 +183,7 @@ function testHydeSiteContent {
     )
 
     $report = newHydeValidationReport -Context $Context
+    testHydeThemeConfiguration -Context $Context -Report $report
 
     foreach ($document in $Context.Documents) {
         Write-Verbose "Validating document '$($document.RelativePath)'."

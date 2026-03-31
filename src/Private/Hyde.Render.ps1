@@ -597,23 +597,35 @@ function initializeHydeLayouts {
         '_layouts'
     }
 
-    $layoutsDirectoryPath = Join-Path -Path $Context.SourcePath -ChildPath $layoutsDirectoryName
-    if (-not (Test-Path -LiteralPath $layoutsDirectoryPath -PathType Container)) {
-        Write-Verbose "No layouts directory found at '$layoutsDirectoryPath'."
-        return
+    $layoutRoots = New-Object System.Collections.ArrayList
+    if (-not [string]::IsNullOrWhiteSpace($Context.ThemePath)) {
+        [void]$layoutRoots.Add([pscustomobject]@{
+            RootPath  = $Context.ThemePath
+            RootLabel = 'theme'
+        })
     }
 
-    foreach ($layoutFile in Get-ChildItem -LiteralPath $layoutsDirectoryPath -File) {
-        $layoutRelativePath = [System.IO.Path]::GetRelativePath($Context.SourcePath, $layoutFile.FullName).Replace('\', '/')
-        $layoutDocument = [HydeDocument]::new('Layout', $layoutFile.FullName, $layoutRelativePath)
-        readHydeFrontMatter -Document $layoutDocument
+    [void]$layoutRoots.Add([pscustomobject]@{
+        RootPath  = $Context.SourcePath
+        RootLabel = 'site'
+    })
 
-        $Context.Layouts[$layoutFile.Name.ToLowerInvariant()] = $layoutDocument
-        if (-not $Context.Layouts.ContainsKey($layoutFile.BaseName.ToLowerInvariant())) {
-            $Context.Layouts[$layoutFile.BaseName.ToLowerInvariant()] = $layoutDocument
+    foreach ($layoutRoot in $layoutRoots) {
+        $layoutsDirectoryPath = Join-Path -Path $layoutRoot.RootPath -ChildPath $layoutsDirectoryName
+        if (-not (Test-Path -LiteralPath $layoutsDirectoryPath -PathType Container)) {
+            Write-Verbose "No $($layoutRoot.RootLabel) layouts directory found at '$layoutsDirectoryPath'."
+            continue
         }
 
-        Write-Verbose "Pre-parsed layout '$($layoutFile.Name)'."
+        foreach ($layoutFile in Get-ChildItem -LiteralPath $layoutsDirectoryPath -File) {
+            $layoutRelativePath = [System.IO.Path]::GetRelativePath($layoutRoot.RootPath, $layoutFile.FullName).Replace('\', '/')
+            $layoutDocument = [HydeDocument]::new('Layout', $layoutFile.FullName, $layoutRelativePath)
+            readHydeFrontMatter -Document $layoutDocument
+
+            $Context.Layouts[$layoutFile.Name.ToLowerInvariant()] = $layoutDocument
+            $Context.Layouts[$layoutFile.BaseName.ToLowerInvariant()] = $layoutDocument
+            Write-Verbose "Pre-parsed $($layoutRoot.RootLabel) layout '$($layoutFile.Name)'."
+        }
     }
 }
 
@@ -691,6 +703,10 @@ function resolveHydeIncludesPath {
         [Parameter(Mandatory = $true)]
         [HydeBuildContext]$Context
     )
+
+    if (-not [string]::IsNullOrWhiteSpace($Context.EffectiveIncludesPath)) {
+        return $Context.EffectiveIncludesPath
+    }
 
     # Includes resolve from the configured includes directory and are passed into the Liquid runtime.
     $includesDirectoryName = if ($Context.Settings.ContainsKey('includes_dir') -and $Context.Settings.includes_dir) {
