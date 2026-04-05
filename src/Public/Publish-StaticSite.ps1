@@ -57,6 +57,19 @@ Returns the populated build context for the completed run.
 
 .NOTES
 Supports ShouldProcess, so -WhatIf and -Confirm are honored.
+
+Configuration is merged in this order: Hyde global defaults, theme `_config.yml`, then site
+`_config.yml`. Later values replace earlier values. For array settings such as `plugins`, the
+later configuration replaces the entire earlier list rather than appending to it.
+
+Themes act as a fallback layer. Theme layouts, includes, static assets, and configuration are used
+when the site does not provide a matching file or setting. Site layouts, includes, static assets,
+and configuration override matching theme content.
+
+Plugin names are read from the final merged configuration, so site plugin settings override theme
+plugin settings, and theme plugin settings override global defaults. Plugin scripts are resolved
+from the site's configured plugin directory and Hyde's built-in `Plugins` directory. Theme
+directories are not searched for plugin script files.
 #>
 function Publish-StaticSite {
     [CmdletBinding(SupportsShouldProcess = $true)]
