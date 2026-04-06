@@ -138,9 +138,71 @@ $null = $Context
                     }
                 }
 
+                function Parse-SeoTagOptions {
+                    param(
+                        [string]$Markup
+                    )
+
+                    # Parse key=value pairs from `{% seo ... %}` markup.
+                    $options = @{}
+                    if ([string]::IsNullOrWhiteSpace($Markup)) {
+                        return $options
+                    }
+
+                    foreach ($match in [regex]::Matches($Markup, '([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*("[^"]*"|''[^'']*''|[^\s]+)')) {
+                        $name = [string]$match.Groups[1].Value
+                        $value = [string]$match.Groups[2].Value
+
+                        if ($value.Length -ge 2 -and (
+                                ($value.StartsWith('"') -and $value.EndsWith('"')) -or
+                                ($value.StartsWith("'") -and $value.EndsWith("'"))
+                            )) {
+                            $value = $value.Substring(1, $value.Length - 2)
+                        }
+
+                        $options[$name.ToLowerInvariant()] = $value
+                    }
+
+                    return $options
+                }
+
+                function Get-SeoBooleanOption {
+                    param(
+                        [hashtable]$Options,
+                        [string]$Name,
+                        [bool]$Default = $true
+                    )
+
+                    if ($null -eq $Options -or -not $Options.ContainsKey($Name)) {
+                        return $Default
+                    }
+
+                    $rawValue = [string]$Options[$Name]
+                    if ([string]::IsNullOrWhiteSpace($rawValue)) {
+                        return $Default
+                    }
+
+                    switch ($rawValue.Trim().ToLowerInvariant()) {
+                        'false' { return $false }
+                        '0' { return $false }
+                        'off' { return $false }
+                        'no' { return $false }
+                        'nil' { return $false }
+                        'null' { return $false }
+                        'true' { return $true }
+                        '1' { return $true }
+                        'on' { return $true }
+                        'yes' { return $true }
+                        default { return $Default }
+                    }
+                }
+
                 # The SEO tag derives values from page metadata first, then falls back to site metadata.
                 $site = & $Invocation.Helpers.ResolveVariable 'site'
                 $page = & $Invocation.Helpers.ResolveVariable 'page'
+                # Jekyll parity: support inline options like `{% seo canonical=false %}`.
+                $seoOptions = Parse-SeoTagOptions -Markup (Get-SeoString $Invocation.Markup)
+                $emitCanonicalLink = Get-SeoBooleanOption -Options $seoOptions -Name 'canonical' -Default $true
 
                 $siteTitle = Get-SeoString (Get-SeoValue -InputObject $site -Name 'title')
                 $siteTagline = Get-SeoString (Get-SeoValue -InputObject $site -Name 'tagline')
@@ -196,7 +258,11 @@ $null = $Context
                 }
 
                 $canonicalUrl = ''
-                if (-not [string]::IsNullOrWhiteSpace($pageUrl)) {
+                $pageCanonicalOverride = Get-SeoString (Get-SeoValue -InputObject $page -Name 'canonical_url')
+                # Jekyll parity: front matter `canonical_url` overrides the computed page URL.
+                if (-not [string]::IsNullOrWhiteSpace($pageCanonicalOverride)) {
+                    $canonicalUrl = Resolve-SeoAbsoluteUrl -Value $pageCanonicalOverride -SiteUrl $siteUrl -BaseUrl $baseUrl
+                } elseif (-not [string]::IsNullOrWhiteSpace($pageUrl)) {
                     $basePath = if ([string]::IsNullOrWhiteSpace($baseUrl)) {
                         $pageUrl
                     } else {
@@ -229,7 +295,8 @@ $null = $Context
 
                 Add-SeoMetaTag -Collection $html -Name 'description' -Content $description
 
-                if (-not [string]::IsNullOrWhiteSpace($canonicalUrl)) {
+                # Keep og:url behavior intact even when canonical link output is disabled.
+                if ($emitCanonicalLink -and -not [string]::IsNullOrWhiteSpace($canonicalUrl)) {
                     [void]$html.Add('<link rel="canonical" href="' + [System.Net.WebUtility]::HtmlEncode($canonicalUrl) + '">')
                 }
 

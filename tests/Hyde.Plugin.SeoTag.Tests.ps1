@@ -178,4 +178,56 @@ image: /assets/post-image.png
         $postOutput | Should -Match '<meta name="twitter:image" content="https://example.com/assets/post-image\.png">'
         $postOutput | Should -Match '"@type":"Article"'
     }
+
+    It 'uses page canonical_url front matter override when provided' {
+        $siteRoot = New-TestSiteDirectory -Name 'plugin-seo-canonical-override-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'plugin-seo-canonical-override-output'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+url: https://example.com
+baseurl: /docs
+plugins:
+  - jekyll-seo-tag
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.html') -Encoding UTF8 -Value @'
+---
+title: Canonical Override
+canonical_url: https://canonical.example.com/articles/42
+---
+{% seo %}
+'@
+
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+
+        $indexOutput | Should -Match '<link rel="canonical" href="https://canonical\.example\.com/articles/42">'
+        $indexOutput | Should -Match '<meta property="og:url" content="https://canonical\.example\.com/articles/42">'
+    }
+
+    It 'supports disabling canonical link output via seo tag options while keeping og:url' {
+        $siteRoot = New-TestSiteDirectory -Name 'plugin-seo-canonical-disabled-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'plugin-seo-canonical-disabled-output'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+url: https://example.com
+plugins:
+  - jekyll-seo-tag
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'index.html') -Encoding UTF8 -Value @'
+---
+title: Canonical Off
+---
+{% seo canonical=false %}
+'@
+
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
+        $indexOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'index.html') -Raw
+
+        $indexOutput | Should -Not -Match '<link rel="canonical"'
+        $indexOutput | Should -Match '<meta property="og:url" content="https://example.com/index\.html">'
+    }
 }
