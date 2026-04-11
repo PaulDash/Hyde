@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<test-results xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="nunit_schema_2.5.xsd" name="Pester" total="8" errors="0" failures="0" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2026-04-11" time="17:24:56">
+  <environment user="Paul" nunit-version="2.5.8.0" clr-version="10.0.5" machine-name="BOB" cwd="C:\Users\Paul\OneDrive - Paul Dash\Projects\Dev\Hyde" os-version="10.0.22631" user-domain="BOB" platform="Microsoft Windows 11 Pro|C:\WINDOWS|\Device\Harddisk3\Partition3" />
+  <culture-info current-culture="en-US" current-uiculture="en-US" />
+  <test-suite type="TestFixture" name="Pester" executed="True" result="Success" success="True" time="10.7723" asserts="0" description="Pester">
+    <results>
+      <test-suite type="TestFixture" name="C:\Users\Paul\OneDrive - Paul Dash\Projects\Dev\Hyde\tests\Hyde.Plugin.SeoTag.Tests.ps1" executed="True" result="Success" success="True" time="10.7723" asserts="0" description="C:\Users\Paul\OneDrive - Paul Dash\Projects\Dev\Hyde\tests\Hyde.Plugin.SeoTag.Tests.ps1">
+        <results>
+          <test-suite type="TestFixture" name="Hyde seo-tag plugin" executed="True" result="Success" success="True" time="9.5824" asserts="0" description="Hyde seo-tag plugin">
+            <results>
+              <test-case description="supports the plugin self-install contract as a no-op" name="Hyde seo-tag plugin.supports the plugin self-install contract as a no-op" time="0.3976" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="loads the built-in seo plugin and renders title description canonical and social tags from site and page metadata" name="Hyde seo-tag plugin.loads the built-in seo plugin and renders title description canonical and social tags from site and page metadata" time="2.7073" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="uses site title and tagline when page title is absent" name="Hyde seo-tag plugin.uses site title and tagline when page title is absent" time="0.6429" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="uses page-level locale and author in preference to site-level values" name="Hyde seo-tag plugin.uses page-level locale and author in preference to site-level values" time="0.555" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="uses page image and article type for posts" name="Hyde seo-tag plugin.uses page image and article type for posts" time="0.8302" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="uses page canonical_url front matter override when provided" name="Hyde seo-tag plugin.uses page canonical_url front matter override when provided" time="0.5709" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="supports disabling canonical link output via seo tag options while keeping og:url" name="Hyde seo-tag plugin.supports disabling canonical link output via seo tag options while keeping og:url" time="0.8264" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="supports overriding og:type from page front matter" name="Hyde seo-tag plugin.supports overriding og:type from page front matter" time="0.6276" asserts="0" success="True" result="Success" executed="True" />
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+    </results>
+  </test-suite>
+</test-results>

@@ -78,6 +78,7 @@ image: /assets/page-pic.jpg
         $indexOutput | Should -Match '<link rel="canonical" href="https://example.com/docs/index\.html">'
         $indexOutput | Should -Match '<meta property="og:locale" content="en_GB">'
         $indexOutput | Should -Match '<meta property="og:image" content="https://example.com/docs/assets/page-pic\.jpg">'
+        $indexOutput | Should -Match '<meta property="og:type" content="website">'
         $indexOutput | Should -Match '<meta name="twitter:card" content="summary_large_image">'
         $indexOutput | Should -Match '<meta name="twitter:site" content="@hydesite">'
         $indexOutput | Should -Match '<meta property="fb:app_id" content="fb-app-1">'
@@ -229,5 +230,31 @@ title: Canonical Off
 
         $indexOutput | Should -Not -Match '<link rel="canonical"'
         $indexOutput | Should -Match '<meta property="og:url" content="https://example.com/index\.html">'
+    }
+
+    It 'supports overriding og:type from page front matter' {
+        $siteRoot = New-TestSiteDirectory -Name 'plugin-seo-og-type-override-site'
+        $destinationRoot = Join-Path -Path $TestDrive -ChildPath 'plugin-seo-og-type-override-output'
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath '_config.yml') -Encoding UTF8 -Value @'
+title: Test Site
+url: https://example.com
+plugins:
+  - jekyll-seo-tag
+'@
+
+        Set-Content -LiteralPath (Join-Path -Path $siteRoot -ChildPath 'profile.html') -Encoding UTF8 -Value @'
+---
+title: Author Profile
+og:
+  type: profile
+---
+{% seo %}
+'@
+
+        Publish-StaticSite -Source $siteRoot -Destination $destinationRoot -Environment development | Out-Null
+        $profileOutput = Get-Content -LiteralPath (Join-Path -Path $destinationRoot -ChildPath 'profile.html') -Raw
+
+        $profileOutput | Should -Match '<meta property="og:type" content="profile">'
     }
 }
