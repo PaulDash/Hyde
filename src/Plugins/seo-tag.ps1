@@ -96,6 +96,51 @@ $null = $Context
                     return ''
                 }
 
+                function Resolve-SeoOpenGraphType {
+                    param(
+                        $Page,
+                        $Site
+                    )
+
+                    $pageDirectType = Get-SeoString (Get-SeoValue -InputObject $Page -Name 'og:type')
+                    if (-not [string]::IsNullOrWhiteSpace($pageDirectType)) {
+                        return $pageDirectType.Trim().ToLowerInvariant()
+                    }
+
+                    $pageOpenGraph = Get-SeoValue -InputObject $Page -Name 'og'
+                    $pageNestedType = Get-SeoString (Get-SeoValue -InputObject $pageOpenGraph -Name 'type')
+                    if (-not [string]::IsNullOrWhiteSpace($pageNestedType)) {
+                        return $pageNestedType.Trim().ToLowerInvariant()
+                    }
+
+                    $pageTypeAlias = Get-SeoString (Get-SeoValue -InputObject $Page -Name 'og_type')
+                    if (-not [string]::IsNullOrWhiteSpace($pageTypeAlias)) {
+                        return $pageTypeAlias.Trim().ToLowerInvariant()
+                    }
+
+                    $siteDirectType = Get-SeoString (Get-SeoValue -InputObject $Site -Name 'og:type')
+                    if (-not [string]::IsNullOrWhiteSpace($siteDirectType)) {
+                        return $siteDirectType.Trim().ToLowerInvariant()
+                    }
+
+                    $siteOpenGraph = Get-SeoValue -InputObject $Site -Name 'og'
+                    $siteNestedType = Get-SeoString (Get-SeoValue -InputObject $siteOpenGraph -Name 'type')
+                    if (-not [string]::IsNullOrWhiteSpace($siteNestedType)) {
+                        return $siteNestedType.Trim().ToLowerInvariant()
+                    }
+
+                    $siteTypeAlias = Get-SeoString (Get-SeoValue -InputObject $Site -Name 'og_type')
+                    if (-not [string]::IsNullOrWhiteSpace($siteTypeAlias)) {
+                        return $siteTypeAlias.Trim().ToLowerInvariant()
+                    }
+
+                    if ((Get-SeoString (Get-SeoValue -InputObject $Page -Name 'collection')) -eq 'posts') {
+                        return 'article'
+                    }
+
+                    return 'website'
+                }
+
                 function Resolve-SeoAbsoluteUrl {
                     param(
                         [string]$Value,
@@ -392,6 +437,7 @@ $null = $Context
                 $ogTitle = $fullTitle
                 $ogDescription = $description
                 $ogUrl = if (-not [string]::IsNullOrWhiteSpace($canonicalUrl)) { $canonicalUrl } else { '' }
+                $ogType = Resolve-SeoOpenGraphType -Page $page -Site $site
 
                 Add-SeoMetaTag -Collection $html -Name 'og:title' -Content $ogTitle -AttributeName 'property'
                 Add-SeoMetaTag -Collection $html -Name 'og:description' -Content $ogDescription -AttributeName 'property'
@@ -399,7 +445,7 @@ $null = $Context
                 Add-SeoMetaTag -Collection $html -Name 'og:url' -Content $ogUrl -AttributeName 'property'
                 Add-SeoMetaTag -Collection $html -Name 'og:locale' -Content $locale -AttributeName 'property'
                 Add-SeoMetaTag -Collection $html -Name 'og:image' -Content $absoluteImageUrl -AttributeName 'property'
-                [void]$html.Add('<meta property="og:type" content="' + $(if ((Get-SeoString (Get-SeoValue -InputObject $page -Name 'collection')) -eq 'posts') { 'article' } else { 'website' }) + '">')
+                Add-SeoMetaTag -Collection $html -Name 'og:type' -Content $ogType -AttributeName 'property'
 
                 # Twitter Summary Card metadata
                 Add-SeoMetaTag -Collection $html -Name 'twitter:card' -Content $twitterCard
